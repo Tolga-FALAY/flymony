@@ -73,12 +73,14 @@ function closeModal(modalId) {
     items.forEach(item => item.style.display = 'flex');
   }
 
-  // İstek formu arama kutularını ve dropdown filtrelerini sıfırla
+  // İstek formu arama kutularını, gizli girdileri ve dropdown filtrelerini sıfırla
   if (modalId === 'requestModal') {
     const guestSearch = document.getElementById('guestSearchInput');
     const songSearch = document.getElementById('songSearchInput');
     if (guestSearch) guestSearch.value = '';
     if (songSearch) songSearch.value = '';
+    document.getElementById('reqGuestID').value = '';
+    document.getElementById('reqSongID').value = '';
     populateDropdowns(); // listenin tamamını geri getir
   }
   
@@ -88,32 +90,47 @@ function closeModal(modalId) {
   if(document.getElementById('songModalTitle')) document.getElementById('songModalTitle').innerText = 'Yeni Şarkı';
 }
 
-// Dropdown'ları Doldur (Şarkılar, Sanatçılar, Misafirler)
+// Listbox'ları ve Checkbox'ları Doldur (Şarkılar, Sanatçılar, Misafirler)
 function populateDropdowns(guestFilter = '', songFilter = '') {
-  const reqGuestSel = document.getElementById('reqGuestID');
-  const reqSongSel = document.getElementById('reqSongID');
+  const guestListboxContainer = document.getElementById('guestListboxContainer');
+  const songListboxContainer = document.getElementById('songListboxContainer');
   const songArtistContainer = document.getElementById('songArtistContainer');
 
-  if (reqGuestSel) {
+  if (guestListboxContainer) {
     const filteredGuests = DB.guests.filter(g => {
       const fullName = `${g.firstName} ${g.lastName}`.toLocaleLowerCase('tr-TR');
       return fullName.includes(guestFilter.toLocaleLowerCase('tr-TR'));
     });
-    reqGuestSel.innerHTML = '<option value="">-- Seçiniz --</option>' + filteredGuests.map(g => `<option value="${g.id}">${g.firstName} ${g.lastName}</option>`).join('');
+    
+    const selectedID = document.getElementById('reqGuestID').value;
+
+    guestListboxContainer.innerHTML = filteredGuests.map(g => `
+      <div class="listbox-item ${selectedID == g.id ? 'selected' : ''}" data-id="${g.id}" onclick="selectListboxItem('reqGuestID', 'guestListboxContainer', ${g.id})">
+        <span>${g.firstName} ${g.lastName}</span>
+      </div>
+    `).join('') || '<div style="color:var(--text-muted);font-size:0.9rem;padding:0.5rem;">Misafir bulunamadı.</div>';
   }
   
-  if (reqSongSel) {
+  if (songListboxContainer) {
     const filteredSongs = DB.songs.filter(s => {
       const artistIds = DB.song_artists.filter(sa => sa.songId === s.id).map(sa => sa.artistId);
       const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
       const fullText = `${s.title} ${artistNames}`.toLocaleLowerCase('tr-TR');
       return fullText.includes(songFilter.toLocaleLowerCase('tr-TR'));
     });
-    reqSongSel.innerHTML = '<option value="">-- Seçiniz --</option>' + filteredSongs.map(s => {
+    
+    const selectedID = document.getElementById('reqSongID').value;
+
+    songListboxContainer.innerHTML = filteredSongs.map(s => {
       const artistIds = DB.song_artists.filter(sa => sa.songId === s.id).map(sa => sa.artistId);
       const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
-      return `<option value="${s.id}">${s.title} ${artistNames ? `(${artistNames})` : ''}</option>`;
-    }).join('');
+      return `
+        <div class="listbox-item ${selectedID == s.id ? 'selected' : ''}" data-id="${s.id}" onclick="selectListboxItem('reqSongID', 'songListboxContainer', ${s.id})">
+          <span>${s.title}</span>
+          <span style="font-size: 0.8rem; opacity: 0.7;">${artistNames || '-'}</span>
+        </div>
+      `;
+    }).join('') || '<div style="color:var(--text-muted);font-size:0.9rem;padding:0.5rem;">Şarkı bulunamadı.</div>';
   }
 
   // Geliştirilmiş, şık checkbox listesi
@@ -427,4 +444,23 @@ function setupDropdownFilters() {
       populateDropdowns(guestSearch ? guestSearch.value : '', e.target.value);
     });
   }
+}
+
+// Listbox elemanı seçildiğinde çalışacak fonksiyon
+function selectListboxItem(hiddenInputId, containerId, id) {
+  const hiddenInput = document.getElementById(hiddenInputId);
+  const container = document.getElementById(containerId);
+  
+  // Input değerini güncelle
+  hiddenInput.value = id;
+  
+  // Görsel olarak seçili olanı vurgula
+  const items = container.querySelectorAll('.listbox-item');
+  items.forEach(item => {
+    if (item.dataset.id == id) {
+      item.classList.add('selected');
+    } else {
+      item.classList.remove('selected');
+    }
+  });
 }

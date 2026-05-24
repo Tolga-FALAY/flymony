@@ -336,3 +336,41 @@ tr:hover td {
   height: 18px;
   accent-color: var(--primary-color);
 }
+
+/* Custom Listbox Styling */
+.listbox-container {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+.listbox-item {
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.listbox-item:hover {
+  background: var(--secondary-color);
+  color: #3b7ecf;
+}
+.listbox-item.selected {
+  background: var(--primary-color);
+  color: white !important;
+  font-weight: 500;
+}
+.listbox-item.selected span {
+  color: white !important;
+}

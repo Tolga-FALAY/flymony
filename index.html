@@ -118,12 +118,14 @@
         <div class="form-group">
           <label>Misafir Seçin</label>
           <input type="text" id="guestSearchInput" placeholder="Misafir ara..." style="margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
-          <select id="reqGuestID" required></select>
+          <div id="guestListboxContainer" class="listbox-container"></div>
+          <input type="hidden" id="reqGuestID" required>
         </div>
         <div class="form-group">
           <label>Şarkı Seçin</label>
           <input type="text" id="songSearchInput" placeholder="Şarkı ara..." style="margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
-          <select id="reqSongID" required></select>
+          <div id="songListboxContainer" class="listbox-container"></div>
+          <input type="hidden" id="reqSongID" required>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-outline" onclick="closeModal('requestModal')">İptal</button>
