@@ -73,7 +73,7 @@ function closeModal(modalId) {
 function populateDropdowns() {
   const reqGuestSel = document.getElementById('reqGuestID');
   const reqSongSel = document.getElementById('reqSongID');
-  const songArtistSel = document.getElementById('songArtistIDs');
+  const songArtistContainer = document.getElementById('songArtistContainer');
 
   reqGuestSel.innerHTML = '<option value="">-- Seçiniz --</option>' + DB.guests.map(g => `<option value="${g.id}">${g.firstName} ${g.lastName}</option>`).join('');
   
@@ -83,7 +83,15 @@ function populateDropdowns() {
     return `<option value="${s.id}">${s.title} ${artistNames ? `(${artistNames})` : ''}</option>`;
   }).join('');
 
-  songArtistSel.innerHTML = DB.artists.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  // Geliştirilmiş, şık checkbox listesi
+  if (songArtistContainer) {
+    songArtistContainer.innerHTML = DB.artists.map(a => `
+      <label class="checkbox-item">
+        <input type="checkbox" name="songArtists" value="${a.id}">
+        <span>${a.name}</span>
+      </label>
+    `).join('') || '<div style="color:var(--text-muted);font-size:0.9rem;padding:0.5rem;">Önce sanatçı eklemelisiniz.</div>';
+  }
 }
 
 // ----------------- ARTISTS -----------------
@@ -209,7 +217,7 @@ function deleteGuest(id) {
 // ----------------- SONGS -----------------
 function renderSongs() {
   const tbody = document.querySelector('#songsTable tbody');
-  tbody.innerHTML = DB.songs.length === 0 ? '<tr><td colspan="4" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+  tbody.innerHTML = DB.songs.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
   DB.songs.forEach(song => {
     const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
@@ -219,7 +227,6 @@ function renderSongs() {
     tr.innerHTML = `
       <td>${song.title}</td>
       <td>${artistNames || '-'}</td>
-      <td>${song.duration || '-'}</td>
       <td class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSong(${song.id})">Sil</button>
@@ -233,23 +240,21 @@ function saveSong(e) {
   e.preventDefault();
   const id = document.getElementById('songID').value;
   const title = document.getElementById('songTitle').value;
-  const duration = document.getElementById('songDuration').value;
   
-  const select = document.getElementById('songArtistIDs');
-  const selectedArtistIds = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+  const checkboxes = document.querySelectorAll('input[name="songArtists"]:checked');
+  const selectedArtistIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
   let songId = id;
   if (id) {
     const song = DB.songs.find(s => s.id == id);
     if (song) {
       song.title = title;
-      song.duration = duration;
     }
     // Eski ilişkileri sil
     DB.song_artists = DB.song_artists.filter(sa => sa.songId != id);
   } else {
     songId = DB.getId('songs');
-    DB.songs.push({ id: songId, title, duration });
+    DB.songs.push({ id: songId, title });
   }
 
   // Yeni ilişkileri ekle
@@ -268,12 +273,14 @@ function editSong(id) {
   
   document.getElementById('songID').value = song.id;
   document.getElementById('songTitle').value = song.title;
-  document.getElementById('songDuration').value = song.duration || '';
+  
+  // Önce dropdown'ları (checkbox'ları) oluştur ki check atabilelim
+  populateDropdowns();
   
   const artistIds = DB.song_artists.filter(sa => sa.songId == id).map(sa => sa.artistId);
-  const select = document.getElementById('songArtistIDs');
-  Array.from(select.options).forEach(opt => {
-    opt.selected = artistIds.includes(parseInt(opt.value));
+  const checkboxes = document.querySelectorAll('input[name="songArtists"]');
+  checkboxes.forEach(cb => {
+    cb.checked = artistIds.includes(parseInt(cb.value));
   });
 
   document.getElementById('songModalTitle').innerText = 'Şarkı Düzenle';
@@ -304,7 +311,8 @@ function renderRequests() {
     
     if(!guest || !song) return; // Eksik veri varsa atla
 
-    const dateStr = new Date(req.date).toLocaleString('tr-TR');
+    // Saat bilgisini kaldırdık, sadece Türkçe tarih formatı (örn. 24 Mayıs 2026) gösteriyoruz
+    const dateStr = new Date(req.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const tr = document.createElement('tr');
     tr.innerHTML = `

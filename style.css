@@ -1,16 +1,16 @@
 :root {
-  --bg-color: #f0f4f8;
+  --bg-color: #f4f9fd;
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.4);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-shadow: 0 8px 32px 0 rgba(123, 180, 245, 0.08);
   
-  --primary-color: #3b82f6; /* pastel/light blue base */
-  --primary-hover: #2563eb;
-  --secondary-color: #bfdbfe;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
+  --primary-color: #7bb4f5; /* baby blue base */
+  --primary-hover: #5d9ee8;
+  --secondary-color: #e3effc;
+  --text-main: #1e2e4a;
+  --text-muted: #5e7290;
+  --danger: #ff6b6b;
+  --danger-hover: #fa5252;
 
   --border-radius: 16px;
   --transition: all 0.3s ease;
@@ -26,7 +26,7 @@ body {
   font-family: 'Inter', sans-serif;
   color: var(--text-main);
   min-height: 100vh;
-  background: linear-gradient(135deg, #e0eaf5 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, #d3e5fc 0%, #f4f9fd 100%);
 }
 
 .container {
@@ -284,4 +284,59 @@ tr:hover td {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+}
+
+/* Custom Logo Styling */
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.logo-img {
+  height: 48px;
+  width: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(123, 180, 245, 0.2));
+}
+.logo-text {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #4c8dd9; /* premium baby blue text */
+  letter-spacing: -0.8px;
+  text-transform: lowercase;
+}
+
+/* Custom Checkbox List for Artists selection */
+.checkbox-list-container {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.75rem;
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+.checkbox-item:hover {
+  background: var(--secondary-color);
+  color: #3b7ecf;
+}
+.checkbox-item input[type="checkbox"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary-color);
 }
