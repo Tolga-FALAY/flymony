@@ -22,5 +22,6 @@ export const api = {
     // Requests
     getRequests: () => fetch(`${API_BASE}/requests`).then(r => r.json()),
     createRequest: (data) => fetch(`${API_BASE}/requests`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(r => r.json()),
+    updateRequest: (id, data) => fetch(`${API_BASE}/requests/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(r => r.json()),
     deleteRequest: (id) => fetch(`${API_BASE}/requests/${id}`, { method: 'DELETE' }).then(r => r.json()),
 };

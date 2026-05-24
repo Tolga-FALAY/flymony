@@ -6,7 +6,7 @@ export default function Songs() {
   const [artists, setArtists] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     SongTitle: '',
     Duration: '',
@@ -89,7 +89,7 @@ export default function Songs() {
               <th>Şarkı Adı</th>
               <th>Sanatçılar</th>
               <th>Süre</th>
-              <th style={{width: '150px'}}>İşlemler</th>
+              <th style={{ width: '150px' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -105,7 +105,7 @@ export default function Songs() {
               </tr>
             ))}
             {songs.length === 0 && (
-              <tr><td colSpan="4" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
@@ -129,7 +129,7 @@ export default function Songs() {
               </div>
               <div className="form-group">
                 <label>Sanatçılar (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
-                <select multiple name="ArtistIDs" value={formData.ArtistIDs} onChange={handleArtistChange} style={{height: '100px'}}>
+                <select multiple name="ArtistIDs" value={formData.ArtistIDs} onChange={handleArtistChange} style={{ height: '100px' }}>
                   {artists.map(artist => (
                     <option key={artist.ArtistID} value={artist.ArtistID}>{artist.ArtistName}</option>
                   ))}

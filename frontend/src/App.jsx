@@ -10,7 +10,9 @@ function App() {
   return (
     <div className="container">
       <header>
-        <h1>Flymony</h1>
+        <div className="logo-area">
+          <img src="/flymonyLogo.png" alt="FLY Logo" className="logo-img" />
+        </div>
         <nav>
           <button 
             className={`nav-btn ${activeTab === 'requests' ? 'active' : ''}`}

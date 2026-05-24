@@ -23,7 +23,7 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   color: var(--text-main);
   min-height: 100vh;
   background: linear-gradient(135deg, #d3e5fc 0%, #f4f9fd 100%);
@@ -41,7 +41,7 @@ header {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  padding: 0.5rem 2rem; /* narrowed vertically */
+  padding: 0.4rem 2rem; /* narrowed vertically */
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -290,11 +290,11 @@ tr:hover td {
 .logo-area {
   display: flex;
   align-items: center;
-  margin: -0.4rem 0; /* adjusted for narrower navbar */
+  margin: -0.6rem 0; /* adjusted for narrower navbar */
   padding-left: 1.5rem;
 }
 .logo-img {
-  height: 85px; /* slightly smaller to fit vertically */
+  height: 95px; /* scaled up to match React version */
   width: auto;
   object-fit: contain;
   border: none;

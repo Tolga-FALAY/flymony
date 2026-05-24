@@ -6,6 +6,7 @@ export default function Requests() {
   const [songs, setSongs] = useState([]);
   const [guests, setGuests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRequest, setEditingRequest] = useState(null);
   
   const [formData, setFormData] = useState({
     SongID: '',
@@ -27,13 +28,23 @@ export default function Requests() {
     setGuests(guestsData);
   };
 
-  const openModal = () => {
-    setFormData({ SongID: '', GuestID: '' });
+  const openModal = (req = null) => {
+    if (req) {
+      setEditingRequest(req);
+      setFormData({
+        SongID: req.SongID,
+        GuestID: req.GuestID
+      });
+    } else {
+      setEditingRequest(null);
+      setFormData({ SongID: '', GuestID: '' });
+    }
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingRequest(null);
   };
 
   const handleChange = (e) => {
@@ -42,7 +53,11 @@ export default function Requests() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await api.createRequest(formData);
+    if (editingRequest) {
+      await api.updateRequest(editingRequest.RequestID, formData);
+    } else {
+      await api.createRequest(formData);
+    }
     closeModal();
     loadData();
   };
@@ -58,7 +73,7 @@ export default function Requests() {
     <div>
       <div className="section-header">
         <h2>Şarkı İstekleri</h2>
-        <button className="btn btn-primary" onClick={openModal}>
+        <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni İstek Ekle
         </button>
       </div>
@@ -70,7 +85,7 @@ export default function Requests() {
               <th>Tarih / Saat</th>
               <th>Misafir</th>
               <th>İstenen Şarkı</th>
-              <th style={{width: '100px'}}>İşlemler</th>
+              <th style={{width: '150px'}}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -82,6 +97,7 @@ export default function Requests() {
                   <td>{req.FullName}</td>
                   <td>{req.SongTitle}</td>
                   <td className="action-btns">
+                    <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
                   </td>
                 </tr>
@@ -98,7 +114,7 @@ export default function Requests() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Yeni İstek</h2>
+              <h2>{editingRequest ? 'İstek Düzenle' : 'Yeni İstek'}</h2>
               <button className="close-btn" onClick={closeModal}>&times;</button>
             </div>
             <form onSubmit={handleSubmit}>

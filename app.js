@@ -59,7 +59,7 @@ function closeModal(modalId) {
   if(form) form.reset();
   
   // Gizli ID alanlarını temizle
-  const idFields = ['songID', 'artistID', 'guestID'];
+  const idFields = ['songID', 'artistID', 'guestID', 'requestID'];
   idFields.forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = '';
@@ -88,6 +88,7 @@ function closeModal(modalId) {
   if(document.getElementById('artistModalTitle')) document.getElementById('artistModalTitle').innerText = 'Yeni Sanatçı';
   if(document.getElementById('guestModalTitle')) document.getElementById('guestModalTitle').innerText = 'Yeni Misafir';
   if(document.getElementById('songModalTitle')) document.getElementById('songModalTitle').innerText = 'Yeni Şarkı';
+  if(document.getElementById('requestModalTitle')) document.getElementById('requestModalTitle').innerText = 'Yeni İstek';
 }
 
 // Listbox'ları ve Checkbox'ları Doldur (Şarkılar, Sanatçılar, Misafirler)
@@ -372,6 +373,7 @@ function renderRequests() {
       <td>${guest.firstName} ${guest.lastName}</td>
       <td>${song.title}</td>
       <td class="action-btns">
+        <button class="btn btn-sm btn-outline" onclick="editRequest(${req.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteRequest(${req.id})">Sil</button>
       </td>
     `;
@@ -381,21 +383,29 @@ function renderRequests() {
 
 function saveRequest(e) {
   e.preventDefault();
+  const id = document.getElementById('requestID').value;
   const guestIDsVal = document.getElementById('reqGuestID').value;
   const songId = parseInt(document.getElementById('reqSongID').value);
 
   if (!guestIDsVal) return;
 
-  const guestIDs = guestIDsVal.split(',').map(Number);
-  
-  guestIDs.forEach(guestId => {
-    DB.requests.push({
-      id: DB.getId('requests'),
-      guestId,
-      songId,
-      date: Date.now()
+  if (id) {
+    const req = DB.requests.find(r => r.id == id);
+    if (req) {
+      req.guestId = parseInt(guestIDsVal.split(',')[0]);
+      req.songId = songId;
+    }
+  } else {
+    const guestIDs = guestIDsVal.split(',').map(Number);
+    guestIDs.forEach(guestId => {
+      DB.requests.push({
+        id: DB.getId('requests'),
+        guestId,
+        songId,
+        date: Date.now()
+      });
     });
-  });
+  }
 
   DB.save();
   closeModal('requestModal');
@@ -408,6 +418,47 @@ function deleteRequest(id) {
     DB.save();
     renderAllTables();
   }
+}
+
+function editRequest(id) {
+  const req = DB.requests.find(r => r.id == id);
+  if (!req) return;
+
+  document.getElementById('requestID').value = req.id;
+  document.getElementById('reqGuestID').value = req.guestId;
+  document.getElementById('reqSongID').value = req.songId;
+
+  // Düşey arama/seçimleri doldur
+  populateDropdowns();
+
+  // Şarkı listbox'ından seç
+  selectListboxItem('reqSongID', 'songListboxContainer', req.songId);
+  
+  // Misafir listbox'ından seç
+  const container = document.getElementById('guestListboxContainer');
+  if (container) {
+    const items = container.querySelectorAll('.listbox-item');
+    items.forEach(item => {
+      if (item.dataset.id == req.guestId) {
+        item.classList.add('selected');
+        if (!item.querySelector('span:nth-child(2)')) {
+          const checkSpan = document.createElement('span');
+          checkSpan.style.fontSize = '0.8rem';
+          checkSpan.innerText = '✓';
+          item.appendChild(checkSpan);
+        }
+      } else {
+        item.classList.remove('selected');
+        const checkSpan = item.querySelector('span:nth-child(2)');
+        if (checkSpan && checkSpan.innerText === '✓') {
+          checkSpan.remove();
+        }
+      }
+    });
+  }
+
+  document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
+  openModal('requestModal');
 }
 
 // Tüm Tabloları Güncelle

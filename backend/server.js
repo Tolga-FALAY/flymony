@@ -208,6 +208,16 @@ app.post('/api/requests', (req, res) => {
     }
 });
 
+app.put('/api/requests/:id', (req, res) => {
+    try {
+        const { SongID, GuestID } = req.body;
+        db.prepare('UPDATE Requests SET SongID = ?, GuestID = ? WHERE RequestID = ?').run(SongID, GuestID, req.params.id);
+        res.json({ message: 'Request updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/requests/:id', (req, res) => {
     try {
         db.prepare('DELETE FROM Requests WHERE RequestID = ?').run(req.params.id);
