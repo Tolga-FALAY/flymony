@@ -117,10 +117,12 @@
       <form id="requestForm" onsubmit="saveRequest(event)">
         <div class="form-group">
           <label>Misafir Seçin</label>
+          <input type="text" id="guestSearchInput" placeholder="Misafir ara..." style="margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
           <select id="reqGuestID" required></select>
         </div>
         <div class="form-group">
           <label>Şarkı Seçin</label>
+          <input type="text" id="songSearchInput" placeholder="Şarkı ara..." style="margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
           <select id="reqSongID" required></select>
         </div>
         <div class="modal-actions">

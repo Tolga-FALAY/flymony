@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAllTables();
   populateDropdowns();
   setupArtistSearch();
+  setupDropdownFilters();
 });
 
 // Tab Geçişleri
@@ -71,6 +72,15 @@ function closeModal(modalId) {
     const items = document.querySelectorAll('#songArtistContainer .checkbox-item');
     items.forEach(item => item.style.display = 'flex');
   }
+
+  // İstek formu arama kutularını ve dropdown filtrelerini sıfırla
+  if (modalId === 'requestModal') {
+    const guestSearch = document.getElementById('guestSearchInput');
+    const songSearch = document.getElementById('songSearchInput');
+    if (guestSearch) guestSearch.value = '';
+    if (songSearch) songSearch.value = '';
+    populateDropdowns(); // listenin tamamını geri getir
+  }
   
   // Başlıkları sıfırla
   if(document.getElementById('artistModalTitle')) document.getElementById('artistModalTitle').innerText = 'Yeni Sanatçı';
@@ -79,18 +89,32 @@ function closeModal(modalId) {
 }
 
 // Dropdown'ları Doldur (Şarkılar, Sanatçılar, Misafirler)
-function populateDropdowns() {
+function populateDropdowns(guestFilter = '', songFilter = '') {
   const reqGuestSel = document.getElementById('reqGuestID');
   const reqSongSel = document.getElementById('reqSongID');
   const songArtistContainer = document.getElementById('songArtistContainer');
 
-  reqGuestSel.innerHTML = '<option value="">-- Seçiniz --</option>' + DB.guests.map(g => `<option value="${g.id}">${g.firstName} ${g.lastName}</option>`).join('');
+  if (reqGuestSel) {
+    const filteredGuests = DB.guests.filter(g => {
+      const fullName = `${g.firstName} ${g.lastName}`.toLocaleLowerCase('tr-TR');
+      return fullName.includes(guestFilter.toLocaleLowerCase('tr-TR'));
+    });
+    reqGuestSel.innerHTML = '<option value="">-- Seçiniz --</option>' + filteredGuests.map(g => `<option value="${g.id}">${g.firstName} ${g.lastName}</option>`).join('');
+  }
   
-  reqSongSel.innerHTML = '<option value="">-- Seçiniz --</option>' + DB.songs.map(s => {
-    const artistIds = DB.song_artists.filter(sa => sa.songId === s.id).map(sa => sa.artistId);
-    const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
-    return `<option value="${s.id}">${s.title} ${artistNames ? `(${artistNames})` : ''}</option>`;
-  }).join('');
+  if (reqSongSel) {
+    const filteredSongs = DB.songs.filter(s => {
+      const artistIds = DB.song_artists.filter(sa => sa.songId === s.id).map(sa => sa.artistId);
+      const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
+      const fullText = `${s.title} ${artistNames}`.toLocaleLowerCase('tr-TR');
+      return fullText.includes(songFilter.toLocaleLowerCase('tr-TR'));
+    });
+    reqSongSel.innerHTML = '<option value="">-- Seçiniz --</option>' + filteredSongs.map(s => {
+      const artistIds = DB.song_artists.filter(sa => sa.songId === s.id).map(sa => sa.artistId);
+      const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
+      return `<option value="${s.id}">${s.title} ${artistNames ? `(${artistNames})` : ''}</option>`;
+    }).join('');
+  }
 
   // Geliştirilmiş, şık checkbox listesi
   if (songArtistContainer) {
@@ -384,6 +408,23 @@ function setupArtistSearch() {
           item.style.display = 'none';
         }
       });
+    });
+  }
+}
+
+// Dropdown Arama Filtreleri (Misafir ve Şarkı seçimi için)
+function setupDropdownFilters() {
+  const guestSearch = document.getElementById('guestSearchInput');
+  const songSearch = document.getElementById('songSearchInput');
+  
+  if (guestSearch) {
+    guestSearch.addEventListener('input', (e) => {
+      populateDropdowns(e.target.value, songSearch ? songSearch.value : '');
+    });
+  }
+  if (songSearch) {
+    songSearch.addEventListener('input', (e) => {
+      populateDropdowns(guestSearch ? guestSearch.value : '', e.target.value);
     });
   }
 }

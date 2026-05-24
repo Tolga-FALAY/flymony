@@ -290,10 +290,11 @@ tr:hover td {
 .logo-area {
   display: flex;
   align-items: center;
-  margin: -1.5rem 0; /* allows the logo to overlay the navbar padding naturally */
+  margin: -0.75rem 0; /* adjusted margin for slightly smaller logo */
+  padding-left: 1.5rem; /* added padding to the left */
 }
 .logo-img {
-  height: 150px; /* 2x larger logo */
+  height: 110px; /* slightly smaller logo */
   width: auto;
   object-fit: contain;
   border: none;
