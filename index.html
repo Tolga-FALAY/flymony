@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flymony - Şarkı İstek Sistemi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Flymony</h1>
+      <nav id="navMenu">
+        <button class="nav-btn active" data-target="requests">İstekler</button>
+        <button class="nav-btn" data-target="songs">Şarkılar</button>
+        <button class="nav-btn" data-target="artists">Sanatçılar</button>
+        <button class="nav-btn" data-target="guests">Misafirler</button>
+      </nav>
+    </header>
+
+    <main class="content-panel">
+      <!-- İSTEKLER SEKMESİ -->
+      <section id="requests" class="tab-content active">
+        <div class="section-header">
+          <h2>Şarkı İstekleri</h2>
+          <button class="btn btn-primary" onclick="openModal('requestModal')">+ Yeni İstek</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="requestsTable">
+            <thead>
+              <tr>
+                <th>Tarih / Saat</th>
+                <th>Misafir</th>
+                <th>İstenen Şarkı</th>
+                <th style="width: 100px;">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ŞARKILAR SEKMESİ -->
+      <section id="songs" class="tab-content">
+        <div class="section-header">
+          <h2>Şarkılar</h2>
+          <button class="btn btn-primary" onclick="openModal('songModal')">+ Yeni Şarkı</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="songsTable">
+            <thead>
+              <tr>
+                <th>Şarkı Adı</th>
+                <th>Sanatçılar</th>
+                <th>Süre</th>
+                <th style="width: 150px;">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SANATÇILAR SEKMESİ -->
+      <section id="artists" class="tab-content">
+        <div class="section-header">
+          <h2>Sanatçılar</h2>
+          <button class="btn btn-primary" onclick="openModal('artistModal')">+ Yeni Sanatçı</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="artistsTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Sanatçı Adı</th>
+                <th style="width: 150px;">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- MİSAFİRLER SEKMESİ -->
+      <section id="guests" class="tab-content">
+        <div class="section-header">
+          <h2>Misafirler</h2>
+          <button class="btn btn-primary" onclick="openModal('guestModal')">+ Yeni Misafir</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="guestsTable">
+            <thead>
+              <tr>
+                <th>Ad Soyad</th>
+                <th>Telefon</th>
+                <th>Instagram</th>
+                <th style="width: 150px;">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODALS -->
+  <!-- İstek Ekleme Modalı -->
+  <div id="requestModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Yeni İstek</h2>
+        <button class="close-btn" onclick="closeModal('requestModal')">&times;</button>
+      </div>
+      <form id="requestForm" onsubmit="saveRequest(event)">
+        <div class="form-group">
+          <label>Misafir Seçin</label>
+          <select id="reqGuestID" required></select>
+        </div>
+        <div class="form-group">
+          <label>Şarkı Seçin</label>
+          <select id="reqSongID" required></select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeModal('requestModal')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Şarkı Ekleme/Düzenleme Modalı -->
+  <div id="songModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="songModalTitle">Yeni Şarkı</h2>
+        <button class="close-btn" onclick="closeModal('songModal')">&times;</button>
+      </div>
+      <form id="songForm" onsubmit="saveSong(event)">
+        <input type="hidden" id="songID">
+        <div class="form-group">
+          <label>Şarkı Adı</label>
+          <input type="text" id="songTitle" required>
+        </div>
+        <div class="form-group">
+          <label>Süre (örn: 3:45)</label>
+          <input type="text" id="songDuration">
+        </div>
+        <div class="form-group">
+          <label>Sanatçılar (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
+          <select id="songArtistIDs" multiple style="height: 100px;"></select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeModal('songModal')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sanatçı Ekleme/Düzenleme Modalı -->
+  <div id="artistModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="artistModalTitle">Yeni Sanatçı</h2>
+        <button class="close-btn" onclick="closeModal('artistModal')">&times;</button>
+      </div>
+      <form id="artistForm" onsubmit="saveArtist(event)">
+        <input type="hidden" id="artistID">
+        <div class="form-group">
+          <label>Sanatçı Adı</label>
+          <input type="text" id="artistName" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeModal('artistModal')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Misafir Ekleme/Düzenleme Modalı -->
+  <div id="guestModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="guestModalTitle">Yeni Misafir</h2>
+        <button class="close-btn" onclick="closeModal('guestModal')">&times;</button>
+      </div>
+      <form id="guestForm" onsubmit="saveGuest(event)">
+        <input type="hidden" id="guestID">
+        <div class="form-group">
+          <label>Ad</label>
+          <input type="text" id="guestFirstName" required>
+        </div>
+        <div class="form-group">
+          <label>Soyad</label>
+          <input type="text" id="guestLastName" required>
+        </div>
+        <div class="form-group">
+          <label>Telefon Numarası</label>
+          <input type="text" id="guestPhone">
+        </div>
+        <div class="form-group">
+          <label>Instagram Linki</label>
+          <input type="url" id="guestInstagram" placeholder="https://instagram.com/...">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeModal('guestModal')">İptal</button>
+          <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
