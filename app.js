@@ -374,10 +374,10 @@ function setupArtistSearch() {
   const searchInput = document.getElementById('artistSearchInput');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
-      const term = e.target.value.toLowerCase();
+      const term = e.target.value.toLocaleLowerCase('tr-TR');
       const items = document.querySelectorAll('#songArtistContainer .checkbox-item');
       items.forEach(item => {
-        const name = item.querySelector('span').innerText.toLowerCase();
+        const name = item.querySelector('span').innerText.toLocaleLowerCase('tr-TR');
         if (name.includes(term)) {
           item.style.display = 'flex';
         } else {

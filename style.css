@@ -290,14 +290,16 @@ tr:hover td {
 .logo-area {
   display: flex;
   align-items: center;
+  margin: -1.5rem 0; /* allows the logo to overlay the navbar padding naturally */
 }
 .logo-img {
-  height: 75px; /* Enlarge the logo */
+  height: 150px; /* 2x larger logo */
   width: auto;
   object-fit: contain;
   border: none;
   border-radius: 0;
   box-shadow: none;
+  background: transparent;
 }
 
 /* Custom Checkbox List for Artists selection */
