@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   renderAllTables();
   populateDropdowns();
+  setupArtistSearch();
 });
 
 // Tab Geçişleri
@@ -62,6 +63,14 @@ function closeModal(modalId) {
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
+
+  // Arama kutusunu ve filtrelemeyi sıfırla
+  if (modalId === 'songModal') {
+    const searchInput = document.getElementById('artistSearchInput');
+    if (searchInput) searchInput.value = '';
+    const items = document.querySelectorAll('#songArtistContainer .checkbox-item');
+    items.forEach(item => item.style.display = 'flex');
+  }
   
   // Başlıkları sıfırla
   if(document.getElementById('artistModalTitle')) document.getElementById('artistModalTitle').innerText = 'Yeni Sanatçı';
@@ -358,4 +367,23 @@ function renderAllTables() {
   renderGuests();
   renderSongs();
   renderRequests();
+}
+
+// Sanatçı Arama Filtresi
+function setupArtistSearch() {
+  const searchInput = document.getElementById('artistSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const items = document.querySelectorAll('#songArtistContainer .checkbox-item');
+      items.forEach(item => {
+        const name = item.querySelector('span').innerText.toLowerCase();
+        if (name.includes(term)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+  }
 }
