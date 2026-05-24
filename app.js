@@ -102,11 +102,13 @@ function populateDropdowns(guestFilter = '', songFilter = '') {
       return fullName.includes(guestFilter.toLocaleLowerCase('tr-TR'));
     });
     
-    const selectedID = document.getElementById('reqGuestID').value;
+    const selectedValue = document.getElementById('reqGuestID').value;
+    const selectedIDs = selectedValue ? selectedValue.split(',').map(Number) : [];
 
     guestListboxContainer.innerHTML = filteredGuests.map(g => `
-      <div class="listbox-item ${selectedID == g.id ? 'selected' : ''}" data-id="${g.id}" onclick="selectListboxItem('reqGuestID', 'guestListboxContainer', ${g.id})">
+      <div class="listbox-item ${selectedIDs.includes(g.id) ? 'selected' : ''}" data-id="${g.id}" onclick="toggleListboxItem('reqGuestID', 'guestListboxContainer', ${g.id})">
         <span>${g.firstName} ${g.lastName}</span>
+        ${selectedIDs.includes(g.id) ? '<span style="font-size:0.8rem;">✓</span>' : ''}
       </div>
     `).join('') || '<div style="color:var(--text-muted);font-size:0.9rem;padding:0.5rem;">Misafir bulunamadı.</div>';
   }
@@ -379,14 +381,20 @@ function renderRequests() {
 
 function saveRequest(e) {
   e.preventDefault();
-  const guestId = parseInt(document.getElementById('reqGuestID').value);
+  const guestIDsVal = document.getElementById('reqGuestID').value;
   const songId = parseInt(document.getElementById('reqSongID').value);
 
-  DB.requests.push({
-    id: DB.getId('requests'),
-    guestId,
-    songId,
-    date: Date.now()
+  if (!guestIDsVal) return;
+
+  const guestIDs = guestIDsVal.split(',').map(Number);
+  
+  guestIDs.forEach(guestId => {
+    DB.requests.push({
+      id: DB.getId('requests'),
+      guestId,
+      songId,
+      date: Date.now()
+    });
   });
 
   DB.save();
@@ -446,7 +454,7 @@ function setupDropdownFilters() {
   }
 }
 
-// Listbox elemanı seçildiğinde çalışacak fonksiyon
+// Listbox elemanı seçildiğinde çalışacak fonksiyon (Tekli seçim)
 function selectListboxItem(hiddenInputId, containerId, id) {
   const hiddenInput = document.getElementById(hiddenInputId);
   const container = document.getElementById(containerId);
@@ -463,4 +471,43 @@ function selectListboxItem(hiddenInputId, containerId, id) {
       item.classList.remove('selected');
     }
   });
+}
+
+// Listbox elemanı çoklu seçildiğinde/kaldırıldığında çalışacak fonksiyon (Çoklu seçim)
+function toggleListboxItem(hiddenInputId, containerId, id) {
+  const hiddenInput = document.getElementById(hiddenInputId);
+  const container = document.getElementById(containerId);
+  
+  let selectedIDs = hiddenInput.value ? hiddenInput.value.split(',').map(Number) : [];
+  
+  if (selectedIDs.includes(id)) {
+    // Varsa çıkar
+    selectedIDs = selectedIDs.filter(x => x !== id);
+  } else {
+    // Yoksa ekle
+    selectedIDs.push(id);
+  }
+  
+  // Input değerini güncelle
+  hiddenInput.value = selectedIDs.join(',');
+  
+  // Sadece tıklanan öğenin görsel vurgusunu ve check işaretini toggle et (tüm listeyi bozmamak için)
+  const item = container.querySelector(`.listbox-item[data-id="${id}"]`);
+  if (item) {
+    if (selectedIDs.includes(id)) {
+      item.classList.add('selected');
+      if (!item.querySelector('span:nth-child(2)')) {
+        const checkSpan = document.createElement('span');
+        checkSpan.style.fontSize = '0.8rem';
+        checkSpan.innerText = '✓';
+        item.appendChild(checkSpan);
+      }
+    } else {
+      item.classList.remove('selected');
+      const checkSpan = item.querySelector('span:nth-child(2)');
+      if (checkSpan && checkSpan.innerText === '✓') {
+        checkSpan.remove();
+      }
+    }
+  }
 }

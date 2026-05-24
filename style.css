@@ -41,7 +41,7 @@ header {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  padding: 1.5rem 2rem;
+  padding: 0.5rem 2rem; /* narrowed vertically */
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -290,11 +290,11 @@ tr:hover td {
 .logo-area {
   display: flex;
   align-items: center;
-  margin: -0.75rem 0; /* adjusted margin for slightly smaller logo */
-  padding-left: 1.5rem; /* added padding to the left */
+  margin: -0.4rem 0; /* adjusted for narrower navbar */
+  padding-left: 1.5rem;
 }
 .logo-img {
-  height: 110px; /* slightly smaller logo */
+  height: 85px; /* slightly smaller to fit vertically */
   width: auto;
   object-fit: contain;
   border: none;
