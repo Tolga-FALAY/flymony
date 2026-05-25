@@ -62,8 +62,25 @@ export default function Requests() {
       alert("Lütfen en az bir misafir seçin.");
       return;
     }
+
+    const songIdNum = Number(formData.SongID);
+
+    // Yeni istek girişi yaparken, seçilen şarkı ile daha önce kayıt yapıldıysa kontrol et
+    if (!editingRequest) {
+      const existingReq = requests.find(r => r.SongID === songIdNum);
+      if (existingReq) {
+        const goToExisting = window.confirm(
+          "Seçilen şarkı ile daha önce kayıt yapılmış. Daha önce yapılan kayda gidilsin mi?"
+        );
+        if (goToExisting) {
+          openModal(existingReq);
+        }
+        return;
+      }
+    }
+
     const dataToSend = {
-      SongID: Number(formData.SongID),
+      SongID: songIdNum,
       GuestIDs: formData.GuestIDs.map(Number)
     };
     try {
