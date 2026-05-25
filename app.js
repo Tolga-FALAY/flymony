@@ -169,7 +169,18 @@ function renderArtists() {
 function saveArtist(e) {
   e.preventDefault();
   const id = document.getElementById('artistID').value;
-  const name = document.getElementById('artistName').value;
+  const name = document.getElementById('artistName').value.trim();
+
+  if (!name) {
+    alert("Sanatçı adı boş olamaz!");
+    return;
+  }
+
+  const isDuplicate = DB.artists.some(a => a.id != id && a.name.trim().toLowerCase() === name.toLowerCase());
+  if (isDuplicate) {
+    alert("Bu isimde bir sanatçı zaten var!");
+    return;
+  }
 
   if (id) {
     const artist = DB.artists.find(a => a.id == id);
@@ -224,10 +235,24 @@ function renderGuests() {
 function saveGuest(e) {
   e.preventDefault();
   const id = document.getElementById('guestID').value;
-  const firstName = document.getElementById('guestFirstName').value;
-  const lastName = document.getElementById('guestLastName').value;
+  const firstName = document.getElementById('guestFirstName').value.trim();
+  const lastName = document.getElementById('guestLastName').value.trim();
   const phone = document.getElementById('guestPhone').value;
   const instagram = document.getElementById('guestInstagram').value;
+
+  if (!firstName || !lastName) {
+    alert("Ad ve Soyad alanları boş bırakılamaz!");
+    return;
+  }
+
+  const isDuplicate = DB.guests.some(g => g.id != id && 
+    g.firstName.trim().toLowerCase() === firstName.toLowerCase() && 
+    g.lastName.trim().toLowerCase() === lastName.toLowerCase()
+  );
+  if (isDuplicate) {
+    alert("Bu isimde bir misafir zaten var!");
+    return;
+  }
 
   if (id) {
     const guest = DB.guests.find(g => g.id == id);
@@ -292,10 +317,21 @@ function renderSongs() {
 function saveSong(e) {
   e.preventDefault();
   const id = document.getElementById('songID').value;
-  const title = document.getElementById('songTitle').value;
+  const title = document.getElementById('songTitle').value.trim();
   
   const checkboxes = document.querySelectorAll('input[name="songArtists"]:checked');
   const selectedArtistIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+  if (!title) {
+    alert("Şarkı adı boş olamaz!");
+    return;
+  }
+
+  const isDuplicate = DB.songs.some(s => s.id != id && s.title.trim().toLowerCase() === title.toLowerCase());
+  if (isDuplicate) {
+    alert("Bu isimde bir şarkı zaten var!");
+    return;
+  }
 
   let songId = id;
   if (id) {
@@ -327,17 +363,15 @@ function editSong(id) {
   document.getElementById('songID').value = song.id;
   document.getElementById('songTitle').value = song.title;
   
-  // Önce dropdown'ları (checkbox'ları) oluştur ki check atabilelim
-  populateDropdowns();
+  document.getElementById('songModalTitle').innerText = 'Şarkı Düzenle';
+  openModal('songModal'); // openModal calls populateDropdowns, creating the checkboxes
   
+  // Set checked states after checkboxes are generated
   const artistIds = DB.song_artists.filter(sa => sa.songId == id).map(sa => sa.artistId);
   const checkboxes = document.querySelectorAll('input[name="songArtists"]');
   checkboxes.forEach(cb => {
     cb.checked = artistIds.includes(parseInt(cb.value));
   });
-
-  document.getElementById('songModalTitle').innerText = 'Şarkı Düzenle';
-  openModal('songModal');
 }
 
 function deleteSong(id) {
@@ -359,18 +393,19 @@ function renderRequests() {
   const sortedReqs = [...DB.requests].sort((a,b) => b.date - a.date);
 
   sortedReqs.forEach(req => {
-    const guest = DB.guests.find(g => g.id == req.guestId);
+    const guestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
+    const guests = DB.guests.filter(g => guestIds.includes(g.id));
     const song = DB.songs.find(s => s.id == req.songId);
     
-    if(!guest || !song) return; // Eksik veri varsa atla
+    if(guests.length === 0 || !song) return; // Eksik veri varsa atla
 
-    // Saat bilgisini kaldırdık, sadece Türkçe tarih formatı (örn. 24 Mayıs 2026) gösteriyoruz
+    const guestNames = guests.map(g => `${g.firstName} ${g.lastName}`).join(', ');
     const dateStr = new Date(req.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${dateStr}</td>
-      <td>${guest.firstName} ${guest.lastName}</td>
+      <td>${guestNames}</td>
       <td>${song.title}</td>
       <td class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editRequest(${req.id})">Düzenle</button>
@@ -387,23 +422,45 @@ function saveRequest(e) {
   const guestIDsVal = document.getElementById('reqGuestID').value;
   const songId = parseInt(document.getElementById('reqSongID').value);
 
-  if (!guestIDsVal) return;
+  if (!guestIDsVal) {
+    alert("Lütfen en az bir misafir seçin.");
+    return;
+  }
+  if (!songId) {
+    alert("Lütfen bir şarkı seçin.");
+    return;
+  }
+
+  const guestIds = guestIDsVal.split(',').map(Number);
+
+  // Check duplicate request
+  const isDuplicate = DB.requests.some(req => {
+    if (req.id == id) return false;
+    if (req.songId !== songId) return false;
+    const reqGuestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
+    if (reqGuestIds.length !== guestIds.length) return false;
+    return guestIds.every(gid => reqGuestIds.includes(gid));
+  });
+
+  if (isDuplicate) {
+    alert("Bu şarkı isteği zaten mevcut!");
+    return;
+  }
 
   if (id) {
     const req = DB.requests.find(r => r.id == id);
     if (req) {
-      req.guestId = parseInt(guestIDsVal.split(',')[0]);
+      req.guestIds = guestIds;
+      req.guestId = guestIds[0]; // backward compatibility
       req.songId = songId;
     }
   } else {
-    const guestIDs = guestIDsVal.split(',').map(Number);
-    guestIDs.forEach(guestId => {
-      DB.requests.push({
-        id: DB.getId('requests'),
-        guestId,
-        songId,
-        date: Date.now()
-      });
+    DB.requests.push({
+      id: DB.getId('requests'),
+      guestIds,
+      guestId: guestIds[0], // backward compatibility
+      songId,
+      date: Date.now()
     });
   }
 
@@ -425,11 +482,13 @@ function editRequest(id) {
   if (!req) return;
 
   document.getElementById('requestID').value = req.id;
-  document.getElementById('reqGuestID').value = req.guestId;
+  
+  const guestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
+  document.getElementById('reqGuestID').value = guestIds.join(',');
   document.getElementById('reqSongID').value = req.songId;
 
-  // Düşey arama/seçimleri doldur
-  populateDropdowns();
+  document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
+  openModal('requestModal'); // openModal calls populateDropdowns
 
   // Şarkı listbox'ından seç
   selectListboxItem('reqSongID', 'songListboxContainer', req.songId);
@@ -439,7 +498,8 @@ function editRequest(id) {
   if (container) {
     const items = container.querySelectorAll('.listbox-item');
     items.forEach(item => {
-      if (item.dataset.id == req.guestId) {
+      const gid = parseInt(item.dataset.id);
+      if (guestIds.includes(gid)) {
         item.classList.add('selected');
         if (!item.querySelector('span:nth-child(2)')) {
           const checkSpan = document.createElement('span');
@@ -456,9 +516,6 @@ function editRequest(id) {
       }
     });
   }
-
-  document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
-  openModal('requestModal');
 }
 
 // Tüm Tabloları Güncelle
