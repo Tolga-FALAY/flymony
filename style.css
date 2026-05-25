@@ -41,9 +41,10 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  padding: 0.2rem 2rem;
-  /* narrowed vertically */
+  margin-bottom: 2.5rem;
+  height: 90px;
+  /* fixed height to narrow navbar by ~20% */
+  padding: 0 2rem;
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -304,9 +305,8 @@ tr:hover td {
 .logo-area {
   display: flex;
   align-items: center;
-  margin: -1.6rem 0;
-  /* adjusted for narrower navbar */
   padding-left: 1rem;
+  height: 100%;
 }
 
 .logo-img {
