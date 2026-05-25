@@ -10,7 +10,7 @@ export default function Requests() {
   
   const [formData, setFormData] = useState({
     SongID: '',
-    GuestID: ''
+    GuestIDs: []
   });
 
   useEffect(() => {
@@ -32,12 +32,12 @@ export default function Requests() {
     if (req) {
       setEditingRequest(req);
       setFormData({
-        SongID: req.SongID,
-        GuestID: req.GuestID
+        SongID: String(req.SongID),
+        GuestIDs: (req.GuestIDs || []).map(String)
       });
     } else {
       setEditingRequest(null);
-      setFormData({ SongID: '', GuestID: '' });
+      setFormData({ SongID: '', GuestIDs: [] });
     }
     setIsModalOpen(true);
   };
@@ -51,15 +51,32 @@ export default function Requests() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleGuestChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+    setFormData({ ...formData, GuestIDs: selectedOptions });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingRequest) {
-      await api.updateRequest(editingRequest.RequestID, formData);
-    } else {
-      await api.createRequest(formData);
+    if (formData.GuestIDs.length === 0) {
+      alert("Lütfen en az bir misafir seçin.");
+      return;
     }
-    closeModal();
-    loadData();
+    const dataToSend = {
+      SongID: Number(formData.SongID),
+      GuestIDs: formData.GuestIDs.map(Number)
+    };
+    try {
+      if (editingRequest) {
+        await api.updateRequest(editingRequest.RequestID, dataToSend);
+      } else {
+        await api.createRequest(dataToSend);
+      }
+      closeModal();
+      loadData();
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -94,7 +111,7 @@ export default function Requests() {
               return (
                 <tr key={req.RequestID}>
                   <td>{dateObj.toLocaleString('tr-TR')}</td>
-                  <td>{req.FullName}</td>
+                  <td>{req.FullNames || '-'}</td>
                   <td>{req.SongTitle}</td>
                   <td className="action-btns">
                     <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
@@ -119,11 +136,10 @@ export default function Requests() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Misafir Seçin</label>
-                <select name="GuestID" value={formData.GuestID} onChange={handleChange} required>
-                  <option value="">-- Misafir --</option>
+                <label>Misafirler (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
+                <select multiple name="GuestIDs" value={formData.GuestIDs} onChange={handleGuestChange} style={{ height: '100px' }} required>
                   {guests.map(g => (
-                    <option key={g.GuestID} value={g.GuestID}>{g.FullName}</option>
+                    <option key={g.GuestID} value={String(g.GuestID)}>{g.FullName}</option>
                   ))}
                 </select>
               </div>
@@ -132,7 +148,7 @@ export default function Requests() {
                 <select name="SongID" value={formData.SongID} onChange={handleChange} required>
                   <option value="">-- Şarkı --</option>
                   {songs.map(s => (
-                    <option key={s.SongID} value={s.SongID}>{s.SongTitle} {s.ArtistNames ? `(${s.ArtistNames})` : ''}</option>
+                    <option key={s.SongID} value={String(s.SongID)}>{s.SongTitle} {s.ArtistNames ? `(${s.ArtistNames})` : ''}</option>
                   ))}
                 </select>
               </div>

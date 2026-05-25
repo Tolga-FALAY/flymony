@@ -32,7 +32,7 @@ export default function Songs() {
       setFormData({
         SongTitle: song.SongTitle,
         Duration: song.Duration || '',
-        ArtistIDs: song.ArtistIDs || []
+        ArtistIDs: (song.ArtistIDs || []).map(String)
       });
     } else {
       setEditingSong(null);
@@ -51,19 +51,27 @@ export default function Songs() {
   };
 
   const handleArtistChange = (e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions, option => parseInt(option.value));
+    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
     setFormData({ ...formData, ArtistIDs: selectedOptions });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingSong) {
-      await api.updateSong(editingSong.SongID, formData);
-    } else {
-      await api.createSong(formData);
+    const dataToSend = {
+      ...formData,
+      ArtistIDs: formData.ArtistIDs.map(Number)
+    };
+    try {
+      if (editingSong) {
+        await api.updateSong(editingSong.SongID, dataToSend);
+      } else {
+        await api.createSong(dataToSend);
+      }
+      closeModal();
+      loadData();
+    } catch (err) {
+      alert(err.message);
     }
-    closeModal();
-    loadData();
   };
 
   const handleDelete = async (id) => {
@@ -131,7 +139,7 @@ export default function Songs() {
                 <label>Sanatçılar (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
                 <select multiple name="ArtistIDs" value={formData.ArtistIDs} onChange={handleArtistChange} style={{ height: '100px' }}>
                   {artists.map(artist => (
-                    <option key={artist.ArtistID} value={artist.ArtistID}>{artist.ArtistName}</option>
+                    <option key={artist.ArtistID} value={String(artist.ArtistID)}>{artist.ArtistName}</option>
                   ))}
                 </select>
               </div>

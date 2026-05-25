@@ -49,13 +49,17 @@ export default function Guests() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingGuest) {
-      await api.updateGuest(editingGuest.GuestID, formData);
-    } else {
-      await api.createGuest(formData);
+    try {
+      if (editingGuest) {
+        await api.updateGuest(editingGuest.GuestID, formData);
+      } else {
+        await api.createGuest(formData);
+      }
+      closeModal();
+      loadGuests();
+    } catch (err) {
+      alert(err.message);
     }
-    closeModal();
-    loadGuests();
   };
 
   const handleDelete = async (id) => {

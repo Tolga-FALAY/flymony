@@ -35,13 +35,17 @@ export default function Artists() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingArtist) {
-      await api.updateArtist(editingArtist.ArtistID, { ArtistName: artistName });
-    } else {
-      await api.createArtist({ ArtistName: artistName });
+    try {
+      if (editingArtist) {
+        await api.updateArtist(editingArtist.ArtistID, { ArtistName: artistName });
+      } else {
+        await api.createArtist({ ArtistName: artistName });
+      }
+      closeModal();
+      loadArtists();
+    } catch (err) {
+      alert(err.message);
     }
-    closeModal();
-    loadArtists();
   };
 
   const handleDelete = async (id) => {
