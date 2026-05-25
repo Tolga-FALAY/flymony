@@ -57,6 +57,23 @@ export default function Songs() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Yeni şarkı girişi yaparken, girilen şarkı ismiyle daha önce kayıt yapıldıysa kontrol et
+    if (!editingSong) {
+      const existingSong = songs.find(
+        s => s.SongTitle && s.SongTitle.trim().toLowerCase() === formData.SongTitle.trim().toLowerCase()
+      );
+      if (existingSong) {
+        const goToExisting = window.confirm(
+          "Bu şarkı daha önce kaydedilmiş, düzenleme yapmak için ilgili şarkı kaydına gitmek ister misin?"
+        );
+        if (goToExisting) {
+          openModal(existingSong);
+        }
+        return;
+      }
+    }
+
     const dataToSend = {
       ...formData,
       ArtistIDs: formData.ArtistIDs.map(Number)
