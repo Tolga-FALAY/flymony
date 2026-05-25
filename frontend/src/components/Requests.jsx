@@ -70,7 +70,7 @@ export default function Requests() {
       const existingReq = requests.find(r => r.SongID === songIdNum);
       if (existingReq) {
         const goToExisting = window.confirm(
-          "Seçilen şarkı ile daha önce kayıt yapılmış. Daha önce yapılan kayda gidilsin mi?"
+          "Bu şarkı daha önce kaydedilmiş, düzenleme yapmak için ilgili istek kaydına gitmek ister misin?"
         );
         if (goToExisting) {
           openModal(existingReq);

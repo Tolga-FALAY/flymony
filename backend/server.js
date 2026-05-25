@@ -259,16 +259,10 @@ app.post('/api/requests', (req, res) => {
     }
 
     try {
-        // Check for duplicates
-        const existingRequests = db.prepare('SELECT RequestID FROM Requests WHERE SongID = ?').all(SongID);
-        const isDuplicate = existingRequests.some(r => {
-            const guests = db.prepare('SELECT GuestID FROM Request_Guests WHERE RequestID = ?').all(r.RequestID);
-            const existingGuestIDs = guests.map(g => g.GuestID);
-            if (existingGuestIDs.length !== GuestIDs.length) return false;
-            return GuestIDs.every(id => existingGuestIDs.includes(id));
-        });
-        if (isDuplicate) {
-            return res.status(400).json({ error: 'Bu şarkı isteği zaten mevcut!' });
+        // Check for duplicates (Song must be unique across all requests)
+        const existingRequest = db.prepare('SELECT RequestID FROM Requests WHERE SongID = ?').get(SongID);
+        if (existingRequest) {
+            return res.status(400).json({ error: 'Bu şarkı daha önce kaydedilmiş!' });
         }
 
         const insertRequest = db.prepare('INSERT INTO Requests (SongID) VALUES (?)');
@@ -298,16 +292,10 @@ app.put('/api/requests/:id', (req, res) => {
     }
 
     try {
-        // Check for duplicates
-        const existingRequests = db.prepare('SELECT RequestID FROM Requests WHERE SongID = ? AND RequestID != ?').all(SongID, requestId);
-        const isDuplicate = existingRequests.some(r => {
-            const guests = db.prepare('SELECT GuestID FROM Request_Guests WHERE RequestID = ?').all(r.RequestID);
-            const existingGuestIDs = guests.map(g => g.GuestID);
-            if (existingGuestIDs.length !== GuestIDs.length) return false;
-            return GuestIDs.every(id => existingGuestIDs.includes(id));
-        });
-        if (isDuplicate) {
-            return res.status(400).json({ error: 'Bu şarkı isteği zaten mevcut!' });
+        // Check for duplicates (Song must be unique across all requests)
+        const existingRequest = db.prepare('SELECT RequestID FROM Requests WHERE SongID = ? AND RequestID != ?').get(SongID, requestId);
+        if (existingRequest) {
+            return res.status(400).json({ error: 'Bu şarkı daha önce kaydedilmiş!' });
         }
 
         const updateRequest = db.prepare('UPDATE Requests SET SongID = ? WHERE RequestID = ?');
