@@ -23,11 +23,51 @@ const DB = {
 // Sayfa yüklendiğinde tabloları oluştur
 document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
-  renderAllTables();
-  populateDropdowns();
-  setupArtistSearch();
-  setupDropdownFilters();
+  if (DB.artists.length === 0) {
+    autoSeedArtists();
+  } else {
+    renderAllTables();
+    populateDropdowns();
+    setupArtistSearch();
+    setupDropdownFilters();
+  }
 });
+
+function autoSeedArtists() {
+  fetch('frontend/public/sanatcilar.txt')
+    .then(res => {
+      if (!res.ok) throw new Error('File not found');
+      return res.text();
+    })
+    .then(text => {
+      const names = text
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+        
+      if (names.length > 0) {
+        names.forEach(name => {
+          const isDuplicate = DB.artists.some(a => a.name.trim().toLowerCase() === name.toLowerCase());
+          if (!isDuplicate) {
+            DB.artists.push({ id: DB.getId('artists'), name });
+          }
+        });
+        DB.save();
+        console.log(`[Auto-Seed] Successfully loaded ${names.length} artists into LocalStorage.`);
+      }
+      renderAllTables();
+      populateDropdowns();
+      setupArtistSearch();
+      setupDropdownFilters();
+    })
+    .catch(err => {
+      console.warn('[Auto-Seed] Failed to fetch sanatcilar.txt, starting with empty artists.', err);
+      renderAllTables();
+      populateDropdowns();
+      setupArtistSearch();
+      setupDropdownFilters();
+    });
+}
 
 // Tab Geçişleri
 function setupTabs() {
