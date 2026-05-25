@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -134,46 +133,6 @@ export const initializeDB = () => {
     }
 
     console.log("Database tables initialized.");
-
-    // Auto-import artists from txt file if it exists
-    try {
-        const txtFilePath = path.join(__dirname, '..', 'frontend', 'public', 'sanatcilar.txt');
-        if (fs.existsSync(txtFilePath)) {
-            console.log(`[Auto-Import] Reading artist names from: ${txtFilePath}`);
-            const data = fs.readFileSync(txtFilePath, 'utf-8');
-            const artistNames = data
-                .split(/\r?\n/)
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
-
-            if (artistNames.length > 0) {
-                const checkStmt = db.prepare('SELECT 1 FROM Artists WHERE TRIM(LOWER(ArtistName)) = TRIM(LOWER(?))');
-                const insertStmt = db.prepare('INSERT INTO Artists (ArtistName) VALUES (?)');
-
-                let insertedCount = 0;
-                let skippedCount = 0;
-
-                const importTx = db.transaction((names) => {
-                    for (const name of names) {
-                        const existing = checkStmt.get(name);
-                        if (existing) {
-                            skippedCount++;
-                        } else {
-                            insertStmt.run(name);
-                            insertedCount++;
-                        }
-                    }
-                });
-
-                importTx(artistNames);
-                console.log(`[Auto-Import] Successfully processed ${artistNames.length} artists (Inserted: ${insertedCount}, Skipped: ${skippedCount}).`);
-            }
-        } else {
-            console.log(`[Auto-Import] Artists text file not found at: ${txtFilePath}`);
-        }
-    } catch (err) {
-        console.error("[Auto-Import] Failed to auto-import artists:", err);
-    }
 };
 
 export default db;
