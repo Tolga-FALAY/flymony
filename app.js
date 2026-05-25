@@ -431,6 +431,20 @@ function saveRequest(e) {
     return;
   }
 
+  // Yeni istek girişi yaparken, seçilen şarkı ile daha önce kayıt yapıldıysa kontrol et
+  if (!id) {
+    const existingReq = DB.requests.find(r => r.songId === songId);
+    if (existingReq) {
+      const goToExisting = window.confirm(
+        "Seçilen şarkı ile daha önce kayıt yapılmış. Daha önce yapılan kayda gidilsin mi?"
+      );
+      if (goToExisting) {
+        editRequest(existingReq.id);
+      }
+      return; // Kayda izin verme
+    }
+  }
+
   const guestIds = guestIDsVal.split(',').map(Number);
 
   // Check duplicate request
