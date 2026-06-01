@@ -5,6 +5,9 @@ export default function Guests() {
   const [guests, setGuests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState(null);
+
+  // Sorting configuration
+  const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
   
   const [formData, setFormData] = useState({
     FirstName: '',
@@ -210,6 +213,47 @@ export default function Guests() {
     years.push(y);
   }
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedGuests = [...guests].sort((a, b) => {
+    let res = 0;
+    if (sortConfig.key === 'FullName') {
+      const aVal = (a.FullName || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.FullName || '').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'BirthDate') {
+      const hasA = a.BirthDateDay && a.BirthDateMonth;
+      const hasB = b.BirthDateDay && b.BirthDateMonth;
+      if (!hasA && !hasB) return 0;
+      if (!hasA) return 1;
+      if (!hasB) return -1;
+
+      if (Number(a.BirthDateMonth) !== Number(b.BirthDateMonth)) {
+        res = Number(a.BirthDateMonth) - Number(b.BirthDateMonth);
+      } else if (Number(a.BirthDateDay) !== Number(b.BirthDateDay)) {
+        res = Number(a.BirthDateDay) - Number(b.BirthDateDay);
+      } else {
+        const yrA = a.BirthDateYear ? Number(a.BirthDateYear) : 0;
+        const yrB = b.BirthDateYear ? Number(b.BirthDateYear) : 0;
+        res = yrA - yrB;
+      }
+    }
+    return sortConfig.direction === 'asc' ? res : -res;
+  });
+
+  const renderSortArrow = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+    }
+    return ' ⇅';
+  };
+
   return (
     <div>
       <div className="section-header">
@@ -223,16 +267,26 @@ export default function Guests() {
         <table>
           <thead>
             <tr>
-              <th>Misafir</th>
+              <th onClick={() => handleSort('FullName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Misafir
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'FullName' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('FullName')}
+                </span>
+              </th>
               <th>Telefon</th>
               <th>Instagram</th>
-              <th>Doğum Tarihi</th>
+              <th onClick={() => handleSort('BirthDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Doğum Tarihi
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'BirthDate' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('BirthDate')}
+                </span>
+              </th>
               <th>Notlar</th>
               <th style={{width: '150px'}}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
-            {guests.map(guest => (
+            {sortedGuests.map(guest => (
               <tr key={guest.GuestID}>
                 <td data-label="Misafir" className="td-guest-profile">
                   <div className="guest-avatar-wrapper">
@@ -264,7 +318,7 @@ export default function Guests() {
                 </td>
               </tr>
             ))}
-            {guests.length === 0 && (
+            {sortedGuests.length === 0 && (
               <tr><td colSpan="6" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>

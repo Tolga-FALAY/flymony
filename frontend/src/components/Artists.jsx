@@ -7,6 +7,9 @@ export default function Artists() {
   const [editingArtist, setEditingArtist] = useState(null);
   const [artistName, setArtistName] = useState('');
 
+  // Sorting configuration
+  const [sortConfig, setSortConfig] = useState({ key: 'ArtistName', direction: 'asc' });
+
   useEffect(() => {
     loadArtists();
   }, []);
@@ -55,6 +58,28 @@ export default function Artists() {
     }
   };
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedArtists = [...artists].sort((a, b) => {
+    const aVal = (a.ArtistName || '').toLocaleLowerCase('tr-TR');
+    const bVal = (b.ArtistName || '').toLocaleLowerCase('tr-TR');
+    const res = aVal.localeCompare(bVal, 'tr');
+    return sortConfig.direction === 'asc' ? res : -res;
+  });
+
+  const renderSortArrow = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+    }
+    return ' ⇅';
+  };
+
   return (
     <div>
       <div className="section-header">
@@ -69,12 +94,17 @@ export default function Artists() {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Sanatçı Adı</th>
+              <th onClick={() => handleSort('ArtistName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Sanatçı Adı
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistName' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('ArtistName')}
+                </span>
+              </th>
               <th style={{width: '150px'}}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
-            {artists.map(artist => (
+            {sortedArtists.map(artist => (
               <tr key={artist.ArtistID}>
                 <td data-label="ID">{artist.ArtistID}</td>
                 <td data-label="Sanatçı Adı">{artist.ArtistName}</td>
@@ -84,7 +114,7 @@ export default function Artists() {
                 </td>
               </tr>
             ))}
-            {artists.length === 0 && (
+            {sortedArtists.length === 0 && (
               <tr><td colSpan="3" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>

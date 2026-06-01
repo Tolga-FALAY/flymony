@@ -7,6 +7,9 @@ export default function Songs() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
 
+  // Sorting configuration
+  const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
+
   const [formData, setFormData] = useState({
     SongTitle: '',
     Duration: '',
@@ -100,6 +103,35 @@ export default function Songs() {
     }
   };
 
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedSongs = [...songs].sort((a, b) => {
+    let res = 0;
+    if (sortConfig.key === 'SongTitle') {
+      const aVal = (a.SongTitle || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.SongTitle || '').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'ArtistNames') {
+      const aVal = (a.ArtistNames || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.ArtistNames || '').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    }
+    return sortConfig.direction === 'asc' ? res : -res;
+  });
+
+  const renderSortArrow = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+    }
+    return ' ⇅';
+  };
+
   return (
     <div>
       <div className="section-header">
@@ -113,14 +145,24 @@ export default function Songs() {
         <table>
           <thead>
             <tr>
-              <th>Şarkı Adı</th>
-              <th>Sanatçılar</th>
+              <th onClick={() => handleSort('SongTitle')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Şarkı Adı
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongTitle' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('SongTitle')}
+                </span>
+              </th>
+              <th onClick={() => handleSort('ArtistNames')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Sanatçılar
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistNames' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('ArtistNames')}
+                </span>
+              </th>
               <th>Süre</th>
               <th style={{ width: '150px' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
-            {songs.map(song => (
+            {sortedSongs.map(song => (
               <tr key={song.SongID}>
                 <td data-label="Şarkı Adı">{song.SongTitle}</td>
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
@@ -131,7 +173,7 @@ export default function Songs() {
                 </td>
               </tr>
             ))}
-            {songs.length === 0 && (
+            {sortedSongs.length === 0 && (
               <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>

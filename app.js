@@ -16,6 +16,13 @@ const db = firebase.firestore(app);
 // In-memory lists mapped dynamically from Firestore
 let requestsSortKey = 'song';
 let requestsSortDirection = 'asc';
+let songsSortKey = 'title';
+let songsSortDirection = 'asc';
+let artistsSortKey = 'name';
+let artistsSortDirection = 'asc';
+let guestsSortKey = 'name';
+let guestsSortDirection = 'asc';
+
 
 const DB = {
   artists: [],
@@ -280,7 +287,18 @@ function renderArtists() {
   const tbody = document.querySelector('#artistsTable tbody');
   tbody.innerHTML = DB.artists.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
-  DB.artists.forEach(artist => {
+  const sortedArtists = [...DB.artists].sort((a, b) => {
+    let res = (a.name || "").toLocaleLowerCase('tr-TR').localeCompare((b.name || "").toLocaleLowerCase('tr-TR'), 'tr');
+    return artistsSortDirection === 'asc' ? res : -res;
+  });
+
+  const iconEl = document.getElementById('sortIconArtistName');
+  if (iconEl) {
+    iconEl.innerText = artistsSortDirection === 'asc' ? ' ▲' : ' ▼';
+    iconEl.style.color = 'inherit';
+  }
+
+  sortedArtists.forEach(artist => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="ID">${artist.id}</td>
@@ -349,7 +367,49 @@ function renderGuests() {
   const tbody = document.querySelector('#guestsTable tbody');
   tbody.innerHTML = DB.guests.length === 0 ? '<tr><td colspan="6" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
-  DB.guests.forEach(guest => {
+  const sortedGuests = [...DB.guests].sort((a, b) => {
+    let res = 0;
+    if (guestsSortKey === 'name') {
+      const fNameCompare = (a.firstName || "").toLocaleLowerCase('tr-TR').localeCompare((b.firstName || "").toLocaleLowerCase('tr-TR'), 'tr');
+      if (fNameCompare !== 0) return fNameCompare;
+      res = (a.lastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.lastName || "").toLocaleLowerCase('tr-TR'), 'tr');
+    } else if (guestsSortKey === 'birthdate') {
+      const hasA = a.birthDateDay && a.birthDateMonth;
+      const hasB = b.birthDateDay && b.birthDateMonth;
+      if (!hasA && !hasB) return 0;
+      if (!hasA) return 1;
+      if (!hasB) return -1;
+
+      if (a.birthDateMonth !== b.birthDateMonth) {
+        res = Number(a.birthDateMonth) - Number(b.birthDateMonth);
+      } else if (a.birthDateDay !== b.birthDateDay) {
+        res = Number(a.birthDateDay) - Number(b.birthDateDay);
+      } else {
+        const yrA = a.birthDateYear ? Number(a.birthDateYear) : 0;
+        const yrB = b.birthDateYear ? Number(b.birthDateYear) : 0;
+        res = yrA - yrB;
+      }
+    }
+    return guestsSortDirection === 'asc' ? res : -res;
+  });
+
+  // Render header sorting indicators dynamically
+  const keys = ['name', 'birthdate'];
+  const ids = { name: 'sortIconGuestName', birthdate: 'sortIconGuestBirthdate' };
+  keys.forEach(k => {
+    const iconEl = document.getElementById(ids[k]);
+    if (iconEl) {
+      if (guestsSortKey === k) {
+        iconEl.innerText = guestsSortDirection === 'asc' ? ' ▲' : ' ▼';
+        iconEl.style.color = 'inherit';
+      } else {
+        iconEl.innerText = ' ⇅';
+        iconEl.style.color = 'var(--text-muted)';
+      }
+    }
+  });
+
+  sortedGuests.forEach(guest => {
     // Initials Avatar
     const getInitials = (first, last) => {
       const f = first ? first.charAt(0).toUpperCase() : '';
@@ -672,7 +732,37 @@ function renderSongs() {
   const tbody = document.querySelector('#songsTable tbody');
   tbody.innerHTML = DB.songs.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
-  DB.songs.forEach(song => {
+  const sortedSongs = [...DB.songs].sort((a, b) => {
+    let res = 0;
+    if (songsSortKey === 'title') {
+      res = (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
+    } else if (songsSortKey === 'artists') {
+      const artistIdsA = DB.song_artists.filter(sa => sa.songId === a.id).map(sa => sa.artistId);
+      const artistNamesA = DB.artists.filter(art => artistIdsA.includes(art.id)).map(art => art.name).join(', ');
+      const artistIdsB = DB.song_artists.filter(sa => sa.songId === b.id).map(sa => sa.artistId);
+      const artistNamesB = DB.artists.filter(art => artistIdsB.includes(art.id)).map(art => art.name).join(', ');
+      res = artistNamesA.toLocaleLowerCase('tr-TR').localeCompare(artistNamesB.toLocaleLowerCase('tr-TR'), 'tr');
+    }
+    return songsSortDirection === 'asc' ? res : -res;
+  });
+
+  // Render header sorting indicators dynamically
+  const keys = ['title', 'artists'];
+  const ids = { title: 'sortIconSongTitle', artists: 'sortIconSongArtists' };
+  keys.forEach(k => {
+    const iconEl = document.getElementById(ids[k]);
+    if (iconEl) {
+      if (songsSortKey === k) {
+        iconEl.innerText = songsSortDirection === 'asc' ? ' ▲' : ' ▼';
+        iconEl.style.color = 'inherit';
+      } else {
+        iconEl.innerText = ' ⇅';
+        iconEl.style.color = 'var(--text-muted)';
+      }
+    }
+  });
+
+  sortedSongs.forEach(song => {
     const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
     const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
 
@@ -873,6 +963,37 @@ function sortRequests(key) {
   }
   renderRequests();
 }
+
+function sortSongs(key) {
+  if (songsSortKey === key) {
+    songsSortDirection = songsSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    songsSortKey = key;
+    songsSortDirection = 'asc';
+  }
+  renderSongs();
+}
+
+function sortArtists(key) {
+  if (artistsSortKey === key) {
+    artistsSortDirection = artistsSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    artistsSortKey = key;
+    artistsSortDirection = 'asc';
+  }
+  renderArtists();
+}
+
+function sortGuests(key) {
+  if (guestsSortKey === key) {
+    guestsSortDirection = guestsSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    guestsSortKey = key;
+    guestsSortDirection = 'asc';
+  }
+  renderGuests();
+}
+
 
 async function saveRequest(e) {
   e.preventDefault();
@@ -1102,3 +1223,6 @@ window.removeVanillaProfilePicture = removeVanillaProfilePicture;
 window.removeVanillaGalleryPhoto = removeVanillaGalleryPhoto;
 window.populateBirthdateDropdowns = populateBirthdateDropdowns;
 window.sortRequests = sortRequests;
+window.sortSongs = sortSongs;
+window.sortArtists = sortArtists;
+window.sortGuests = sortGuests;

@@ -56,11 +56,11 @@
         <div class="table-wrapper">
           <table id="songsTable">
             <thead>
-              <tr>
-                <th>Şarkı Adı</th>
-                <th>Sanatçılar</th>
-                <th style="width: 150px;">İşlemler</th>
-              </tr>
+                <tr>
+                  <th onclick="sortSongs('title')" style="cursor: pointer; user-select: none;">Şarkı Adı <span id="sortIconSongTitle" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortSongs('artists')" style="cursor: pointer; user-select: none;">Sanatçılar <span id="sortIconSongArtists" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th style="width: 150px;">İşlemler</th>
+                </tr>
             </thead>
             <tbody></tbody>
           </table>
@@ -76,11 +76,11 @@
         <div class="table-wrapper">
           <table id="artistsTable">
             <thead>
-              <tr>
-                <th>ID</th>
-                <th>Sanatçı Adı</th>
-                <th style="width: 150px;">İşlemler</th>
-              </tr>
+                <tr>
+                  <th>ID</th>
+                  <th onclick="sortArtists('name')" style="cursor: pointer; user-select: none;">Sanatçı Adı <span id="sortIconArtistName" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th style="width: 150px;">İşlemler</th>
+                </tr>
             </thead>
             <tbody></tbody>
           </table>
@@ -96,14 +96,14 @@
         <div class="table-wrapper">
           <table id="guestsTable">
             <thead>
-              <tr>
-                <th>Misafir</th>
-                <th>Telefon</th>
-                <th>Instagram</th>
-                <th>Doğum Tarihi</th>
-                <th>Notlar</th>
-                <th style="width: 150px;">İşlemler</th>
-              </tr>
+                <tr>
+                  <th onclick="sortGuests('name')" style="cursor: pointer; user-select: none;">Misafir <span id="sortIconGuestName" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th>Telefon</th>
+                  <th>Instagram</th>
+                  <th onclick="sortGuests('birthdate')" style="cursor: pointer; user-select: none;">Doğum Tarihi <span id="sortIconGuestBirthdate" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th>Notlar</th>
+                  <th style="width: 150px;">İşlemler</th>
+                </tr>
             </thead>
             <tbody></tbody>
           </table>
