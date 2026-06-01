@@ -588,6 +588,67 @@ async function handleVanillaGalleryUpload(input) {
   }
   input.value = ""; // reset file input
 }
+async function pasteVanillaProfilePicture() {
+  try {
+    const clipboardItems = await navigator.clipboard.read();
+    let found = false;
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const file = new File([blob], "pasted-profile.png", { type });
+          const compressedBase64 = await compressVanillaImage(file, 250, 250, 0.75);
+          document.getElementById('guestProfilePicture').value = compressedBase64;
+          renderVanillaProfilePreview();
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (!found) {
+      alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+    }
+  } catch (err) {
+    alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+  }
+}
+
+async function pasteVanillaGalleryPhoto() {
+  try {
+    const clipboardItems = await navigator.clipboard.read();
+    let found = false;
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const file = new File([blob], "pasted-gallery.png", { type });
+          const compressedBase64 = await compressVanillaImage(file, 800, 800, 0.7);
+          
+          const photosInput = document.getElementById('guestPhotos');
+          let currentPhotos = [];
+          try {
+            currentPhotos = JSON.parse(photosInput.value || "[]");
+          } catch(e) {
+            currentPhotos = [];
+          }
+          
+          const updatedPhotos = [...currentPhotos, compressedBase64];
+          photosInput.value = JSON.stringify(updatedPhotos);
+          renderVanillaGalleryPreviews();
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (!found) {
+      alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+    }
+  } catch (err) {
+    alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+  }
+}
 
 function removeVanillaGalleryPhoto(index) {
   const photosInput = document.getElementById('guestPhotos');
@@ -1241,3 +1302,6 @@ window.sortRequests = sortRequests;
 window.sortSongs = sortSongs;
 window.sortArtists = sortArtists;
 window.sortGuests = sortGuests;
+window.pasteVanillaProfilePicture = pasteVanillaProfilePicture;
+window.pasteVanillaGalleryPhoto = pasteVanillaGalleryPhoto;
+

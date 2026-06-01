@@ -156,6 +156,59 @@ export default function Guests() {
     }));
   };
 
+  const pasteProfilePicture = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      let found = false;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const file = new File([blob], "pasted-profile.png", { type });
+            const compressedBase64 = await compressImage(file, 250, 250, 0.75);
+            setFormData(prev => ({ ...prev, ProfilePicture: compressedBase64 }));
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (!found) {
+        alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+      }
+    } catch (err) {
+      alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+    }
+  };
+
+  const pasteGalleryPhoto = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      let found = false;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const file = new File([blob], "pasted-gallery.png", { type });
+            const compressedBase64 = await compressImage(file, 800, 800, 0.7);
+            setFormData(prev => ({
+              ...prev,
+              Photos: [...prev.Photos, compressedBase64]
+            }));
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (!found) {
+        alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+      }
+    } catch (err) {
+      alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -353,6 +406,9 @@ export default function Guests() {
                     <button type="button" className="btn btn-sm btn-outline" onClick={() => profileBrowseInputRef.current?.click()}>
                       📂 Galeriden Seç
                     </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={pasteProfilePicture}>
+                      📋 Yapıştır
+                    </button>
                   </div>
                   
                   <input 
@@ -462,6 +518,9 @@ export default function Guests() {
                     </button>
                     <button type="button" className="btn btn-sm btn-outline" onClick={() => galleryBrowseInputRef.current?.click()}>
                       📂 Görsel Ekle
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={pasteGalleryPhoto}>
+                      📋 Yapıştır
                     </button>
                   </div>
                 </div>

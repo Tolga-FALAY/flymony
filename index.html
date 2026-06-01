@@ -223,6 +223,7 @@
             <div class="upload-btn-group" style="margin-top: 0.75rem; display: flex; gap: 0.5rem; width: 100%; justify-content: center;">
               <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('profileCameraInput').click()">📷 Anlık Çek</button>
               <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('profileBrowseInput').click()">📂 Galeriden Seç</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="pasteVanillaProfilePicture()">📋 Yapıştır</button>
             </div>
             
             <input type="file" id="profileCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleVanillaProfileUpload(this)">
@@ -294,6 +295,7 @@
             <div style="display: flex; gap: 0.5rem;">
               <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('galleryCameraInput').click()">📷 Fotoğraf Çek</button>
               <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('galleryBrowseInput').click()">📂 Görsel Ekle</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="pasteVanillaGalleryPhoto()">📋 Yapıştır</button>
             </div>
           </div>
 
