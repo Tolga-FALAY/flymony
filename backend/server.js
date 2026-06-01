@@ -112,8 +112,23 @@ app.post('/api/songs', (req, res) => {
     }
 
     try {
-        const existing = db.prepare('SELECT * FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?))').get(SongTitle);
-        if (existing) {
+        const existingSongs = db.prepare('SELECT SongID FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?))').all(SongTitle);
+        let isDuplicate = false;
+        const newArtistIDs = (ArtistIDs || []).map(Number);
+        
+        for (const s of existingSongs) {
+            const existingArtists = db.prepare('SELECT ArtistID FROM Song_Artists WHERE SongID = ?').all(s.SongID).map(row => row.ArtistID);
+            if (existingArtists.length === 0 && newArtistIDs.length === 0) {
+                isDuplicate = true;
+                break;
+            }
+            if (newArtistIDs.some(id => existingArtists.includes(id))) {
+                isDuplicate = true;
+                break;
+            }
+        }
+        
+        if (isDuplicate) {
             return res.status(400).json({ error: 'Bu şarkı zaten kayıtlı!' });
         }
 
@@ -146,9 +161,24 @@ app.put('/api/songs/:id', (req, res) => {
     }
 
     try {
-        const existing = db.prepare('SELECT * FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?)) AND SongID != ?').get(SongTitle, songId);
-        if (existing) {
-            return res.status(400).json({ error: 'Bu isimde başka bir şarkı zaten kayıtlı!' });
+        const existingSongs = db.prepare('SELECT SongID FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?)) AND SongID != ?').all(SongTitle, songId);
+        let isDuplicate = false;
+        const newArtistIDs = (ArtistIDs || []).map(Number);
+        
+        for (const s of existingSongs) {
+            const existingArtists = db.prepare('SELECT ArtistID FROM Song_Artists WHERE SongID = ?').all(s.SongID).map(row => row.ArtistID);
+            if (existingArtists.length === 0 && newArtistIDs.length === 0) {
+                isDuplicate = true;
+                break;
+            }
+            if (newArtistIDs.some(id => existingArtists.includes(id))) {
+                isDuplicate = true;
+                break;
+            }
+        }
+        
+        if (isDuplicate) {
+            return res.status(400).json({ error: 'Bu şarkı zaten kayıtlı!' });
         }
 
         const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ? WHERE SongID = ?');

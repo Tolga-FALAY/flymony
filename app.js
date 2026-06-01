@@ -680,9 +680,22 @@ async function saveSong(e) {
     return;
   }
 
-  const isDuplicate = DB.songs.some(s => s.id != id && s.title.trim().toLowerCase() === title.toLowerCase());
+  const isDuplicate = DB.songs.some(s => {
+    if (s.id != id) {
+      const titleMatch = s.title && s.title.trim().toLowerCase() === title.toLowerCase();
+      if (!titleMatch) return false;
+      
+      const existingArtistIDs = DB.song_artists.filter(sa => sa.songId === s.id).map(sa => sa.artistId);
+      const newArtistIDs = selectedArtistIds.map(Number);
+      
+      if (existingArtistIDs.length === 0 && newArtistIDs.length === 0) return true;
+      return newArtistIDs.some(aid => existingArtistIDs.includes(aid));
+    }
+    return false;
+  });
+
   if (isDuplicate) {
-    alert("Bu isimde bir şarkı zaten var!");
+    alert("Bu şarkı zaten kayıtlı!");
     return;
   }
 

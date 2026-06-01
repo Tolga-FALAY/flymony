@@ -58,20 +58,22 @@ export default function Songs() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Yeni şarkı girişi yaparken, girilen şarkı ismiyle daha önce kayıt yapıldıysa kontrol et
-    if (!editingSong) {
-      const existingSong = songs.find(
-        s => s.SongTitle && s.SongTitle.trim().toLowerCase() === formData.SongTitle.trim().toLowerCase()
-      );
-      if (existingSong) {
-        const goToExisting = window.confirm(
-          "Bu şarkı daha önce kaydedilmiş, düzenleme yapmak için ilgili şarkı kaydına gitmek ister misin?"
-        );
-        if (goToExisting) {
-          openModal(existingSong);
-        }
-        return;
-      }
+    // Duplicate check: Same title and overlapping artists
+    const isDuplicate = songs.some(s => {
+      if (editingSong && s.SongID === editingSong.SongID) return false;
+      const titleMatch = s.SongTitle && s.SongTitle.trim().toLowerCase() === formData.SongTitle.trim().toLowerCase();
+      if (!titleMatch) return false;
+      
+      const existingArtistIDs = s.ArtistIDs || [];
+      const newArtistIDs = formData.ArtistIDs.map(Number);
+      
+      if (existingArtistIDs.length === 0 && newArtistIDs.length === 0) return true;
+      return newArtistIDs.some(id => existingArtistIDs.includes(id));
+    });
+
+    if (isDuplicate) {
+      alert("Bu şarkı zaten kayıtlı!");
+      return;
     }
 
     const dataToSend = {
