@@ -14,6 +14,9 @@ const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore(app);
 
 // In-memory lists mapped dynamically from Firestore
+let requestsSortKey = 'song';
+let requestsSortDirection = 'asc';
+
 const DB = {
   artists: [],
   songs: [],
@@ -78,6 +81,11 @@ const DB = {
         artistIds.forEach(aid => {
           this.song_artists.push({ songId, artistId: Number(aid) });
         });
+      });
+
+      // Sort songs alphabetically ascending (Turkish locale aware)
+      this.songs.sort((a, b) => {
+        return (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
       });
 
       // 4. Fetch requests
@@ -227,6 +235,19 @@ function populateDropdowns(guestFilter = '', songFilter = '') {
       const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
       const fullText = `${s.title} ${artistNames}`.toLocaleLowerCase('tr-TR');
       return fullText.includes(songFilter.toLocaleLowerCase('tr-TR'));
+    });
+    
+    // Sort songs alphabetically ascending
+    filteredSongs.sort((a, b) => {
+      const artistIdsA = DB.song_artists.filter(sa => sa.songId === a.id).map(sa => sa.artistId);
+      const artistNamesA = DB.artists.filter(art => artistIdsA.includes(art.id)).map(art => art.name).join(', ');
+      const titleA = (a.title + (artistNamesA ? ` (${artistNamesA})` : '')).toLocaleLowerCase('tr-TR');
+      
+      const artistIdsB = DB.song_artists.filter(sa => sa.songId === b.id).map(sa => sa.artistId);
+      const artistNamesB = DB.artists.filter(art => artistIdsB.includes(art.id)).map(art => art.name).join(', ');
+      const titleB = (b.title + (artistNamesB ? ` (${artistNamesB})` : '')).toLocaleLowerCase('tr-TR');
+      
+      return titleA.localeCompare(titleB, 'tr');
     });
     
     const selectedID = document.getElementById('reqSongID').value;
@@ -749,8 +770,55 @@ function renderRequests() {
   const tbody = document.querySelector('#requestsTable tbody');
   tbody.innerHTML = DB.requests.length === 0 ? '<tr><td colspan="5" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
-  // Tarihe göre sırala (en yeni en üstte)
-  const sortedReqs = [...DB.requests].sort((a,b) => b.date - a.date);
+  // Sort requests dynamically based on requestsSortKey and requestsSortDirection
+  const sortedReqs = [...DB.requests].sort((a, b) => {
+    let res = 0;
+    if (requestsSortKey === 'date') {
+      res = a.date - b.date;
+    } else if (requestsSortKey === 'guest') {
+      const guestIdsA = a.guestIds || (a.guestId ? [a.guestId] : []);
+      const guestIdsB = b.guestIds || (b.guestId ? [b.guestId] : []);
+      const guestsA = DB.guests.filter(g => guestIdsA.includes(g.id));
+      const guestsB = DB.guests.filter(g => guestIdsB.includes(g.id));
+      const aVal = guestsA.map(g => `${g.firstName} ${g.lastName}`).join(', ').toLocaleLowerCase('tr-TR');
+      const bVal = guestsB.map(g => `${g.firstName} ${g.lastName}`).join(', ').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    } else if (requestsSortKey === 'song') {
+      const songA = DB.songs.find(s => s.id == a.songId);
+      const songB = DB.songs.find(s => s.id == b.songId);
+      
+      const artistIdsA = songA ? DB.song_artists.filter(sa => sa.songId === songA.id).map(sa => sa.artistId) : [];
+      const artistNamesA = DB.artists.filter(art => artistIdsA.includes(art.id)).map(art => art.name).join(', ');
+      const songDisplayA = songA ? (songA.title + (artistNamesA ? ` (${artistNamesA})` : '')) : '';
+      
+      const artistIdsB = songB ? DB.song_artists.filter(sa => sa.songId === songB.id).map(sa => sa.artistId) : [];
+      const artistNamesB = DB.artists.filter(art => artistIdsB.includes(art.id)).map(art => art.name).join(', ');
+      const songDisplayB = songB ? (songB.title + (artistNamesB ? ` (${artistNamesB})` : '')) : '';
+      
+      res = songDisplayA.toLocaleLowerCase('tr-TR').localeCompare(songDisplayB.toLocaleLowerCase('tr-TR'), 'tr');
+    } else if (requestsSortKey === 'status') {
+      const aVal = (a.status || 'Kayıtlı').toLocaleLowerCase('tr-TR');
+      const bVal = (b.status || 'Kayıtlı').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    }
+    return requestsSortDirection === 'asc' ? res : -res;
+  });
+
+  // Render header sorting indicators dynamically
+  const keys = ['date', 'guest', 'song', 'status'];
+  const ids = { date: 'sortIconDate', guest: 'sortIconGuest', song: 'sortIconSong', status: 'sortIconStatus' };
+  keys.forEach(k => {
+    const iconEl = document.getElementById(ids[k]);
+    if (iconEl) {
+      if (requestsSortKey === k) {
+        iconEl.innerText = requestsSortDirection === 'asc' ? ' ▲' : ' ▼';
+        iconEl.style.color = 'inherit';
+      } else {
+        iconEl.innerText = ' ⇅';
+        iconEl.style.color = 'var(--text-muted)';
+      }
+    }
+  });
 
   sortedReqs.forEach(req => {
     const guestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
@@ -794,6 +862,16 @@ function renderRequests() {
     `;
     tbody.appendChild(tr);
   });
+}
+
+function sortRequests(key) {
+  if (requestsSortKey === key) {
+    requestsSortDirection = requestsSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    requestsSortKey = key;
+    requestsSortDirection = 'asc';
+  }
+  renderRequests();
 }
 
 async function saveRequest(e) {
@@ -1023,3 +1101,4 @@ window.handleVanillaGalleryUpload = handleVanillaGalleryUpload;
 window.removeVanillaProfilePicture = removeVanillaProfilePicture;
 window.removeVanillaGalleryPhoto = removeVanillaGalleryPhoto;
 window.populateBirthdateDropdowns = populateBirthdateDropdowns;
+window.sortRequests = sortRequests;

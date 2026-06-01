@@ -99,6 +99,11 @@ app.get('/api/songs', (req, res) => {
             ArtistIDs: s.ArtistIDs ? s.ArtistIDs.split(',').map(Number) : []
         }));
 
+        // Sort songs alphabetically ascending by title (Turkish locale aware)
+        formattedSongs.sort((a, b) => {
+            return (a.SongTitle || "").toLocaleLowerCase('tr-TR').localeCompare((b.SongTitle || "").toLocaleLowerCase('tr-TR'), 'tr');
+        });
+
         res.json(formattedSongs);
     } catch (err) {
         res.status(500).json({ error: err.message });

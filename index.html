@@ -35,10 +35,10 @@
           <table id="requestsTable">
             <thead>
               <tr>
-                <th>Tarih</th>
-                <th>Misafir</th>
-                <th>İstenen Şarkı</th>
-                <th>Durum</th>
+                <th onclick="sortRequests('date')" style="cursor: pointer; user-select: none;">Tarih / Saat <span id="sortIconDate" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                <th onclick="sortRequests('guest')" style="cursor: pointer; user-select: none;">Misafir <span id="sortIconGuest" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                <th onclick="sortRequests('song')" style="cursor: pointer; user-select: none;">İstenen Şarkı <span id="sortIconSong" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                <th onclick="sortRequests('status')" style="cursor: pointer; user-select: none;">Durum <span id="sortIconStatus" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
                 <th style="width: 150px;">İşlemler</th>
               </tr>
             </thead>

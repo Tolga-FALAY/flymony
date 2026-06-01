@@ -8,6 +8,9 @@ export default function Requests() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState(null);
   
+  // Default sorting configuration: Sort by SongTitle Ascending
+  const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
+
   const [formData, setFormData] = useState({
     SongID: '',
     GuestIDs: [],
@@ -109,6 +112,51 @@ export default function Requests() {
     }
   };
 
+  // Handle header sorting
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Sort Requests dynamically based on sortConfig
+  const sortedRequests = [...requests].sort((a, b) => {
+    let res = 0;
+    if (sortConfig.key === 'RequestDate') {
+      res = new Date(a.RequestDate) - new Date(b.RequestDate);
+    } else if (sortConfig.key === 'FullNames') {
+      const aVal = (a.FullNames || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.FullNames || '').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'SongTitle') {
+      const aVal = (a.SongTitle || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.SongTitle || '').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'Status') {
+      const aVal = (a.Status || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.Status || '').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    }
+    return sortConfig.direction === 'asc' ? res : -res;
+  });
+
+  // Render sorting arrows next to headers
+  const renderSortArrow = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+    }
+    return ' ⇅';
+  };
+
+  // Sort songs list ascending by title for the modal dropdown
+  const sortedSongs = [...songs].sort((a, b) => {
+    const aTitle = (a.SongTitle || '').toLocaleLowerCase('tr-TR');
+    const bTitle = (b.SongTitle || '').toLocaleLowerCase('tr-TR');
+    return aTitle.localeCompare(bTitle, 'tr');
+  });
+
   return (
     <div>
       <div className="section-header">
@@ -122,15 +170,35 @@ export default function Requests() {
         <table>
           <thead>
             <tr>
-              <th>Tarih / Saat</th>
-              <th>Misafir</th>
-              <th>İstenen Şarkı</th>
-              <th>Durum</th>
+              <th onClick={() => handleSort('RequestDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Tarih / Saat
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'RequestDate' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('RequestDate')}
+                </span>
+              </th>
+              <th onClick={() => handleSort('FullNames')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Misafir
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'FullNames' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('FullNames')}
+                </span>
+              </th>
+              <th onClick={() => handleSort('SongTitle')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                İstenen Şarkı
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongTitle' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('SongTitle')}
+                </span>
+              </th>
+              <th onClick={() => handleSort('Status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Durum
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'Status' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('Status')}
+                </span>
+              </th>
               <th style={{width: '150px'}}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
-            {requests.map(req => {
+            {sortedRequests.map(req => {
               const dateObj = new Date(req.RequestDate + 'Z'); // SQLite UTC time
               
               // Helper to assign CSS class to request status badges
@@ -160,7 +228,7 @@ export default function Requests() {
                 </tr>
               );
             })}
-            {requests.length === 0 && (
+            {sortedRequests.length === 0 && (
               <tr><td colSpan="5" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
@@ -187,7 +255,7 @@ export default function Requests() {
                 <label>Şarkı Seçin</label>
                 <select name="SongID" value={formData.SongID} onChange={handleChange} required>
                   <option value="">-- Şarkı --</option>
-                  {songs.map(s => (
+                  {sortedSongs.map(s => (
                     <option key={s.SongID} value={String(s.SongID)}>
                       {s.SongTitle} {s.ArtistNames && s.ArtistNames !== '-' ? `(${s.ArtistNames})` : ''}
                     </option>
