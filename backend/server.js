@@ -187,7 +187,17 @@ app.delete('/api/songs/:id', (req, res) => {
 app.get('/api/guests', (req, res) => {
     try {
         const guests = db.prepare('SELECT * FROM Guests').all();
-        res.json(guests);
+        const parsedGuests = guests.map(g => ({
+            ...g,
+            Photos: g.Photos ? JSON.parse(g.Photos) : []
+        }));
+        // Sort by FirstName and LastName (Turkish locale aware)
+        parsedGuests.sort((a, b) => {
+            const fNameCompare = (a.FirstName || "").toLocaleLowerCase('tr-TR').localeCompare((b.FirstName || "").toLocaleLowerCase('tr-TR'), 'tr');
+            if (fNameCompare !== 0) return fNameCompare;
+            return (a.LastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.LastName || "").toLocaleLowerCase('tr-TR'), 'tr');
+        });
+        res.json(parsedGuests);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -195,7 +205,7 @@ app.get('/api/guests', (req, res) => {
 
 app.post('/api/guests', (req, res) => {
     try {
-        const { FirstName, LastName, PhoneNumber, InstagramLink } = req.body;
+        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos } = req.body;
         if (!FirstName || !FirstName.trim() || !LastName || !LastName.trim()) {
             return res.status(400).json({ error: 'Ad ve soyad alanları boş bırakılamaz!' });
         }
@@ -203,7 +213,21 @@ app.post('/api/guests', (req, res) => {
         if (existing) {
             return res.status(400).json({ error: 'Bu misafir zaten kayıtlı!' });
         }
-        const info = db.prepare('INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink) VALUES (?, ?, ?, ?)').run(FirstName, LastName, PhoneNumber, InstagramLink);
+        const info = db.prepare(`
+            INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            FirstName, 
+            LastName, 
+            PhoneNumber || "", 
+            InstagramLink || "", 
+            Notes || "", 
+            ProfilePicture || "", 
+            BirthDateDay ? Number(BirthDateDay) : null, 
+            BirthDateMonth ? Number(BirthDateMonth) : null, 
+            BirthDateYear ? Number(BirthDateYear) : null, 
+            Photos ? JSON.stringify(Photos) : '[]'
+        );
         res.status(201).json({ id: info.lastInsertRowid });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -212,7 +236,7 @@ app.post('/api/guests', (req, res) => {
 
 app.put('/api/guests/:id', (req, res) => {
     try {
-        const { FirstName, LastName, PhoneNumber, InstagramLink } = req.body;
+        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos } = req.body;
         if (!FirstName || !FirstName.trim() || !LastName || !LastName.trim()) {
             return res.status(400).json({ error: 'Ad ve soyad alanları boş bırakılamaz!' });
         }
@@ -220,7 +244,23 @@ app.put('/api/guests/:id', (req, res) => {
         if (existing) {
             return res.status(400).json({ error: 'Bu isimde başka bir misafir zaten kayıtlı!' });
         }
-        db.prepare('UPDATE Guests SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ? WHERE GuestID = ?').run(FirstName, LastName, PhoneNumber, InstagramLink, req.params.id);
+        db.prepare(`
+            UPDATE Guests 
+            SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ? 
+            WHERE GuestID = ?
+        `).run(
+            FirstName, 
+            LastName, 
+            PhoneNumber || "", 
+            InstagramLink || "", 
+            Notes || "", 
+            ProfilePicture || "", 
+            BirthDateDay ? Number(BirthDateDay) : null, 
+            BirthDateMonth ? Number(BirthDateMonth) : null, 
+            BirthDateYear ? Number(BirthDateYear) : null, 
+            Photos ? JSON.stringify(Photos) : '[]',
+            req.params.id
+        );
         res.json({ message: 'Guest updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -45,8 +45,21 @@ const DB = {
           lastName: data.LastName || "",
           fullName: `${data.FirstName || ""} ${data.LastName || ""}`.trim(),
           phone: data.PhoneNumber || "",
-          instagram: data.InstagramLink || ""
+          instagram: data.InstagramLink || "",
+          notes: data.Notes || "",
+          profilePicture: data.ProfilePicture || "",
+          birthDateDay: data.BirthDateDay || "",
+          birthDateMonth: data.BirthDateMonth || "",
+          birthDateYear: data.BirthDateYear || "",
+          photos: data.Photos || []
         });
+      });
+
+      // Sort guests ascending by FirstName & LastName (Turkish locale aware)
+      this.guests.sort((a, b) => {
+        const fNameCompare = a.firstName.toLocaleLowerCase('tr-TR').localeCompare(b.firstName.toLocaleLowerCase('tr-TR'), 'tr');
+        if (fNameCompare !== 0) return fNameCompare;
+        return a.lastName.toLocaleLowerCase('tr-TR').localeCompare(b.lastName.toLocaleLowerCase('tr-TR'), 'tr');
       });
 
       // 3. Fetch songs
@@ -119,6 +132,9 @@ function openModal(modalId) {
   if(modalId === 'songModal' || modalId === 'requestModal') {
     populateDropdowns();
   }
+  if(modalId === 'guestModal') {
+    populateBirthdateDropdowns();
+  }
 }
 
 function closeModal(modalId) {
@@ -151,6 +167,27 @@ function closeModal(modalId) {
     document.getElementById('reqGuestID').value = '';
     document.getElementById('reqSongID').value = '';
     populateDropdowns(); // listenin tamamını geri getir
+  }
+
+  if (modalId === 'guestModal') {
+    const profPic = document.getElementById('guestProfilePicture');
+    if (profPic) profPic.value = '';
+    const photosInput = document.getElementById('guestPhotos');
+    if (photosInput) photosInput.value = '[]';
+    
+    const profPreview = document.getElementById('profilePreviewInner');
+    if (profPreview) {
+      profPreview.className = "profile-preview-placeholder";
+      profPreview.innerHTML = '<span>RESİM YOK</span>';
+    }
+    const galleryPreview = document.getElementById('galleryPreviewsGrid');
+    if (galleryPreview) {
+      galleryPreview.innerHTML = `
+        <div class="gallery-empty-placeholder">
+          <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
+        </div>
+      `;
+    }
   }
   
   // Başlıkları sıfırla
@@ -288,14 +325,50 @@ async function deleteArtist(id) {
 // ----------------- GUESTS -----------------
 function renderGuests() {
   const tbody = document.querySelector('#guestsTable tbody');
-  tbody.innerHTML = DB.guests.length === 0 ? '<tr><td colspan="4" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+  tbody.innerHTML = DB.guests.length === 0 ? '<tr><td colspan="6" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
   DB.guests.forEach(guest => {
+    // Initials Avatar
+    const getInitials = (first, last) => {
+      const f = first ? first.charAt(0).toUpperCase() : '';
+      const l = last ? last.charAt(0).toUpperCase() : '';
+      return `${f}${l}`;
+    };
+    
+    const initials = getInitials(guest.firstName, guest.lastName);
+    const avatarHtml = guest.profilePicture
+      ? `<img src="${guest.profilePicture}" alt="${guest.fullName}" class="guest-avatar-img">`
+      : `<div class="guest-avatar-initials">${initials}</div>`;
+
+    // Birth Date Formatter
+    const formatBirthDate = (day, month, year) => {
+      if (!day || !month) return '-';
+      const months = [
+        "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+        "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+      ];
+      const monthName = months[parseInt(month) - 1] || month;
+      return year ? `${day} ${monthName} ${year}` : `${day} ${monthName}`;
+    };
+    const birthDateStr = formatBirthDate(guest.birthDateDay, guest.birthDateMonth, guest.birthDateYear);
+
+    // Notes summary
+    const notesSummary = guest.notes
+      ? (guest.notes.length > 30 ? guest.notes.substring(0, 30) + '...' : guest.notes)
+      : '-';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="Ad Soyad">${guest.firstName} ${guest.lastName}</td>
+      <td data-label="Misafir" class="td-guest-profile">
+        <div class="guest-avatar-wrapper">${avatarHtml}</div>
+        <span class="guest-name-text">${guest.firstName} ${guest.lastName}</span>
+      </td>
       <td data-label="Telefon">${guest.phone || '-'}</td>
-      <td data-label="Instagram">${guest.instagram ? `<a href="${guest.instagram}" target="_blank">Profil</a>` : '-'}</td>
+      <td data-label="Instagram">
+        ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
+      </td>
+      <td data-label="Doğum Tarihi">${birthDateStr}</td>
+      <td data-label="Notlar" class="td-notes-preview" title="${guest.notes || ''}">${notesSummary}</td>
       <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteGuest(${guest.id})">Sil</button>
@@ -305,6 +378,167 @@ function renderGuests() {
   });
 }
 
+// Populate Birthdate Dropdowns in Vanilla HTML dynamically
+function populateBirthdateDropdowns() {
+  const daySelect = document.getElementById('guestBirthDay');
+  const yearSelect = document.getElementById('guestBirthYear');
+  
+  if (daySelect && daySelect.options.length <= 1) {
+    for (let d = 1; d <= 31; d++) {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.innerText = d;
+      daySelect.appendChild(opt);
+    }
+  }
+  
+  if (yearSelect && yearSelect.options.length <= 1) {
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= 1920; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.innerText = y;
+      yearSelect.appendChild(opt);
+    }
+  }
+}
+
+// Canvas-based image compression for Vanilla JS
+async function compressVanillaImage(file, maxWidth, maxHeight, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+}
+
+// Vanilla HTML profile picture upload handler
+async function handleVanillaProfileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    const compressedBase64 = await compressVanillaImage(file, 250, 250, 0.75);
+    document.getElementById('guestProfilePicture').value = compressedBase64;
+    renderVanillaProfilePreview();
+  } catch (err) {
+    alert("Profil resmi yüklenirken hata oluştu: " + err.message);
+  }
+  input.value = ""; // reset file input
+}
+
+function removeVanillaProfilePicture() {
+  document.getElementById('guestProfilePicture').value = "";
+  renderVanillaProfilePreview();
+}
+
+function renderVanillaProfilePreview() {
+  const base64 = document.getElementById('guestProfilePicture').value;
+  const container = document.getElementById('profilePreviewInner');
+  if (base64) {
+    container.className = "profile-img-preview-wrapper";
+    container.innerHTML = `
+      <img src="${base64}" alt="Profil Önizleme">
+      <button type="button" class="profile-img-delete-badge" onclick="removeVanillaProfilePicture()" title="Resmi Sil">&times;</button>
+    `;
+  } else {
+    container.className = "profile-preview-placeholder";
+    container.innerHTML = `<span>RESİM YOK</span>`;
+  }
+}
+
+// Vanilla HTML multi-photo gallery upload handler
+async function handleVanillaGalleryUpload(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  try {
+    const promises = files.map(file => compressVanillaImage(file, 800, 800, 0.7));
+    const compressedImages = await Promise.all(promises);
+    
+    const photosInput = document.getElementById('guestPhotos');
+    let currentPhotos = [];
+    try {
+      currentPhotos = JSON.parse(photosInput.value || "[]");
+    } catch(e) {
+      currentPhotos = [];
+    }
+    
+    const updatedPhotos = [...currentPhotos, ...compressedImages];
+    photosInput.value = JSON.stringify(updatedPhotos);
+    renderVanillaGalleryPreviews();
+  } catch (err) {
+    alert("Görsel yüklenirken hata oluştu: " + err.message);
+  }
+  input.value = ""; // reset file input
+}
+
+function removeVanillaGalleryPhoto(index) {
+  const photosInput = document.getElementById('guestPhotos');
+  let currentPhotos = [];
+  try {
+    currentPhotos = JSON.parse(photosInput.value || "[]");
+  } catch(e) {
+    currentPhotos = [];
+  }
+  currentPhotos.splice(index, 1);
+  photosInput.value = JSON.stringify(currentPhotos);
+  renderVanillaGalleryPreviews();
+}
+
+function renderVanillaGalleryPreviews() {
+  const photosInput = document.getElementById('guestPhotos');
+  const container = document.getElementById('galleryPreviewsGrid');
+  let currentPhotos = [];
+  try {
+    currentPhotos = JSON.parse(photosInput.value || "[]");
+  } catch(e) {
+    currentPhotos = [];
+  }
+
+  if (currentPhotos.length > 0) {
+    container.innerHTML = currentPhotos.map((photo, index) => `
+      <div class="gallery-preview-item">
+        <img src="${photo}" alt="Galeri Görsel ${index + 1}">
+        <button type="button" class="gallery-preview-delete-badge" onclick="removeVanillaGalleryPhoto(${index})" title="Sil">&times;</button>
+      </div>
+    `).join('');
+  } else {
+    container.innerHTML = `
+      <div class="gallery-empty-placeholder">
+        <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
+      </div>
+    `;
+  }
+}
+
 async function saveGuest(e) {
   e.preventDefault();
   const id = document.getElementById('guestID').value;
@@ -312,10 +546,30 @@ async function saveGuest(e) {
   const lastName = document.getElementById('guestLastName').value.trim();
   const phone = document.getElementById('guestPhone').value;
   const instagram = document.getElementById('guestInstagram').value;
+  const notes = document.getElementById('guestNotes').value;
+  const profilePicture = document.getElementById('guestProfilePicture').value;
+  const birthDay = document.getElementById('guestBirthDay').value;
+  const birthMonth = document.getElementById('guestBirthMonth').value;
+  const birthYear = document.getElementById('guestBirthYear').value;
+  
+  let photos = [];
+  try {
+    photos = JSON.parse(document.getElementById('guestPhotos').value || "[]");
+  } catch(e) {
+    photos = [];
+  }
 
   if (!firstName || !lastName) {
     alert("Ad ve Soyad alanları boş bırakılamaz!");
     return;
+  }
+
+  // Birth date validation:
+  if (birthDay || birthMonth || birthYear) {
+    if (!birthDay || !birthMonth) {
+      alert("Doğum tarihi giriliyorsa Gün ve Ay alanları zorunludur!");
+      return;
+    }
   }
 
   const isDuplicate = DB.guests.some(g => g.id != id && 
@@ -333,7 +587,13 @@ async function saveGuest(e) {
       FirstName: firstName,
       LastName: lastName,
       PhoneNumber: phone || "",
-      InstagramLink: instagram || ""
+      InstagramLink: instagram || "",
+      Notes: notes || "",
+      ProfilePicture: profilePicture || "",
+      BirthDateDay: birthDay ? Number(birthDay) : "",
+      BirthDateMonth: birthMonth ? Number(birthMonth) : "",
+      BirthDateYear: birthYear ? Number(birthYear) : "",
+      Photos: photos
     });
     closeModal('guestModal');
     await DB.loadFromFirestore();
@@ -346,11 +606,29 @@ async function saveGuest(e) {
 function editGuest(id) {
   const guest = DB.guests.find(g => g.id == id);
   if (!guest) return;
+  
+  // Fill in standard inputs
   document.getElementById('guestID').value = guest.id;
   document.getElementById('guestFirstName').value = guest.firstName;
   document.getElementById('guestLastName').value = guest.lastName;
   document.getElementById('guestPhone').value = guest.phone || '';
   document.getElementById('guestInstagram').value = guest.instagram || '';
+  document.getElementById('guestNotes').value = guest.notes || '';
+  
+  // Fill in hidden image inputs
+  document.getElementById('guestProfilePicture').value = guest.profilePicture || '';
+  document.getElementById('guestPhotos').value = JSON.stringify(guest.photos || []);
+
+  // Fill dropdowns
+  populateBirthdateDropdowns();
+  document.getElementById('guestBirthDay').value = guest.birthDateDay || '';
+  document.getElementById('guestBirthMonth').value = guest.birthDateMonth || '';
+  document.getElementById('guestBirthYear').value = guest.birthDateYear || '';
+
+  // Render previews
+  renderVanillaProfilePreview();
+  renderVanillaGalleryPreviews();
+
   document.getElementById('guestModalTitle').innerText = 'Misafir Düzenle';
   openModal('guestModal');
 }
@@ -702,3 +980,8 @@ window.deleteRequest = deleteRequest;
 window.editRequest = editRequest;
 window.toggleListboxItem = toggleListboxItem;
 window.selectListboxItem = selectListboxItem;
+window.handleVanillaProfileUpload = handleVanillaProfileUpload;
+window.handleVanillaGalleryUpload = handleVanillaGalleryUpload;
+window.removeVanillaProfilePicture = removeVanillaProfilePicture;
+window.removeVanillaGalleryPhoto = removeVanillaGalleryPhoto;
+window.populateBirthdateDropdowns = populateBirthdateDropdowns;

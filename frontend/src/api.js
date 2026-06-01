@@ -113,8 +113,20 @@ export const api = {
         LastName: lastName,
         FullName: `${firstName} ${lastName}`.trim(),
         PhoneNumber: data.PhoneNumber || "",
-        InstagramLink: data.InstagramLink || ""
+        InstagramLink: data.InstagramLink || "",
+        Notes: data.Notes || "",
+        ProfilePicture: data.ProfilePicture || "",
+        BirthDateDay: data.BirthDateDay || "",
+        BirthDateMonth: data.BirthDateMonth || "",
+        BirthDateYear: data.BirthDateYear || "",
+        Photos: data.Photos || []
       });
+    });
+    // Sort by FirstName and LastName ascending (Turkish locale aware)
+    list.sort((a, b) => {
+      const fNameCompare = a.FirstName.toLocaleLowerCase('tr-TR').localeCompare(b.FirstName.toLocaleLowerCase('tr-TR'), 'tr');
+      if (fNameCompare !== 0) return fNameCompare;
+      return a.LastName.toLocaleLowerCase('tr-TR').localeCompare(b.LastName.toLocaleLowerCase('tr-TR'), 'tr');
     });
     return list;
   },
@@ -125,7 +137,13 @@ export const api = {
       FirstName: data.FirstName,
       LastName: data.LastName,
       PhoneNumber: data.PhoneNumber || "",
-      InstagramLink: data.InstagramLink || ""
+      InstagramLink: data.InstagramLink || "",
+      Notes: data.Notes || "",
+      ProfilePicture: data.ProfilePicture || "",
+      BirthDateDay: data.BirthDateDay || "",
+      BirthDateMonth: data.BirthDateMonth || "",
+      BirthDateYear: data.BirthDateYear || "",
+      Photos: data.Photos || []
     });
     return { GuestID: Number(id), message: 'Guest created successfully' };
   },
@@ -135,7 +153,13 @@ export const api = {
       FirstName: data.FirstName,
       LastName: data.LastName,
       PhoneNumber: data.PhoneNumber || "",
-      InstagramLink: data.InstagramLink || ""
+      InstagramLink: data.InstagramLink || "",
+      Notes: data.Notes || "",
+      ProfilePicture: data.ProfilePicture || "",
+      BirthDateDay: data.BirthDateDay || "",
+      BirthDateMonth: data.BirthDateMonth || "",
+      BirthDateYear: data.BirthDateYear || "",
+      Photos: data.Photos || []
     });
     return { message: 'Guest updated successfully' };
   },

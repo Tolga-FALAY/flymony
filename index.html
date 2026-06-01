@@ -96,9 +96,11 @@
           <table id="guestsTable">
             <thead>
               <tr>
-                <th>Ad Soyad</th>
+                <th>Misafir</th>
                 <th>Telefon</th>
                 <th>Instagram</th>
+                <th>Doğum Tarihi</th>
+                <th>Notlar</th>
                 <th style="width: 150px;">İşlemler</th>
               </tr>
             </thead>
@@ -188,21 +190,47 @@
 
   <!-- Misafir Ekleme/Düzenleme Modalı -->
   <div id="guestModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
         <h2 id="guestModalTitle">Yeni Misafir</h2>
         <button class="close-btn" onclick="closeModal('guestModal')">&times;</button>
       </div>
       <form id="guestForm" onsubmit="saveGuest(event)">
         <input type="hidden" id="guestID">
-        <div class="form-group">
-          <label>Ad</label>
-          <input type="text" id="guestFirstName" required>
+        <input type="hidden" id="guestProfilePicture">
+        <input type="hidden" id="guestPhotos" value="[]">
+
+        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <!-- Profile Picture (Left Column) -->
+          <div class="form-group" style="flex: 1 1 200px; align-items: center; text-align: center;">
+            <label style="width: 100%;">Profil Resmi</label>
+            <div class="profile-preview-container">
+              <div id="profilePreviewInner" class="profile-preview-placeholder">
+                <span>RESİM YOK</span>
+              </div>
+            </div>
+            <div class="upload-btn-group" style="margin-top: 0.75rem; display: flex; gap: 0.5rem; width: 100%; justify-content: center;">
+              <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('profileCameraInput').click()">📷 Anlık Çek</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('profileBrowseInput').click()">📂 Galeriden Seç</button>
+            </div>
+            
+            <input type="file" id="profileCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleVanillaProfileUpload(this)">
+            <input type="file" id="profileBrowseInput" accept="image/*" style="display: none;" onchange="handleVanillaProfileUpload(this)">
+          </div>
+
+          <!-- Identity Fields (Right Column) -->
+          <div style="flex: 1 1 350px;">
+            <div class="form-group">
+              <label>Ad</label>
+              <input type="text" id="guestFirstName" required>
+            </div>
+            <div class="form-group">
+              <label>Soyad</label>
+              <input type="text" id="guestLastName" required>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Soyad</label>
-          <input type="text" id="guestLastName" required>
-        </div>
+
         <div class="form-group">
           <label>Telefon Numarası</label>
           <input type="text" id="guestPhone">
@@ -211,7 +239,64 @@
           <label>Instagram Linki</label>
           <input type="url" id="guestInstagram" placeholder="https://instagram.com/...">
         </div>
-        <div class="modal-actions">
+
+        <!-- Doğum Tarihi -->
+        <div class="form-group">
+          <label>Doğum Tarihi (Gün ve Ay zorunlu, Yıl opsiyoneldir)</label>
+          <div class="birthdate-select-row" style="display: flex; gap: 0.75rem;">
+            <select id="guestBirthDay" style="flex: 1;">
+              <option value="">Gün</option>
+              <!-- Dinamik olarak JS ile 1-31 arası doldurulacak -->
+            </select>
+            <select id="guestBirthMonth" style="flex: 1.5;">
+              <option value="">Ay</option>
+              <option value="1">Ocak</option>
+              <option value="2">Şubat</option>
+              <option value="3">Mart</option>
+              <option value="4">Nisan</option>
+              <option value="5">Mayıs</option>
+              <option value="6">Haziran</option>
+              <option value="7">Temmuz</option>
+              <option value="8">Ağustos</option>
+              <option value="9">Eylül</option>
+              <option value="10">Ekim</option>
+              <option value="11">Kasım</option>
+              <option value="12">Aralık</option>
+            </select>
+            <select id="guestBirthYear" style="flex: 1.2;">
+              <option value="">Yıl</option>
+              <!-- Dinamik olarak JS ile 1920-2026 arası doldurulacak -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Notlar -->
+        <div class="form-group">
+          <label>Notlar</label>
+          <textarea id="guestNotes" rows="4" placeholder="Misafir hakkında özel notlar, tercihler..." style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 1rem; resize: vertical; outline: none;"></textarea>
+        </div>
+
+        <!-- Misafir ile Çekilmiş Fotoğraflar Galerisi -->
+        <div class="form-group" style="margin-top: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <label style="margin: 0;">Misafir ile Çekilmiş Fotoğraflar</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('galleryCameraInput').click()">📷 Fotoğraf Çek</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('galleryBrowseInput').click()">📂 Görsel Ekle</button>
+            </div>
+          </div>
+
+          <input type="file" id="galleryCameraInput" accept="image/*" capture="environment" multiple style="display: none;" onchange="handleVanillaGalleryUpload(this)">
+          <input type="file" id="galleryBrowseInput" accept="image/*" multiple style="display: none;" onchange="handleVanillaGalleryUpload(this)">
+
+          <div id="galleryPreviewsGrid" class="gallery-previews-grid">
+            <div class="gallery-empty-placeholder">
+              <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 2rem;">
           <button type="button" class="btn btn-outline" onclick="closeModal('guestModal')">İptal</button>
           <button type="submit" class="btn btn-primary">Kaydet</button>
         </div>

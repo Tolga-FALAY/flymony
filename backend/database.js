@@ -37,7 +37,13 @@ export const initializeDB = () => {
             LastName TEXT NOT NULL,
             FullName TEXT GENERATED ALWAYS AS (FirstName || ' ' || LastName) VIRTUAL,
             PhoneNumber TEXT,
-            InstagramLink TEXT
+            InstagramLink TEXT,
+            Notes TEXT,
+            ProfilePicture TEXT,
+            BirthDateDay INTEGER,
+            BirthDateMonth INTEGER,
+            BirthDateYear INTEGER,
+            Photos TEXT
         );
     `);
 
@@ -130,6 +136,28 @@ export const initializeDB = () => {
                 FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
             );
         `);
+    // Migration for adding new guest columns dynamically if they do not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Guests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        
+        const newCols = [
+            { name: 'Notes', type: 'TEXT' },
+            { name: 'ProfilePicture', type: 'TEXT' },
+            { name: 'BirthDateDay', type: 'INTEGER' },
+            { name: 'BirthDateMonth', type: 'INTEGER' },
+            { name: 'BirthDateYear', type: 'INTEGER' },
+            { name: 'Photos', type: 'TEXT' }
+        ];
+
+        for (const col of newCols) {
+            if (!existingCols.includes(col.name)) {
+                console.log(`Migrating database: Adding column ${col.name} to Guests table...`);
+                db.exec(`ALTER TABLE Guests ADD COLUMN ${col.name} ${col.type};`);
+            }
+        }
+    } catch (e) {
+        console.error("Migration error while adding new guest columns:", e);
     }
 
     console.log("Database tables initialized.");
