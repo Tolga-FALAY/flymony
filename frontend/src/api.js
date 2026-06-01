@@ -181,11 +181,21 @@ export const api = {
       guestsMap[doc.id] = `${data.FirstName} ${data.LastName}`.trim();
     });
 
-    // Fetch all songs to resolve titles in memory
+    // Fetch all artists to resolve names in memory
+    const artistsSnapshot = await getDocs(collection(db, "artists"));
+    const artistsMap = {};
+    artistsSnapshot.forEach((doc) => {
+      artistsMap[doc.id] = doc.data().ArtistName;
+    });
+
+    // Fetch all songs to resolve titles and artist names in memory
     const songsSnapshot = await getDocs(collection(db, "songs"));
     const songsMap = {};
     songsSnapshot.forEach((doc) => {
-      songsMap[doc.id] = doc.data().SongTitle;
+      const data = doc.data();
+      const artistIds = data.ArtistIDs || [];
+      const artistNames = artistIds.map(aid => artistsMap[String(aid)]).filter(Boolean).join(", ");
+      songsMap[doc.id] = data.SongTitle + (artistNames ? ` (${artistNames})` : '');
     });
 
     const requestsSnapshot = await getDocs(collection(db, "requests"));
@@ -202,7 +212,8 @@ export const api = {
         SongID: Number(data.SongID),
         SongTitle: songsMap[songId] || "Bilinmeyen Şarkı",
         GuestIDs: guestIds.map(Number),
-        FullNames: fullNames || "-"
+        FullNames: fullNames || "-",
+        Status: data.Status || "Kayıtlı"
       });
     });
     
@@ -216,6 +227,7 @@ export const api = {
     await setDoc(doc(db, "requests", id), {
       SongID: Number(data.SongID),
       GuestIDs: (data.GuestIDs || []).map(Number),
+      Status: data.Status || 'Kayıtlı',
       RequestDate: new Date().toISOString()
     });
     return { RequestID: Number(id), message: 'İstek başarıyla oluşturuldu' };
@@ -224,7 +236,8 @@ export const api = {
   updateRequest: async (id, data) => {
     await updateDoc(doc(db, "requests", String(id)), {
       SongID: Number(data.SongID),
-      GuestIDs: (data.GuestIDs || []).map(Number)
+      GuestIDs: (data.GuestIDs || []).map(Number),
+      Status: data.Status || 'Kayıtlı'
     });
     return { message: 'İstek başarıyla güncellendi' };
   },

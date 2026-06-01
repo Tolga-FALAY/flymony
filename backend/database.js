@@ -156,8 +156,16 @@ export const initializeDB = () => {
                 db.exec(`ALTER TABLE Guests ADD COLUMN ${col.name} ${col.type};`);
             }
         }
+    // Migration for adding Status column to Requests table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Requests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('Status')) {
+            console.log("Migrating database: Adding column Status to Requests table...");
+            db.exec("ALTER TABLE Requests ADD COLUMN Status TEXT DEFAULT 'Kayıtlı';");
+        }
     } catch (e) {
-        console.error("Migration error while adding new guest columns:", e);
+        console.error("Migration error while adding Status column to Requests table:", e);
     }
 
     console.log("Database tables initialized.");

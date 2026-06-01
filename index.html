@@ -38,6 +38,7 @@
                 <th>Tarih</th>
                 <th>Misafir</th>
                 <th>İstenen Şarkı</th>
+                <th>Durum</th>
                 <th style="width: 150px;">İşlemler</th>
               </tr>
             </thead>
@@ -132,6 +133,16 @@
           <input type="text" id="songSearchInput" placeholder="Şarkı ara..." style="margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
           <div id="songListboxContainer" class="listbox-container"></div>
           <input type="hidden" id="reqSongID" required>
+        </div>
+        <div class="form-group">
+          <label>İstek Durumu</label>
+          <select id="reqStatus" required>
+            <option value="Kayıtlı">Kayıtlı</option>
+            <option value="Denemede">Denemede</option>
+            <option value="Eklendi">Eklendi</option>
+            <option value="Vardı">Vardı</option>
+            <option value="İptal">İptal</option>
+          </select>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-outline" onclick="closeModal('requestModal')">İptal</button>

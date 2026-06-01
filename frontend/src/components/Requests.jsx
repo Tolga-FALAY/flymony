@@ -10,7 +10,8 @@ export default function Requests() {
   
   const [formData, setFormData] = useState({
     SongID: '',
-    GuestIDs: []
+    GuestIDs: [],
+    Status: 'Kayıtlı'
   });
 
   useEffect(() => {
@@ -33,11 +34,12 @@ export default function Requests() {
       setEditingRequest(req);
       setFormData({
         SongID: String(req.SongID),
-        GuestIDs: (req.GuestIDs || []).map(String)
+        GuestIDs: (req.GuestIDs || []).map(String),
+        Status: req.Status || 'Kayıtlı'
       });
     } else {
       setEditingRequest(null);
-      setFormData({ SongID: '', GuestIDs: [] });
+      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı' });
     }
     setIsModalOpen(true);
   };
@@ -65,15 +67,18 @@ export default function Requests() {
 
     const songIdNum = Number(formData.SongID);
 
-    // Yeni istek girişi yaparken, seçilen şarkı ile daha önce kayıt yapıldıysa kontrol et
+    // Duplicate check: check if SongID already exists in requests
     if (!editingRequest) {
       const existingReq = requests.find(r => r.SongID === songIdNum);
       if (existingReq) {
+        alert("Bu istek zaten kayıtlı");
         const goToExisting = window.confirm(
-          "Bu şarkı daha önce kaydedilmiş, düzenleme yapmak için ilgili istek kaydına gitmek ister misin?"
+          "İlgili kayda gitmek ister misiniz?"
         );
         if (goToExisting) {
           openModal(existingReq);
+        } else {
+          closeModal();
         }
         return;
       }
@@ -81,7 +86,8 @@ export default function Requests() {
 
     const dataToSend = {
       SongID: songIdNum,
-      GuestIDs: formData.GuestIDs.map(Number)
+      GuestIDs: formData.GuestIDs.map(Number),
+      Status: formData.Status
     };
     try {
       if (editingRequest) {
@@ -119,17 +125,34 @@ export default function Requests() {
               <th>Tarih / Saat</th>
               <th>Misafir</th>
               <th>İstenen Şarkı</th>
+              <th>Durum</th>
               <th style={{width: '150px'}}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {requests.map(req => {
               const dateObj = new Date(req.RequestDate + 'Z'); // SQLite UTC time
+              
+              // Helper to assign CSS class to request status badges
+              const getStatusBadgeClass = (status) => {
+                switch(status) {
+                  case 'Kayıtlı': return 'status-badge status-registered';
+                  case 'Denemede': return 'status-badge status-trial';
+                  case 'Eklendi': return 'status-badge status-added';
+                  case 'Vardı': return 'status-badge status-existed';
+                  case 'İptal': return 'status-badge status-cancelled';
+                  default: return 'status-badge';
+                }
+              };
+
               return (
                 <tr key={req.RequestID}>
                   <td data-label="Tarih / Saat">{dateObj.toLocaleString('tr-TR')}</td>
                   <td data-label="Misafir">{req.FullNames || '-'}</td>
                   <td data-label="İstenen Şarkı">{req.SongTitle}</td>
+                  <td data-label="Durum">
+                    <span className={getStatusBadgeClass(req.Status)}>{req.Status}</span>
+                  </td>
                   <td data-label="İşlemler" className="action-btns">
                     <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
@@ -138,7 +161,7 @@ export default function Requests() {
               );
             })}
             {requests.length === 0 && (
-              <tr><td colSpan="4" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="5" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
@@ -165,8 +188,20 @@ export default function Requests() {
                 <select name="SongID" value={formData.SongID} onChange={handleChange} required>
                   <option value="">-- Şarkı --</option>
                   {songs.map(s => (
-                    <option key={s.SongID} value={String(s.SongID)}>{s.SongTitle} {s.ArtistNames ? `(${s.ArtistNames})` : ''}</option>
+                    <option key={s.SongID} value={String(s.SongID)}>
+                      {s.SongTitle} {s.ArtistNames && s.ArtistNames !== '-' ? `(${s.ArtistNames})` : ''}
+                    </option>
                   ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>İstek Durumu</label>
+                <select name="Status" value={formData.Status} onChange={handleChange} required>
+                  <option value="Kayıtlı">Kayıtlı</option>
+                  <option value="Denemede">Denemede</option>
+                  <option value="Eklendi">Eklendi</option>
+                  <option value="Vardı">Vardı</option>
+                  <option value="İptal">İptal</option>
                 </select>
               </div>
               <div className="modal-actions">

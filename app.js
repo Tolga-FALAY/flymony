@@ -91,7 +91,8 @@ const DB = {
           songId: Number(data.SongID),
           guestIds: guestIds.map(Number),
           guestId: guestIds[0] || null, // backward compatibility
-          date: data.RequestDate ? new Date(data.RequestDate).getTime() : Date.now()
+          date: data.RequestDate ? new Date(data.RequestDate).getTime() : Date.now(),
+          status: data.Status || 'Kayıtlı'
         });
       });
     } catch (err) {
@@ -746,7 +747,7 @@ async function deleteSong(id) {
 // ----------------- REQUESTS -----------------
 function renderRequests() {
   const tbody = document.querySelector('#requestsTable tbody');
-  tbody.innerHTML = DB.requests.length === 0 ? '<tr><td colspan="4" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+  tbody.innerHTML = DB.requests.length === 0 ? '<tr><td colspan="5" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
   // Tarihe göre sırala (en yeni en üstte)
   const sortedReqs = [...DB.requests].sort((a,b) => b.date - a.date);
@@ -759,13 +760,33 @@ function renderRequests() {
     if(guests.length === 0 || !song) return; // Eksik veri varsa atla
 
     const guestNames = guests.map(g => `${g.firstName} ${g.lastName}`).join(', ');
-    const dateStr = new Date(req.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateStr = new Date(req.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: 'numeric' });
+
+    // Resolve Song Artist names
+    const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
+    const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
+    const songDisplay = song.title + (artistNames ? ` (${artistNames})` : '');
+
+    // Status Badge Class
+    const getStatusClass = (status) => {
+      switch(status) {
+        case 'Kayıtlı': return 'status-badge status-registered';
+        case 'Denemede': return 'status-badge status-trial';
+        case 'Eklendi': return 'status-badge status-added';
+        case 'Vardı': return 'status-badge status-existed';
+        case 'İptal': return 'status-badge status-cancelled';
+        default: return 'status-badge';
+      }
+    };
+    
+    const statusHtml = `<span class="${getStatusClass(req.status)}">${req.status || 'Kayıtlı'}</span>`;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="Tarih">${dateStr}</td>
       <td data-label="Misafir">${guestNames}</td>
-      <td data-label="İstenen Şarkı">${song.title}</td>
+      <td data-label="İstenen Şarkı">${songDisplay}</td>
+      <td data-label="Durum">${statusHtml}</td>
       <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editRequest(${req.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteRequest(${req.id})">Sil</button>
@@ -780,6 +801,7 @@ async function saveRequest(e) {
   const id = document.getElementById('requestID').value;
   const guestIDsVal = document.getElementById('reqGuestID').value;
   const songId = parseInt(document.getElementById('reqSongID').value);
+  const status = document.getElementById('reqStatus').value;
 
   if (!guestIDsVal) {
     alert("Lütfen en az bir misafir seçin.");
@@ -791,16 +813,17 @@ async function saveRequest(e) {
   }
 
   const guestIds = guestIDsVal.split(',').map(Number);
-  const isDuplicate = DB.requests.some(req => {
-    if (req.id == id) return false;
-    if (req.songId !== songId) return false;
-    const reqGuestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
-    if (reqGuestIds.length !== guestIds.length) return false;
-    return guestIds.every(gid => reqGuestIds.includes(gid));
-  });
 
-  if (isDuplicate) {
-    alert("Bu şarkı isteği zaten mevcut!");
+  // Custom duplicate check: Same SongID (representing Song+Artists combo) across all requests
+  const existingReq = DB.requests.find(r => r.id != id && r.songId === songId);
+  if (existingReq) {
+    alert("Bu istek zaten kayıtlı");
+    const goToExisting = confirm("İlgili kayda gitmek ister misiniz?");
+    if (goToExisting) {
+      editRequest(existingReq.id);
+    } else {
+      closeModal('requestModal');
+    }
     return;
   }
 
@@ -809,6 +832,7 @@ async function saveRequest(e) {
     await db.collection("requests").doc(requestId).set({
       SongID: Number(songId),
       GuestIDs: guestIds.map(Number),
+      Status: status || 'Kayıtlı',
       RequestDate: id 
         ? (DB.requests.find(r => r.id == id)?.date ? new Date(DB.requests.find(r => r.id == id).date).toISOString() : new Date().toISOString()) 
         : new Date().toISOString()
@@ -842,6 +866,7 @@ function editRequest(id) {
   const guestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
   document.getElementById('reqGuestID').value = guestIds.join(',');
   document.getElementById('reqSongID').value = req.songId;
+  document.getElementById('reqStatus').value = req.status || 'Kayıtlı';
 
   document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
   openModal('requestModal');
