@@ -236,12 +236,8 @@ export default function Guests() {
 
       if (Number(a.BirthDateMonth) !== Number(b.BirthDateMonth)) {
         res = Number(a.BirthDateMonth) - Number(b.BirthDateMonth);
-      } else if (Number(a.BirthDateDay) !== Number(b.BirthDateDay)) {
-        res = Number(a.BirthDateDay) - Number(b.BirthDateDay);
       } else {
-        const yrA = a.BirthDateYear ? Number(a.BirthDateYear) : 0;
-        const yrB = b.BirthDateYear ? Number(b.BirthDateYear) : 0;
-        res = yrA - yrB;
+        res = Number(a.BirthDateDay) - Number(b.BirthDateDay);
       }
     }
     return sortConfig.direction === 'asc' ? res : -res;

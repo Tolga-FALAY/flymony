@@ -371,8 +371,11 @@ function renderGuests() {
     let res = 0;
     if (guestsSortKey === 'name') {
       const fNameCompare = (a.firstName || "").toLocaleLowerCase('tr-TR').localeCompare((b.firstName || "").toLocaleLowerCase('tr-TR'), 'tr');
-      if (fNameCompare !== 0) return fNameCompare;
-      res = (a.lastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.lastName || "").toLocaleLowerCase('tr-TR'), 'tr');
+      if (fNameCompare !== 0) {
+        res = fNameCompare;
+      } else {
+        res = (a.lastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.lastName || "").toLocaleLowerCase('tr-TR'), 'tr');
+      }
     } else if (guestsSortKey === 'birthdate') {
       const hasA = a.birthDateDay && a.birthDateMonth;
       const hasB = b.birthDateDay && b.birthDateMonth;
@@ -380,14 +383,10 @@ function renderGuests() {
       if (!hasA) return 1;
       if (!hasB) return -1;
 
-      if (a.birthDateMonth !== b.birthDateMonth) {
+      if (Number(a.birthDateMonth) !== Number(b.birthDateMonth)) {
         res = Number(a.birthDateMonth) - Number(b.birthDateMonth);
-      } else if (a.birthDateDay !== b.birthDateDay) {
-        res = Number(a.birthDateDay) - Number(b.birthDateDay);
       } else {
-        const yrA = a.birthDateYear ? Number(a.birthDateYear) : 0;
-        const yrB = b.birthDateYear ? Number(b.birthDateYear) : 0;
-        res = yrA - yrB;
+        res = Number(a.birthDateDay) - Number(b.birthDateDay);
       }
     }
     return guestsSortDirection === 'asc' ? res : -res;
