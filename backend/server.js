@@ -1,12 +1,23 @@
 import express from 'express';
 import cors from 'cors';
 import db, { initializeDB } from './database.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve React production build
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Serve root vanilla folder on /vanilla route
+app.use('/vanilla', express.static(path.join(__dirname, '../')));
 
 // Initialize the database
 initializeDB();
@@ -326,9 +337,17 @@ app.delete('/api/requests/:id', (req, res) => {
     }
 });
 
+// Fallback for React Router (Single Page Application routing)
+app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/vanilla')) {
+        return next();
+    }
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
 // ========================
 // START SERVER
 // ========================
 app.listen(PORT, () => {
-    console.log(\`Server is running on http://localhost:\${PORT}\`);
+    console.log(`Server is running on http://localhost:${PORT}`);
 });

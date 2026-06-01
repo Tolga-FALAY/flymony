@@ -1,35 +1,212 @@
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
-
-const handleResponse = async (r) => {
-    if (!r.ok) {
-        const err = await r.json();
-        throw new Error(err.error || 'Bir hata oluştu');
-    }
-    return r.json();
-};
+import { db } from './firebase';
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc 
+} from 'firebase/firestore';
 
 export const api = {
-    // Artists
-    getArtists: () => fetch(`${API_BASE}/artists`).then(handleResponse),
-    createArtist: (data) => fetch(`${API_BASE}/artists`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    updateArtist: (id, data) => fetch(`${API_BASE}/artists/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    deleteArtist: (id) => fetch(`${API_BASE}/artists/${id}`, { method: 'DELETE' }).then(handleResponse),
+  // ========================
+  // ARTISTS API
+  // ========================
+  getArtists: async () => {
+    const querySnapshot = await getDocs(collection(db, "artists"));
+    const list = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      list.push({
+        ArtistID: Number(doc.id),
+        ArtistName: data.ArtistName
+      });
+    });
+    return list;
+  },
+  
+  createArtist: async (data) => {
+    const id = String(Date.now());
+    await setDoc(doc(db, "artists", id), {
+      ArtistName: data.ArtistName
+    });
+    return { ArtistID: Number(id), ArtistName: data.ArtistName };
+  },
+  
+  updateArtist: async (id, data) => {
+    await updateDoc(doc(db, "artists", String(id)), {
+      ArtistName: data.ArtistName
+    });
+    return { message: 'Artist updated' };
+  },
+  
+  deleteArtist: async (id) => {
+    await deleteDoc(doc(db, "artists", String(id)));
+    return { message: 'Artist deleted' };
+  },
 
-    // Songs
-    getSongs: () => fetch(`${API_BASE}/songs`).then(handleResponse),
-    createSong: (data) => fetch(`${API_BASE}/songs`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    updateSong: (id, data) => fetch(`${API_BASE}/songs/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    deleteSong: (id) => fetch(`${API_BASE}/songs/${id}`, { method: 'DELETE' }).then(handleResponse),
+  // ========================
+  // SONGS API
+  // ========================
+  getSongs: async () => {
+    // Fetch all artists to resolve names in memory
+    const artistsSnapshot = await getDocs(collection(db, "artists"));
+    const artistsMap = {};
+    artistsSnapshot.forEach((doc) => {
+      artistsMap[doc.id] = doc.data().ArtistName;
+    });
 
-    // Guests
-    getGuests: () => fetch(`${API_BASE}/guests`).then(handleResponse),
-    createGuest: (data) => fetch(`${API_BASE}/guests`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    updateGuest: (id, data) => fetch(`${API_BASE}/guests/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    deleteGuest: (id) => fetch(`${API_BASE}/guests/${id}`, { method: 'DELETE' }).then(handleResponse),
+    const songsSnapshot = await getDocs(collection(db, "songs"));
+    const list = [];
+    songsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const artistIds = data.ArtistIDs || [];
+      const artistNames = artistIds.map(aid => artistsMap[String(aid)]).filter(Boolean).join(", ");
+      list.push({
+        SongID: Number(doc.id),
+        SongTitle: data.SongTitle,
+        Duration: data.Duration || "",
+        ArtistIDs: artistIds.map(Number),
+        ArtistNames: artistNames || "-"
+      });
+    });
+    return list;
+  },
+  
+  createSong: async (data) => {
+    const id = String(Date.now());
+    await setDoc(doc(db, "songs", id), {
+      SongTitle: data.SongTitle,
+      Duration: data.Duration || "",
+      ArtistIDs: (data.ArtistIDs || []).map(Number)
+    });
+    return { SongID: Number(id), message: 'Song created successfully' };
+  },
+  
+  updateSong: async (id, data) => {
+    await updateDoc(doc(db, "songs", String(id)), {
+      SongTitle: data.SongTitle,
+      Duration: data.Duration || "",
+      ArtistIDs: (data.ArtistIDs || []).map(Number)
+    });
+    return { message: 'Song updated successfully' };
+  },
+  
+  deleteSong: async (id) => {
+    await deleteDoc(doc(db, "songs", String(id)));
+    return { message: 'Song deleted' };
+  },
 
-    // Requests
-    getRequests: () => fetch(`${API_BASE}/requests`).then(handleResponse),
-    createRequest: (data) => fetch(`${API_BASE}/requests`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    updateRequest: (id, data) => fetch(`${API_BASE}/requests/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }).then(handleResponse),
-    deleteRequest: (id) => fetch(`${API_BASE}/requests/${id}`, { method: 'DELETE' }).then(handleResponse),
+  // ========================
+  // GUESTS API
+  // ========================
+  getGuests: async () => {
+    const querySnapshot = await getDocs(collection(db, "guests"));
+    const list = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const firstName = data.FirstName || "";
+      const lastName = data.LastName || "";
+      list.push({
+        GuestID: Number(doc.id),
+        FirstName: firstName,
+        LastName: lastName,
+        FullName: `${firstName} ${lastName}`.trim(),
+        PhoneNumber: data.PhoneNumber || "",
+        InstagramLink: data.InstagramLink || ""
+      });
+    });
+    return list;
+  },
+  
+  createGuest: async (data) => {
+    const id = String(Date.now());
+    await setDoc(doc(db, "guests", id), {
+      FirstName: data.FirstName,
+      LastName: data.LastName,
+      PhoneNumber: data.PhoneNumber || "",
+      InstagramLink: data.InstagramLink || ""
+    });
+    return { GuestID: Number(id), message: 'Guest created successfully' };
+  },
+  
+  updateGuest: async (id, data) => {
+    await updateDoc(doc(db, "guests", String(id)), {
+      FirstName: data.FirstName,
+      LastName: data.LastName,
+      PhoneNumber: data.PhoneNumber || "",
+      InstagramLink: data.InstagramLink || ""
+    });
+    return { message: 'Guest updated successfully' };
+  },
+  
+  deleteGuest: async (id) => {
+    await deleteDoc(doc(db, "guests", String(id)));
+    return { message: 'Guest deleted' };
+  },
+
+  // ========================
+  // REQUESTS API
+  // ========================
+  getRequests: async () => {
+    // Fetch all guests to resolve names in memory
+    const guestsSnapshot = await getDocs(collection(db, "guests"));
+    const guestsMap = {};
+    guestsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      guestsMap[doc.id] = `${data.FirstName} ${data.LastName}`.trim();
+    });
+
+    // Fetch all songs to resolve titles in memory
+    const songsSnapshot = await getDocs(collection(db, "songs"));
+    const songsMap = {};
+    songsSnapshot.forEach((doc) => {
+      songsMap[doc.id] = doc.data().SongTitle;
+    });
+
+    const requestsSnapshot = await getDocs(collection(db, "requests"));
+    const list = [];
+    requestsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const guestIds = data.GuestIDs || [];
+      const songId = String(data.SongID);
+      const fullNames = guestIds.map(gid => guestsMap[String(gid)]).filter(Boolean).join(", ");
+      
+      list.push({
+        RequestID: Number(doc.id),
+        RequestDate: data.RequestDate || new Date().toISOString(),
+        SongID: Number(data.SongID),
+        SongTitle: songsMap[songId] || "Bilinmeyen Şarkı",
+        GuestIDs: guestIds.map(Number),
+        FullNames: fullNames || "-"
+      });
+    });
+    
+    // Sort by Date descending (newest first)
+    list.sort((a, b) => new Date(b.RequestDate) - new Date(a.RequestDate));
+    return list;
+  },
+  
+  createRequest: async (data) => {
+    const id = String(Date.now());
+    await setDoc(doc(db, "requests", id), {
+      SongID: Number(data.SongID),
+      GuestIDs: (data.GuestIDs || []).map(Number),
+      RequestDate: new Date().toISOString()
+    });
+    return { RequestID: Number(id), message: 'İstek başarıyla oluşturuldu' };
+  },
+  
+  updateRequest: async (id, data) => {
+    await updateDoc(doc(db, "requests", String(id)), {
+      SongID: Number(data.SongID),
+      GuestIDs: (data.GuestIDs || []).map(Number)
+    });
+    return { message: 'İstek başarıyla güncellendi' };
+  },
+  
+  deleteRequest: async (id) => {
+    await deleteDoc(doc(db, "requests", String(id)));
+    return { message: 'Request deleted' };
+  }
 };

@@ -1,28 +1,107 @@
-// LocalStorage tabanlı veritabanı simülasyonu
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getFirestore, 
+  collection, 
+  getDocs, 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Your Firebase Config embedded directly for zero-install and direct file:/// support
+const firebaseConfig = {
+  apiKey: "AIzaSyDO05wXUd6u3yBJy_z17LMe0nNq81kzoKw",
+  authDomain: "flymony2026.firebaseapp.com",
+  projectId: "flymony2026",
+  storageBucket: "flymony2026.firebasestorage.app",
+  messagingSenderId: "581166285049",
+  appId: "1:581166285049:web:b5c2ebc6b2305c80ad2228",
+  measurementId: "G-RJMF0R9BVK"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// LocalStorage database is now migrated to Firebase Firestore in-memory simulation
 const DB = {
-  artists: JSON.parse(localStorage.getItem('artists')) || [],
-  songs: JSON.parse(localStorage.getItem('songs')) || [],
-  guests: JSON.parse(localStorage.getItem('guests')) || [],
-  requests: JSON.parse(localStorage.getItem('requests')) || [],
-  song_artists: JSON.parse(localStorage.getItem('song_artists')) || [],
+  artists: [],
+  songs: [],
+  guests: [],
+  requests: [],
+  song_artists: [],
 
-  save: function() {
-    localStorage.setItem('artists', JSON.stringify(this.artists));
-    localStorage.setItem('songs', JSON.stringify(this.songs));
-    localStorage.setItem('guests', JSON.stringify(this.guests));
-    localStorage.setItem('requests', JSON.stringify(this.requests));
-    localStorage.setItem('song_artists', JSON.stringify(this.song_artists));
-  },
+  // Load all tables from Firestore and construct in-memory lists
+  loadFromFirestore: async function() {
+    try {
+      // 1. Fetch artists
+      const artistsSnapshot = await getDocs(collection(db, "artists"));
+      this.artists = [];
+      artistsSnapshot.forEach((doc) => {
+        this.artists.push({ 
+          id: Number(doc.id), 
+          name: doc.data().ArtistName 
+        });
+      });
 
-  getId: function(table) {
-    const records = this[table];
-    return records.length > 0 ? Math.max(...records.map(r => r.id)) + 1 : 1;
+      // 2. Fetch guests
+      const guestsSnapshot = await getDocs(collection(db, "guests"));
+      this.guests = [];
+      guestsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        this.guests.push({
+          id: Number(doc.id),
+          firstName: data.FirstName || "",
+          lastName: data.LastName || "",
+          fullName: `${data.FirstName || ""} ${data.LastName || ""}`.trim(),
+          phone: data.PhoneNumber || "",
+          instagram: data.InstagramLink || ""
+        });
+      });
+
+      // 3. Fetch songs
+      const songsSnapshot = await getDocs(collection(db, "songs"));
+      this.songs = [];
+      this.song_artists = [];
+      songsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        const songId = Number(doc.id);
+        this.songs.push({
+          id: songId,
+          title: data.SongTitle,
+          duration: data.Duration || ""
+        });
+        const artistIds = data.ArtistIDs || [];
+        artistIds.forEach(aid => {
+          this.song_artists.push({ songId, artistId: Number(aid) });
+        });
+      });
+
+      // 4. Fetch requests
+      const requestsSnapshot = await getDocs(collection(db, "requests"));
+      this.requests = [];
+      requestsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        const guestIds = data.GuestIDs || [];
+        this.requests.push({
+          id: Number(doc.id),
+          songId: Number(data.SongID),
+          guestIds: guestIds.map(Number),
+          guestId: guestIds[0] || null, // backward compatibility
+          date: data.RequestDate ? new Date(data.RequestDate).getTime() : Date.now()
+        });
+      });
+    } catch (err) {
+      console.error("Firestore loading error:", err);
+    }
   }
 };
 
 // Sayfa yüklendiğinde tabloları oluştur
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
+  await DB.loadFromFirestore();
   renderAllTables();
   populateDropdowns();
   setupArtistSearch();
@@ -52,6 +131,7 @@ function openModal(modalId) {
     populateDropdowns();
   }
 }
+
 function closeModal(modalId) {
   document.getElementById(modalId).style.display = 'none';
   // Formları temizle
@@ -166,7 +246,7 @@ function renderArtists() {
   });
 }
 
-function saveArtist(e) {
+async function saveArtist(e) {
   e.preventDefault();
   const id = document.getElementById('artistID').value;
   const name = document.getElementById('artistName').value.trim();
@@ -182,16 +262,17 @@ function saveArtist(e) {
     return;
   }
 
-  if (id) {
-    const artist = DB.artists.find(a => a.id == id);
-    if (artist) artist.name = name;
-  } else {
-    DB.artists.push({ id: DB.getId('artists'), name });
+  try {
+    const artistId = id || String(Date.now());
+    await setDoc(doc(db, "artists", artistId), {
+      ArtistName: name
+    });
+    closeModal('artistModal');
+    await DB.loadFromFirestore();
+    renderAllTables();
+  } catch (err) {
+    alert("Kaydetme hatası: " + err.message);
   }
-
-  DB.save();
-  closeModal('artistModal');
-  renderAllTables();
 }
 
 function editArtist(id) {
@@ -203,12 +284,15 @@ function editArtist(id) {
   openModal('artistModal');
 }
 
-function deleteArtist(id) {
+async function deleteArtist(id) {
   if (confirm('Emin misiniz?')) {
-    DB.artists = DB.artists.filter(a => a.id != id);
-    DB.song_artists = DB.song_artists.filter(sa => sa.artistId != id);
-    DB.save();
-    renderAllTables();
+    try {
+      await deleteDoc(doc(db, "artists", String(id)));
+      await DB.loadFromFirestore();
+      renderAllTables();
+    } catch (err) {
+      alert("Silme hatası: " + err.message);
+    }
   }
 }
 
@@ -232,7 +316,7 @@ function renderGuests() {
   });
 }
 
-function saveGuest(e) {
+async function saveGuest(e) {
   e.preventDefault();
   const id = document.getElementById('guestID').value;
   const firstName = document.getElementById('guestFirstName').value.trim();
@@ -254,21 +338,20 @@ function saveGuest(e) {
     return;
   }
 
-  if (id) {
-    const guest = DB.guests.find(g => g.id == id);
-    if (guest) {
-      guest.firstName = firstName;
-      guest.lastName = lastName;
-      guest.phone = phone;
-      guest.instagram = instagram;
-    }
-  } else {
-    DB.guests.push({ id: DB.getId('guests'), firstName, lastName, phone, instagram });
+  try {
+    const guestId = id || String(Date.now());
+    await setDoc(doc(db, "guests", guestId), {
+      FirstName: firstName,
+      LastName: lastName,
+      PhoneNumber: phone || "",
+      InstagramLink: instagram || ""
+    });
+    closeModal('guestModal');
+    await DB.loadFromFirestore();
+    renderAllTables();
+  } catch (err) {
+    alert("Kaydetme hatası: " + err.message);
   }
-
-  DB.save();
-  closeModal('guestModal');
-  renderAllTables();
 }
 
 function editGuest(id) {
@@ -283,12 +366,15 @@ function editGuest(id) {
   openModal('guestModal');
 }
 
-function deleteGuest(id) {
+async function deleteGuest(id) {
   if (confirm('Emin misiniz?')) {
-    DB.guests = DB.guests.filter(g => g.id != id);
-    DB.requests = DB.requests.filter(r => r.guestId != id);
-    DB.save();
-    renderAllTables();
+    try {
+      await deleteDoc(doc(db, "guests", String(id)));
+      await DB.loadFromFirestore();
+      renderAllTables();
+    } catch (err) {
+      alert("Silme hatası: " + err.message);
+    }
   }
 }
 
@@ -314,7 +400,7 @@ function renderSongs() {
   });
 }
 
-function saveSong(e) {
+async function saveSong(e) {
   e.preventDefault();
   const id = document.getElementById('songID').value;
   const title = document.getElementById('songTitle').value.trim();
@@ -333,27 +419,19 @@ function saveSong(e) {
     return;
   }
 
-  let songId = id;
-  if (id) {
-    const song = DB.songs.find(s => s.id == id);
-    if (song) {
-      song.title = title;
-    }
-    // Eski ilişkileri sil
-    DB.song_artists = DB.song_artists.filter(sa => sa.songId != id);
-  } else {
-    songId = DB.getId('songs');
-    DB.songs.push({ id: songId, title });
+  try {
+    const songId = id || String(Date.now());
+    await setDoc(doc(db, "songs", songId), {
+      SongTitle: title,
+      Duration: "",
+      ArtistIDs: selectedArtistIds.map(Number)
+    });
+    closeModal('songModal');
+    await DB.loadFromFirestore();
+    renderAllTables();
+  } catch (err) {
+    alert("Kaydetme hatası: " + err.message);
   }
-
-  // Yeni ilişkileri ekle
-  selectedArtistIds.forEach(artistId => {
-    DB.song_artists.push({ songId: parseInt(songId), artistId });
-  });
-
-  DB.save();
-  closeModal('songModal');
-  renderAllTables();
 }
 
 function editSong(id) {
@@ -364,9 +442,8 @@ function editSong(id) {
   document.getElementById('songTitle').value = song.title;
   
   document.getElementById('songModalTitle').innerText = 'Şarkı Düzenle';
-  openModal('songModal'); // openModal calls populateDropdowns, creating the checkboxes
+  openModal('songModal');
   
-  // Set checked states after checkboxes are generated
   const artistIds = DB.song_artists.filter(sa => sa.songId == id).map(sa => sa.artistId);
   const checkboxes = document.querySelectorAll('input[name="songArtists"]');
   checkboxes.forEach(cb => {
@@ -374,13 +451,15 @@ function editSong(id) {
   });
 }
 
-function deleteSong(id) {
+async function deleteSong(id) {
   if (confirm('Emin misiniz?')) {
-    DB.songs = DB.songs.filter(s => s.id != id);
-    DB.song_artists = DB.song_artists.filter(sa => sa.songId != id);
-    DB.requests = DB.requests.filter(r => r.songId != id);
-    DB.save();
-    renderAllTables();
+    try {
+      await deleteDoc(doc(db, "songs", String(id)));
+      await DB.loadFromFirestore();
+      renderAllTables();
+    } catch (err) {
+      alert("Silme hatası: " + err.message);
+    }
   }
 }
 
@@ -416,7 +495,7 @@ function renderRequests() {
   });
 }
 
-function saveRequest(e) {
+async function saveRequest(e) {
   e.preventDefault();
   const id = document.getElementById('requestID').value;
   const guestIDsVal = document.getElementById('reqGuestID').value;
@@ -431,23 +510,7 @@ function saveRequest(e) {
     return;
   }
 
-  // Yeni istek girişi yaparken, seçilen şarkı ile daha önce kayıt yapıldıysa kontrol et
-  if (!id) {
-    const existingReq = DB.requests.find(r => r.songId === songId);
-    if (existingReq) {
-      const goToExisting = window.confirm(
-        "Seçilen şarkı ile daha önce kayıt yapılmış. Daha önce yapılan kayda gidilsin mi?"
-      );
-      if (goToExisting) {
-        editRequest(existingReq.id);
-      }
-      return; // Kayda izin verme
-    }
-  }
-
   const guestIds = guestIDsVal.split(',').map(Number);
-
-  // Check duplicate request
   const isDuplicate = DB.requests.some(req => {
     if (req.id == id) return false;
     if (req.songId !== songId) return false;
@@ -461,33 +524,32 @@ function saveRequest(e) {
     return;
   }
 
-  if (id) {
-    const req = DB.requests.find(r => r.id == id);
-    if (req) {
-      req.guestIds = guestIds;
-      req.guestId = guestIds[0]; // backward compatibility
-      req.songId = songId;
-    }
-  } else {
-    DB.requests.push({
-      id: DB.getId('requests'),
-      guestIds,
-      guestId: guestIds[0], // backward compatibility
-      songId,
-      date: Date.now()
+  try {
+    const requestId = id || String(Date.now());
+    await setDoc(doc(db, "requests", requestId), {
+      SongID: Number(songId),
+      GuestIDs: guestIds.map(Number),
+      RequestDate: id 
+        ? (DB.requests.find(r => r.id == id)?.date ? new Date(DB.requests.find(r => r.id == id).date).toISOString() : new Date().toISOString()) 
+        : new Date().toISOString()
     });
+    closeModal('requestModal');
+    await DB.loadFromFirestore();
+    renderAllTables();
+  } catch (err) {
+    alert("Kaydetme hatası: " + err.message);
   }
-
-  DB.save();
-  closeModal('requestModal');
-  renderAllTables();
 }
 
-function deleteRequest(id) {
+async function deleteRequest(id) {
   if (confirm('Emin misiniz?')) {
-    DB.requests = DB.requests.filter(r => r.id != id);
-    DB.save();
-    renderAllTables();
+    try {
+      await deleteDoc(doc(db, "requests", String(id)));
+      await DB.loadFromFirestore();
+      renderAllTables();
+    } catch (err) {
+      alert("Silme hatası: " + err.message);
+    }
   }
 }
 
@@ -502,7 +564,7 @@ function editRequest(id) {
   document.getElementById('reqSongID').value = req.songId;
 
   document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
-  openModal('requestModal'); // openModal calls populateDropdowns
+  openModal('requestModal');
 
   // Şarkı listbox'ından seç
   selectListboxItem('reqSongID', 'songListboxContainer', req.songId);
@@ -633,3 +695,21 @@ function toggleListboxItem(hiddenInputId, containerId, id) {
     }
   }
 }
+
+// Bind ES6 module functions to the global window object for HTML inline onClick support
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.saveArtist = saveArtist;
+window.editArtist = editArtist;
+window.deleteArtist = deleteArtist;
+window.saveGuest = saveGuest;
+window.editGuest = editGuest;
+window.deleteGuest = deleteGuest;
+window.saveSong = saveSong;
+window.editSong = editSong;
+window.deleteSong = deleteSong;
+window.saveRequest = saveRequest;
+window.deleteRequest = deleteRequest;
+window.editRequest = editRequest;
+window.toggleListboxItem = toggleListboxItem;
+window.selectListboxItem = selectListboxItem;
