@@ -76,9 +76,9 @@ export default function Artists() {
           <tbody>
             {artists.map(artist => (
               <tr key={artist.ArtistID}>
-                <td>{artist.ArtistID}</td>
-                <td>{artist.ArtistName}</td>
-                <td className="action-btns">
+                <td data-label="ID">{artist.ArtistID}</td>
+                <td data-label="Sanatçı Adı">{artist.ArtistName}</td>
+                <td data-label="İşlemler" className="action-btns">
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(artist)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(artist.ArtistID)}>Sil</button>
                 </td>

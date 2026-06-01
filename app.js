@@ -155,9 +155,9 @@ function renderArtists() {
   DB.artists.forEach(artist => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${artist.id}</td>
-      <td>${artist.name}</td>
-      <td class="action-btns">
+      <td data-label="ID">${artist.id}</td>
+      <td data-label="Sanatçı Adı">${artist.name}</td>
+      <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editArtist(${artist.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteArtist(${artist.id})">Sil</button>
       </td>
@@ -220,10 +220,10 @@ function renderGuests() {
   DB.guests.forEach(guest => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${guest.firstName} ${guest.lastName}</td>
-      <td>${guest.phone || '-'}</td>
-      <td>${guest.instagram ? `<a href="${guest.instagram}" target="_blank">Profil</a>` : '-'}</td>
-      <td class="action-btns">
+      <td data-label="Ad Soyad">${guest.firstName} ${guest.lastName}</td>
+      <td data-label="Telefon">${guest.phone || '-'}</td>
+      <td data-label="Instagram">${guest.instagram ? `<a href="${guest.instagram}" target="_blank">Profil</a>` : '-'}</td>
+      <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteGuest(${guest.id})">Sil</button>
       </td>
@@ -303,9 +303,9 @@ function renderSongs() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${song.title}</td>
-      <td>${artistNames || '-'}</td>
-      <td class="action-btns">
+      <td data-label="Şarkı Adı">${song.title}</td>
+      <td data-label="Sanatçılar">${artistNames || '-'}</td>
+      <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSong(${song.id})">Sil</button>
       </td>
@@ -404,10 +404,10 @@ function renderRequests() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${dateStr}</td>
-      <td>${guestNames}</td>
-      <td>${song.title}</td>
-      <td class="action-btns">
+      <td data-label="Tarih">${dateStr}</td>
+      <td data-label="Misafir">${guestNames}</td>
+      <td data-label="İstenen Şarkı">${song.title}</td>
+      <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editRequest(${req.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteRequest(${req.id})">Sil</button>
       </td>

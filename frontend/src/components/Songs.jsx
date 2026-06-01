@@ -120,10 +120,10 @@ export default function Songs() {
           <tbody>
             {songs.map(song => (
               <tr key={song.SongID}>
-                <td>{song.SongTitle}</td>
-                <td>{song.ArtistNames || '-'}</td>
-                <td>{song.Duration || '-'}</td>
-                <td className="action-btns">
+                <td data-label="Şarkı Adı">{song.SongTitle}</td>
+                <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
+                <td data-label="Süre">{song.Duration || '-'}</td>
+                <td data-label="İşlemler" className="action-btns">
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
                 </td>

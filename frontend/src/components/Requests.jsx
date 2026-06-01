@@ -127,10 +127,10 @@ export default function Requests() {
               const dateObj = new Date(req.RequestDate + 'Z'); // SQLite UTC time
               return (
                 <tr key={req.RequestID}>
-                  <td>{dateObj.toLocaleString('tr-TR')}</td>
-                  <td>{req.FullNames || '-'}</td>
-                  <td>{req.SongTitle}</td>
-                  <td className="action-btns">
+                  <td data-label="Tarih / Saat">{dateObj.toLocaleString('tr-TR')}</td>
+                  <td data-label="Misafir">{req.FullNames || '-'}</td>
+                  <td data-label="İstenen Şarkı">{req.SongTitle}</td>
+                  <td data-label="İşlemler" className="action-btns">
                     <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
                   </td>

@@ -91,14 +91,14 @@ export default function Guests() {
           <tbody>
             {guests.map(guest => (
               <tr key={guest.GuestID}>
-                <td>{guest.FullName}</td>
-                <td>{guest.PhoneNumber}</td>
-                <td>
-                  {guest.InstagramLink && (
+                <td data-label="Ad Soyad">{guest.FullName}</td>
+                <td data-label="Telefon">{guest.PhoneNumber || '-'}</td>
+                <td data-label="Instagram">
+                  {guest.InstagramLink ? (
                     <a href={guest.InstagramLink} target="_blank" rel="noreferrer">Profil</a>
-                  )}
+                  ) : '-'}
                 </td>
-                <td className="action-btns">
+                <td data-label="İşlemler" className="action-btns">
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(guest)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(guest.GuestID)}>Sil</button>
                 </td>
