@@ -135,7 +135,7 @@ export default function Songs() {
   return (
     <div>
       <div className="section-header">
-        <h2>Şarkılar</h2>
+        <h2>Şarkılar ({songs.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni Şarkı
         </button>

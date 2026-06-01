@@ -83,7 +83,7 @@ export default function Artists() {
   return (
     <div>
       <div className="section-header">
-        <h2>Sanatçılar</h2>
+        <h2>Sanatçılar ({artists.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni Sanatçı
         </button>

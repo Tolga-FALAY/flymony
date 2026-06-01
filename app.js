@@ -284,6 +284,10 @@ function populateDropdowns(guestFilter = '', songFilter = '') {
 
 // ----------------- ARTISTS -----------------
 function renderArtists() {
+  const artistsTitleEl = document.getElementById('artistsTitle');
+  if (artistsTitleEl) {
+    artistsTitleEl.innerText = `Sanatçılar (${DB.artists.length})`;
+  }
   const tbody = document.querySelector('#artistsTable tbody');
   tbody.innerHTML = DB.artists.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
@@ -364,6 +368,10 @@ async function deleteArtist(id) {
 
 // ----------------- GUESTS -----------------
 function renderGuests() {
+  const guestsTitleEl = document.getElementById('guestsTitle');
+  if (guestsTitleEl) {
+    guestsTitleEl.innerText = `Misafirler (${DB.guests.length})`;
+  }
   const tbody = document.querySelector('#guestsTable tbody');
   tbody.innerHTML = DB.guests.length === 0 ? '<tr><td colspan="6" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
@@ -728,6 +736,10 @@ async function deleteGuest(id) {
 
 // ----------------- SONGS -----------------
 function renderSongs() {
+  const songsTitleEl = document.getElementById('songsTitle');
+  if (songsTitleEl) {
+    songsTitleEl.innerText = `Şarkılar (${DB.songs.length})`;
+  }
   const tbody = document.querySelector('#songsTable tbody');
   tbody.innerHTML = DB.songs.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
@@ -856,6 +868,10 @@ async function deleteSong(id) {
 
 // ----------------- REQUESTS -----------------
 function renderRequests() {
+  const reqTitleEl = document.getElementById('requestsTitle');
+  if (reqTitleEl) {
+    reqTitleEl.innerText = `Şarkı İstekleri (${DB.requests.length})`;
+  }
   const tbody = document.querySelector('#requestsTable tbody');
   tbody.innerHTML = DB.requests.length === 0 ? '<tr><td colspan="5" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   

@@ -160,7 +160,7 @@ export default function Requests() {
   return (
     <div>
       <div className="section-header">
-        <h2>Şarkı İstekleri</h2>
+        <h2>Şarkı İstekleri ({requests.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni İstek Ekle
         </button>

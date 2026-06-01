@@ -253,7 +253,7 @@ export default function Guests() {
   return (
     <div>
       <div className="section-header">
-        <h2>Misafirler</h2>
+        <h2>Misafirler ({guests.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni Misafir
         </button>
