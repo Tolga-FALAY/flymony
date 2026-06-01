@@ -22,6 +22,8 @@ let artistsSortKey = 'name';
 let artistsSortDirection = 'asc';
 let guestsSortKey = 'name';
 let guestsSortDirection = 'asc';
+let vanillaActivePasteSection = 'profile';
+
 
 
 const DB = {
@@ -124,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   populateDropdowns();
   setupArtistSearch();
   setupDropdownFilters();
+  setupVanillaGlobalPasteListener();
 });
 
 // Tab Geçişleri
@@ -589,15 +592,18 @@ async function handleVanillaGalleryUpload(input) {
   input.value = ""; // reset file input
 }
 async function pasteVanillaProfilePicture() {
+  vanillaActivePasteSection = 'profile';
   try {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error("Tarayıcı doğrudan pano okuma özelliğini desteklemiyor.");
+    }
     const clipboardItems = await navigator.clipboard.read();
     let found = false;
     for (const item of clipboardItems) {
       for (const type of item.types) {
         if (type.startsWith('image/')) {
           const blob = await item.getType(type);
-          const file = new File([blob], "pasted-profile.png", { type });
-          const compressedBase64 = await compressVanillaImage(file, 250, 250, 0.75);
+          const compressedBase64 = await compressVanillaImage(blob, 250, 250, 0.75);
           document.getElementById('guestProfilePicture').value = compressedBase64;
           renderVanillaProfilePreview();
           found = true;
@@ -607,23 +613,26 @@ async function pasteVanillaProfilePicture() {
       if (found) break;
     }
     if (!found) {
-      alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+      alert("Panoda doğrudan okunabilir bir görsel bulunamadı.\n\nEğer Windows Explorer'dan bir dosya kopyaladıysanız, lütfen modal açıkken klavyenizden CTRL+V tuşlarına basarak yapıştırın!");
     }
   } catch (err) {
-    alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+    alert("Doğrudan pano okuma engellendi (Güvenlik Kısıtlaması).\n\nLütfen görselinizi yapıştırmak için klavyenizden CTRL+V kısayolunu kullanın!");
   }
 }
 
 async function pasteVanillaGalleryPhoto() {
+  vanillaActivePasteSection = 'gallery';
   try {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error("Tarayıcı doğrudan pano okuma özelliğini desteklemiyor.");
+    }
     const clipboardItems = await navigator.clipboard.read();
     let found = false;
     for (const item of clipboardItems) {
       for (const type of item.types) {
         if (type.startsWith('image/')) {
           const blob = await item.getType(type);
-          const file = new File([blob], "pasted-gallery.png", { type });
-          const compressedBase64 = await compressVanillaImage(file, 800, 800, 0.7);
+          const compressedBase64 = await compressVanillaImage(blob, 800, 800, 0.7);
           
           const photosInput = document.getElementById('guestPhotos');
           let currentPhotos = [];
@@ -643,11 +652,57 @@ async function pasteVanillaGalleryPhoto() {
       if (found) break;
     }
     if (!found) {
-      alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+      alert("Panoda doğrudan okunabilir bir görsel bulunamadı.\n\nEğer Windows Explorer'dan bir dosya kopyaladıysanız, lütfen modal açıkken klavyenizden CTRL+V tuşlarına basarak yapıştırın!");
     }
   } catch (err) {
-    alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+    alert("Doğrudan pano okuma engellendi (Güvenlik Kısıtlaması).\n\nLütfen görselinizi yapıştırmak için klavyenizden CTRL+V kısayolunu kullanın!");
   }
+}
+
+function setupVanillaGlobalPasteListener() {
+  document.addEventListener('paste', async (event) => {
+    const guestModal = document.getElementById('guestModal');
+    if (!guestModal || guestModal.style.display === 'none') return;
+
+    // Do not hijack paste event if focus is in Notes textarea
+    if (document.activeElement && document.activeElement.id === 'guestNotes') {
+      return;
+    }
+
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+    let imageFile = null;
+    for (const item of items) {
+      if (item.type.indexOf('image') !== -1) {
+        imageFile = item.getAsFile();
+        break;
+      }
+    }
+
+    if (imageFile) {
+      event.preventDefault(); // prevent default paste behavior if any
+      try {
+        if (vanillaActivePasteSection === 'profile') {
+          const compressedBase64 = await compressVanillaImage(imageFile, 250, 250, 0.75);
+          document.getElementById('guestProfilePicture').value = compressedBase64;
+          renderVanillaProfilePreview();
+        } else if (vanillaActivePasteSection === 'gallery') {
+          const compressedBase64 = await compressVanillaImage(imageFile, 800, 800, 0.7);
+          const photosInput = document.getElementById('guestPhotos');
+          let currentPhotos = [];
+          try {
+            currentPhotos = JSON.parse(photosInput.value || "[]");
+          } catch(e) {
+            currentPhotos = [];
+          }
+          currentPhotos.push(compressedBase64);
+          photosInput.value = JSON.stringify(currentPhotos);
+          renderVanillaGalleryPreviews();
+        }
+      } catch (err) {
+        alert("Görsel yapıştırılırken hata oluştu: " + err.message);
+      }
+    }
+  });
 }
 
 function removeVanillaGalleryPhoto(index) {

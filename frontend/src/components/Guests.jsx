@@ -8,6 +8,9 @@ export default function Guests() {
 
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
+
+  // Paste section target configuration
+  const [activePasteSection, setActivePasteSection] = useState('profile');
   
   const [formData, setFormData] = useState({
     FirstName: '',
@@ -30,6 +33,47 @@ export default function Guests() {
   useEffect(() => {
     loadGuests();
   }, []);
+
+  useEffect(() => {
+    const handleGlobalPaste = async (event) => {
+      if (!isModalOpen) return;
+      if (document.activeElement && document.activeElement.name === 'Notes') {
+        return;
+      }
+      
+      const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+      let imageFile = null;
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          imageFile = item.getAsFile();
+          break;
+        }
+      }
+      
+      if (imageFile) {
+        event.preventDefault();
+        try {
+          if (activePasteSection === 'profile') {
+            const compressedBase64 = await compressImage(imageFile, 250, 250, 0.75);
+            setFormData(prev => ({ ...prev, ProfilePicture: compressedBase64 }));
+          } else if (activePasteSection === 'gallery') {
+            const compressedBase64 = await compressImage(imageFile, 800, 800, 0.7);
+            setFormData(prev => ({
+              ...prev,
+              Photos: [...prev.Photos, compressedBase64]
+            }));
+          }
+        } catch (err) {
+          alert("Görsel yapıştırılırken hata oluştu: " + err.message);
+        }
+      }
+    };
+    
+    document.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      document.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [isModalOpen, activePasteSection]);
 
   const loadGuests = async () => {
     const data = await api.getGuests();
@@ -157,15 +201,18 @@ export default function Guests() {
   };
 
   const pasteProfilePicture = async () => {
+    setActivePasteSection('profile');
     try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        throw new Error("Tarayıcı doğrudan pano okuma özelliğini desteklemiyor.");
+      }
       const clipboardItems = await navigator.clipboard.read();
       let found = false;
       for (const item of clipboardItems) {
         for (const type of item.types) {
           if (type.startsWith('image/')) {
             const blob = await item.getType(type);
-            const file = new File([blob], "pasted-profile.png", { type });
-            const compressedBase64 = await compressImage(file, 250, 250, 0.75);
+            const compressedBase64 = await compressImage(blob, 250, 250, 0.75);
             setFormData(prev => ({ ...prev, ProfilePicture: compressedBase64 }));
             found = true;
             break;
@@ -174,23 +221,26 @@ export default function Guests() {
         if (found) break;
       }
       if (!found) {
-        alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+        alert("Panoda doğrudan okunabilir bir görsel bulunamadı.\n\nEğer Windows Explorer'dan bir dosya kopyaladıysanız, lütfen modal açıkken klavyenizden CTRL+V tuşlarına basarak yapıştırın!");
       }
     } catch (err) {
-      alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+      alert("Doğrudan pano okuma engellendi (Güvenlik Kısıtlaması).\n\nLütfen görselinizi yapıştırmak için klavyenizden CTRL+V kısayolunu kullanın!");
     }
   };
 
   const pasteGalleryPhoto = async () => {
+    setActivePasteSection('gallery');
     try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        throw new Error("Tarayıcı doğrudan pano okuma özelliğini desteklemiyor.");
+      }
       const clipboardItems = await navigator.clipboard.read();
       let found = false;
       for (const item of clipboardItems) {
         for (const type of item.types) {
           if (type.startsWith('image/')) {
             const blob = await item.getType(type);
-            const file = new File([blob], "pasted-gallery.png", { type });
-            const compressedBase64 = await compressImage(file, 800, 800, 0.7);
+            const compressedBase64 = await compressImage(blob, 800, 800, 0.7);
             setFormData(prev => ({
               ...prev,
               Photos: [...prev.Photos, compressedBase64]
@@ -202,10 +252,10 @@ export default function Guests() {
         if (found) break;
       }
       if (!found) {
-        alert("Panoda geçerli bir görsel bulunamadı. Lütfen önce bir görsel kopyalayın (Copy Image).");
+        alert("Panoda doğrudan okunabilir bir görsel bulunamadı.\n\nEğer Windows Explorer'dan bir dosya kopyaladıysanız, lütfen modal açıkken klavyenizden CTRL+V tuşlarına basarak yapıştırın!");
       }
     } catch (err) {
-      alert("Panodan resim okunamadı. Lütfen pano izni verdiğinizden veya panoda bir resim olduğundan emin olun: " + err.message);
+      alert("Doğrudan pano okuma engellendi (Güvenlik Kısıtlaması).\n\nLütfen görselinizi yapıştırmak için klavyenizden CTRL+V kısayolunu kullanın!");
     }
   };
 
