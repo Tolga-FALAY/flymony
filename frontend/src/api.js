@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
 const handleResponse = async (r) => {
     if (!r.ok) {
