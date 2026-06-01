@@ -1,14 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
 // Your Firebase Config embedded directly for zero-install and direct file:/// support
 const firebaseConfig = {
   apiKey: "AIzaSyDO05wXUd6u3yBJy_z17LMe0nNq81kzoKw",
@@ -20,11 +9,11 @@ const firebaseConfig = {
   measurementId: "G-RJMF0R9BVK"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize Firebase using classic global compat wrapper (supports direct file:/// loading)
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore(app);
 
-// LocalStorage database is now migrated to Firebase Firestore in-memory simulation
+// In-memory lists mapped dynamically from Firestore
 const DB = {
   artists: [],
   songs: [],
@@ -36,7 +25,7 @@ const DB = {
   loadFromFirestore: async function() {
     try {
       // 1. Fetch artists
-      const artistsSnapshot = await getDocs(collection(db, "artists"));
+      const artistsSnapshot = await db.collection("artists").get();
       this.artists = [];
       artistsSnapshot.forEach((doc) => {
         this.artists.push({ 
@@ -46,7 +35,7 @@ const DB = {
       });
 
       // 2. Fetch guests
-      const guestsSnapshot = await getDocs(collection(db, "guests"));
+      const guestsSnapshot = await db.collection("guests").get();
       this.guests = [];
       guestsSnapshot.forEach((doc) => {
         const data = doc.data();
@@ -61,7 +50,7 @@ const DB = {
       });
 
       // 3. Fetch songs
-      const songsSnapshot = await getDocs(collection(db, "songs"));
+      const songsSnapshot = await db.collection("songs").get();
       this.songs = [];
       this.song_artists = [];
       songsSnapshot.forEach((doc) => {
@@ -79,7 +68,7 @@ const DB = {
       });
 
       // 4. Fetch requests
-      const requestsSnapshot = await getDocs(collection(db, "requests"));
+      const requestsSnapshot = await db.collection("requests").get();
       this.requests = [];
       requestsSnapshot.forEach((doc) => {
         const data = doc.data();
@@ -264,7 +253,7 @@ async function saveArtist(e) {
 
   try {
     const artistId = id || String(Date.now());
-    await setDoc(doc(db, "artists", artistId), {
+    await db.collection("artists").doc(artistId).set({
       ArtistName: name
     });
     closeModal('artistModal');
@@ -287,7 +276,7 @@ function editArtist(id) {
 async function deleteArtist(id) {
   if (confirm('Emin misiniz?')) {
     try {
-      await deleteDoc(doc(db, "artists", String(id)));
+      await db.collection("artists").doc(String(id)).delete();
       await DB.loadFromFirestore();
       renderAllTables();
     } catch (err) {
@@ -340,7 +329,7 @@ async function saveGuest(e) {
 
   try {
     const guestId = id || String(Date.now());
-    await setDoc(doc(db, "guests", guestId), {
+    await db.collection("guests").doc(guestId).set({
       FirstName: firstName,
       LastName: lastName,
       PhoneNumber: phone || "",
@@ -369,7 +358,7 @@ function editGuest(id) {
 async function deleteGuest(id) {
   if (confirm('Emin misiniz?')) {
     try {
-      await deleteDoc(doc(db, "guests", String(id)));
+      await db.collection("guests").doc(String(id)).delete();
       await DB.loadFromFirestore();
       renderAllTables();
     } catch (err) {
@@ -421,7 +410,7 @@ async function saveSong(e) {
 
   try {
     const songId = id || String(Date.now());
-    await setDoc(doc(db, "songs", songId), {
+    await db.collection("songs").doc(songId).set({
       SongTitle: title,
       Duration: "",
       ArtistIDs: selectedArtistIds.map(Number)
@@ -454,7 +443,7 @@ function editSong(id) {
 async function deleteSong(id) {
   if (confirm('Emin misiniz?')) {
     try {
-      await deleteDoc(doc(db, "songs", String(id)));
+      await db.collection("songs").doc(String(id)).delete();
       await DB.loadFromFirestore();
       renderAllTables();
     } catch (err) {
@@ -526,7 +515,7 @@ async function saveRequest(e) {
 
   try {
     const requestId = id || String(Date.now());
-    await setDoc(doc(db, "requests", requestId), {
+    await db.collection("requests").doc(requestId).set({
       SongID: Number(songId),
       GuestIDs: guestIds.map(Number),
       RequestDate: id 
@@ -544,7 +533,7 @@ async function saveRequest(e) {
 async function deleteRequest(id) {
   if (confirm('Emin misiniz?')) {
     try {
-      await deleteDoc(doc(db, "requests", String(id)));
+      await db.collection("requests").doc(String(id)).delete();
       await DB.loadFromFirestore();
       renderAllTables();
     } catch (err) {
@@ -696,7 +685,7 @@ function toggleListboxItem(hiddenInputId, containerId, id) {
   }
 }
 
-// Bind ES6 module functions to the global window object for HTML inline onClick support
+// Bind compat functions to global window for HTML inline actions support
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.saveArtist = saveArtist;
