@@ -136,39 +136,45 @@ export const initializeDB = () => {
                 FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
             );
         `);
-        // Migration for adding new guest columns dynamically if they do not exist
-        try {
-            const tableInfo = db.prepare("PRAGMA table_info(Guests)").all();
-            const existingCols = tableInfo.map(col => col.name);
+    }
 
-            const newCols = [
-                { name: 'Notes', type: 'TEXT' },
-                { name: 'ProfilePicture', type: 'TEXT' },
-                { name: 'BirthDateDay', type: 'INTEGER' },
-                { name: 'BirthDateMonth', type: 'INTEGER' },
-                { name: 'BirthDateYear', type: 'INTEGER' },
-                { name: 'Photos', type: 'TEXT' }
-            ];
+    // Migration for adding new guest columns dynamically if they do not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Guests)").all();
+        const existingCols = tableInfo.map(col => col.name);
 
-            for (const col of newCols) {
-                if (!existingCols.includes(col.name)) {
-                    console.log(`Migrating database: Adding column ${col.name} to Guests table...`);
-                    db.exec(`ALTER TABLE Guests ADD COLUMN ${col.name} ${col.type};`);
-                }
+        const newCols = [
+            { name: 'Notes', type: 'TEXT' },
+            { name: 'ProfilePicture', type: 'TEXT' },
+            { name: 'BirthDateDay', type: 'INTEGER' },
+            { name: 'BirthDateMonth', type: 'INTEGER' },
+            { name: 'BirthDateYear', type: 'INTEGER' },
+            { name: 'Photos', type: 'TEXT' }
+        ];
+
+        for (const col of newCols) {
+            if (!existingCols.includes(col.name)) {
+                console.log(`Migrating database: Adding column ${col.name} to Guests table...`);
+                db.exec(`ALTER TABLE Guests ADD COLUMN ${col.name} ${col.type};`);
             }
-            // Migration for adding Status column to Requests table dynamically if it does not exist
-            try {
-                const tableInfo = db.prepare("PRAGMA table_info(Requests)").all();
-                const existingCols = tableInfo.map(col => col.name);
-                if (!existingCols.includes('Status')) {
-                    console.log("Migrating database: Adding column Status to Requests table...");
-                    db.exec("ALTER TABLE Requests ADD COLUMN Status TEXT DEFAULT 'Kayıtlı';");
-                }
-            } catch (e) {
-                console.error("Migration error while adding Status column to Requests table:", e);
-            }
+        }
+    } catch (e) {
+        console.error("Migration error while adding guest columns:", e);
+    }
 
-            console.log("Database tables initialized.");
-        };
+    // Migration for adding Status column to Requests table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Requests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('Status')) {
+            console.log("Migrating database: Adding column Status to Requests table...");
+            db.exec("ALTER TABLE Requests ADD COLUMN Status TEXT DEFAULT 'Kayıtlı';");
+        }
+    } catch (e) {
+        console.error("Migration error while adding Status column to Requests table:", e);
+    }
 
-        export default db;
+    console.log("Database tables initialized.");
+};
+
+export default db;
