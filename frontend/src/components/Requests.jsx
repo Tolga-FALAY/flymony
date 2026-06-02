@@ -7,7 +7,7 @@ export default function Requests() {
   const [guests, setGuests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState(null);
-  
+
   // Default sorting configuration: Sort by SongTitle Ascending
   const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
 
@@ -74,7 +74,7 @@ export default function Requests() {
     if (!editingRequest) {
       const existingReq = requests.find(r => r.SongID === songIdNum);
       if (existingReq) {
-        alert("Bu istek zaten kayıtlı");
+        alert("Bu istek zaten kayıtlı...");
         const goToExisting = window.confirm(
           "İlgili kayda gitmek ister misiniz?"
         );
@@ -194,16 +194,16 @@ export default function Requests() {
                   {renderSortArrow('Status')}
                 </span>
               </th>
-              <th style={{width: '150px'}}>İşlemler</th>
+              <th style={{ width: '150px' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {sortedRequests.map(req => {
               const dateObj = new Date(req.RequestDate + 'Z'); // SQLite UTC time
-              
+
               // Helper to assign CSS class to request status badges
               const getStatusBadgeClass = (status) => {
-                switch(status) {
+                switch (status) {
                   case 'Kayıtlı': return 'status-badge status-registered';
                   case 'Denemede': return 'status-badge status-trial';
                   case 'Eklendi': return 'status-badge status-added';
@@ -229,7 +229,7 @@ export default function Requests() {
               );
             })}
             {sortedRequests.length === 0 && (
-              <tr><td colSpan="5" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
