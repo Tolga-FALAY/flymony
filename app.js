@@ -49,10 +49,30 @@ const DB = {
       // 2. Fetch guests
       const guestsSnapshot = await db.collection("guests").get();
       this.guests = [];
+      const nowStr = new Date().toISOString();
       guestsSnapshot.forEach((doc) => {
         const data = doc.data();
+        const docId = doc.id;
+        
+        let needsUpdate = false;
+        const updateData = {};
+        if (!data.CreatedAt) {
+          updateData.CreatedAt = nowStr;
+          needsUpdate = true;
+        }
+        if (!data.UpdatedAt) {
+          updateData.UpdatedAt = nowStr;
+          needsUpdate = true;
+        }
+        
+        if (needsUpdate) {
+          db.collection("guests").doc(docId).update(updateData).catch(err => 
+            console.error("Migration error for guest " + docId + " (Vanilla):", err)
+          );
+        }
+
         this.guests.push({
-          id: Number(doc.id),
+          id: Number(docId),
           firstName: data.FirstName || "",
           lastName: data.LastName || "",
           fullName: `${data.FirstName || ""} ${data.LastName || ""}`.trim(),
@@ -63,7 +83,9 @@ const DB = {
           birthDateDay: data.BirthDateDay || "",
           birthDateMonth: data.BirthDateMonth || "",
           birthDateYear: data.BirthDateYear || "",
-          photos: data.Photos || []
+          photos: data.Photos || [],
+          createdAt: data.CreatedAt || updateData.CreatedAt || nowStr,
+          updatedAt: data.UpdatedAt || updateData.UpdatedAt || nowStr
         });
       });
 
@@ -795,6 +817,16 @@ async function saveGuest(e) {
 
   try {
     const guestId = id || String(Date.now());
+    const nowStr = new Date().toISOString();
+    
+    let createdAtVal = nowStr;
+    if (id) {
+      const existingGuest = DB.guests.find(g => g.id == id);
+      if (existingGuest && existingGuest.createdAt) {
+        createdAtVal = existingGuest.createdAt;
+      }
+    }
+
     await db.collection("guests").doc(guestId).set({
       FirstName: firstName,
       LastName: lastName,
@@ -805,7 +837,9 @@ async function saveGuest(e) {
       BirthDateDay: birthDay ? Number(birthDay) : "",
       BirthDateMonth: birthMonth ? Number(birthMonth) : "",
       BirthDateYear: birthYear ? Number(birthYear) : "",
-      Photos: photos
+      Photos: photos,
+      CreatedAt: createdAtVal,
+      UpdatedAt: nowStr
     });
     closeModal('guestModal');
     await DB.loadFromFirestore();

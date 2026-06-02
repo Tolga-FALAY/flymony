@@ -103,12 +103,34 @@ export const api = {
   getGuests: async () => {
     const querySnapshot = await getDocs(collection(db, "guests"));
     const list = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
+    const nowStr = new Date().toISOString();
+    
+    for (const docSnapshot of querySnapshot.docs) {
+      const data = docSnapshot.data();
+      const docId = docSnapshot.id;
+      
+      let needsUpdate = false;
+      const updateData = {};
+      
+      if (!data.CreatedAt) {
+        updateData.CreatedAt = nowStr;
+        needsUpdate = true;
+      }
+      if (!data.UpdatedAt) {
+        updateData.UpdatedAt = nowStr;
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        updateDoc(doc(db, "guests", docId), updateData).catch(err => 
+          console.error("Migration error for guest " + docId, err)
+        );
+      }
+
       const firstName = data.FirstName || "";
       const lastName = data.LastName || "";
       list.push({
-        GuestID: Number(doc.id),
+        GuestID: Number(docId),
         FirstName: firstName,
         LastName: lastName,
         FullName: `${firstName} ${lastName}`.trim(),
@@ -119,9 +141,11 @@ export const api = {
         BirthDateDay: data.BirthDateDay || "",
         BirthDateMonth: data.BirthDateMonth || "",
         BirthDateYear: data.BirthDateYear || "",
-        Photos: data.Photos || []
+        Photos: data.Photos || [],
+        CreatedAt: data.CreatedAt || updateData.CreatedAt || nowStr,
+        UpdatedAt: data.UpdatedAt || updateData.UpdatedAt || nowStr
       });
-    });
+    }
     // Sort by FirstName and LastName ascending (Turkish locale aware)
     list.sort((a, b) => {
       const fNameCompare = a.FirstName.toLocaleLowerCase('tr-TR').localeCompare(b.FirstName.toLocaleLowerCase('tr-TR'), 'tr');
@@ -133,6 +157,7 @@ export const api = {
   
   createGuest: async (data) => {
     const id = String(Date.now());
+    const nowStr = new Date().toISOString();
     await setDoc(doc(db, "guests", id), {
       FirstName: data.FirstName,
       LastName: data.LastName,
@@ -143,12 +168,15 @@ export const api = {
       BirthDateDay: data.BirthDateDay || "",
       BirthDateMonth: data.BirthDateMonth || "",
       BirthDateYear: data.BirthDateYear || "",
-      Photos: data.Photos || []
+      Photos: data.Photos || [],
+      CreatedAt: nowStr,
+      UpdatedAt: nowStr
     });
     return { GuestID: Number(id), message: 'Guest created successfully' };
   },
   
   updateGuest: async (id, data) => {
+    const nowStr = new Date().toISOString();
     await updateDoc(doc(db, "guests", String(id)), {
       FirstName: data.FirstName,
       LastName: data.LastName,
@@ -159,7 +187,8 @@ export const api = {
       BirthDateDay: data.BirthDateDay || "",
       BirthDateMonth: data.BirthDateMonth || "",
       BirthDateYear: data.BirthDateYear || "",
-      Photos: data.Photos || []
+      Photos: data.Photos || [],
+      UpdatedAt: nowStr
     });
     return { message: 'Guest updated successfully' };
   },
