@@ -272,6 +272,26 @@ export default function Guests() {
       }
     }
 
+    // Duplicate check: check if FirstName & LastName already exists (case-insensitive, trimmed)
+    const normalizedFirstName = formData.FirstName.trim().toLowerCase();
+    const normalizedLastName = formData.LastName.trim().toLowerCase();
+    const existingGuest = guests.find(g => 
+      (!editingGuest || g.GuestID !== editingGuest.GuestID) &&
+      g.FirstName.trim().toLowerCase() === normalizedFirstName && 
+      g.LastName.trim().toLowerCase() === normalizedLastName
+    );
+
+    if (existingGuest) {
+      alert("Bu isimde bir misafir zaten kayıtlı!");
+      const goToExisting = window.confirm("İlgili kayda gitmek ister misiniz?");
+      if (goToExisting) {
+        openModal(existingGuest);
+      } else {
+        closeModal();
+      }
+      return;
+    }
+
     try {
       if (editingGuest) {
         await api.updateGuest(editingGuest.GuestID, formData);

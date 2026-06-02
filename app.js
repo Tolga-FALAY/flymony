@@ -777,12 +777,19 @@ async function saveGuest(e) {
     }
   }
 
-  const isDuplicate = DB.guests.some(g => g.id != id && 
+  const duplicateGuest = DB.guests.find(g => g.id != id && 
     g.firstName.trim().toLowerCase() === firstName.toLowerCase() && 
     g.lastName.trim().toLowerCase() === lastName.toLowerCase()
   );
-  if (isDuplicate) {
-    alert("Bu isimde bir misafir zaten var!");
+  if (duplicateGuest) {
+    alert("Bu isimde bir misafir zaten kayıtlı!");
+    const goToExisting = confirm("İlgili kayda gitmek ister misiniz?");
+    if (goToExisting) {
+      closeModal('guestModal');
+      editGuest(duplicateGuest.id);
+    } else {
+      closeModal('guestModal');
+    }
     return;
   }
 
