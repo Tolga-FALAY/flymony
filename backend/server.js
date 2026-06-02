@@ -281,7 +281,7 @@ app.put('/api/guests/:id', (req, res) => {
         }
         db.prepare(`
             UPDATE Guests 
-            SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ? 
+            SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ?, UpdatedAt = CURRENT_TIMESTAMP 
             WHERE GuestID = ?
         `).run(
             FirstName, 

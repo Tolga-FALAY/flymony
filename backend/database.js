@@ -43,7 +43,9 @@ export const initializeDB = () => {
             BirthDateDay INTEGER,
             BirthDateMonth INTEGER,
             BirthDateYear INTEGER,
-            Photos TEXT
+            Photos TEXT,
+            CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
 
@@ -149,7 +151,9 @@ export const initializeDB = () => {
             { name: 'BirthDateDay', type: 'INTEGER' },
             { name: 'BirthDateMonth', type: 'INTEGER' },
             { name: 'BirthDateYear', type: 'INTEGER' },
-            { name: 'Photos', type: 'TEXT' }
+            { name: 'Photos', type: 'TEXT' },
+            { name: 'CreatedAt', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
+            { name: 'UpdatedAt', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' }
         ];
 
         for (const col of newCols) {
