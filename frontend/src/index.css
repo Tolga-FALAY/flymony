@@ -837,8 +837,9 @@ tr:hover td {
     align-items: stretch;
     gap: 0.75rem;
   }
-  .filter-item {
-    flex: 1 1 auto;
+  .filter-item,
+  .filter-item.search-box {
+    flex: none;
   }
   .filter-actions {
     margin-top: 0.5rem;
