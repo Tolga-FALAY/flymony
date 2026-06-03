@@ -31,6 +31,11 @@ let filterArtist = '';
 let filterStatus = '';
 let filterSearch = '';
 
+// Guest Filter variables
+let filterGuestName = '';
+let filterGuestNotes = '';
+let filterGuestMonth = '';
+
 
 
 const DB = {
@@ -400,12 +405,7 @@ async function deleteArtist(id) {
 
 // ----------------- GUESTS -----------------
 function renderGuests() {
-  const guestsTitleEl = document.getElementById('guestsTitle');
-  if (guestsTitleEl) {
-    guestsTitleEl.innerText = `Misafirler (${DB.guests.length})`;
-  }
   const tbody = document.querySelector('#guestsTable tbody');
-  tbody.innerHTML = DB.guests.length === 0 ? '<tr><td colspan="6" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
   const sortedGuests = [...DB.guests].sort((a, b) => {
     let res = 0;
@@ -432,6 +432,40 @@ function renderGuests() {
     return guestsSortDirection === 'asc' ? res : -res;
   });
 
+  // Filter guests
+  const filteredGuests = sortedGuests.filter(guest => {
+    // 1. Name & Surname filter
+    if (filterGuestName) {
+      const searchName = filterGuestName.toLocaleLowerCase('tr-TR');
+      if (!(guest.fullName || '').toLocaleLowerCase('tr-TR').includes(searchName)) {
+        return false;
+      }
+    }
+
+    // 2. Notes filter
+    if (filterGuestNotes) {
+      const searchNotes = filterGuestNotes.toLocaleLowerCase('tr-TR');
+      if (!(guest.notes || '').toLocaleLowerCase('tr-TR').includes(searchNotes)) {
+        return false;
+      }
+    }
+
+    // 3. Birth Month filter
+    if (filterGuestMonth) {
+      if (Number(guest.birthDateMonth) !== Number(filterGuestMonth)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const guestsTitleEl = document.getElementById('guestsTitle');
+  if (guestsTitleEl) {
+    guestsTitleEl.innerText = `Misafirler (${filteredGuests.length})`;
+  }
+  tbody.innerHTML = filteredGuests.length === 0 ? '<tr><td colspan="6" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+
   // Render header sorting indicators dynamically
   const keys = ['name', 'birthdate'];
   const ids = { name: 'sortIconGuestName', birthdate: 'sortIconGuestBirthdate' };
@@ -448,7 +482,7 @@ function renderGuests() {
     }
   });
 
-  sortedGuests.forEach(guest => {
+  filteredGuests.forEach(guest => {
     // Initials Avatar
     const getInitials = (first, last) => {
       const f = first ? first.charAt(0).toUpperCase() : '';
@@ -1428,6 +1462,36 @@ function clearAllFilters() {
   renderRequests();
 }
 
+// Misafir Filtre Değişim Olayı
+function handleGuestFilterChange() {
+  const nameInput = document.getElementById('filterGuestName');
+  const notesInput = document.getElementById('filterGuestNotes');
+  const monthSelect = document.getElementById('filterGuestMonth');
+
+  filterGuestName = nameInput ? nameInput.value : '';
+  filterGuestNotes = notesInput ? notesInput.value : '';
+  filterGuestMonth = monthSelect ? monthSelect.value : '';
+
+  renderGuests();
+}
+
+// Misafir Filtrelerini Temizle
+function clearAllGuestFilters() {
+  const nameInput = document.getElementById('filterGuestName');
+  const notesInput = document.getElementById('filterGuestNotes');
+  const monthSelect = document.getElementById('filterGuestMonth');
+
+  if (nameInput) nameInput.value = '';
+  if (notesInput) notesInput.value = '';
+  if (monthSelect) monthSelect.value = '';
+
+  filterGuestName = '';
+  filterGuestNotes = '';
+  filterGuestMonth = '';
+
+  renderGuests();
+}
+
 // Sanatçı Arama Filtresi
 function setupArtistSearch() {
   const searchInput = document.getElementById('artistSearchInput');
@@ -1553,5 +1617,7 @@ window.pasteVanillaGalleryPhoto = pasteVanillaGalleryPhoto;
 window.handleFilterChange = handleFilterChange;
 window.clearAllFilters = clearAllFilters;
 window.populateFilterDropdowns = populateFilterDropdowns;
+window.handleGuestFilterChange = handleGuestFilterChange;
+window.clearAllGuestFilters = clearAllGuestFilters;
 
 

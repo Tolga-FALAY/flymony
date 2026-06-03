@@ -133,6 +133,39 @@
           <h2 id="guestsTitle">Misafirler</h2>
           <button class="btn btn-primary" onclick="openModal('guestModal')">+ Yeni Misafir</button>
         </div>
+        <div class="filters-panel">
+          <div class="filter-group-row">
+            <div class="filter-item">
+              <label for="filterGuestName">Misafir Adı / Soyadı</label>
+              <input type="text" id="filterGuestName" placeholder="Ad veya soyad ara..." oninput="handleGuestFilterChange()">
+            </div>
+            <div class="filter-item">
+              <label for="filterGuestNotes">Notlar</label>
+              <input type="text" id="filterGuestNotes" placeholder="Not içeriğinde ara..." oninput="handleGuestFilterChange()">
+            </div>
+            <div class="filter-item">
+              <label for="filterGuestMonth">Doğum Ayı</label>
+              <select id="filterGuestMonth" onchange="handleGuestFilterChange()">
+                <option value="">Tüm Aylar</option>
+                <option value="1">Ocak</option>
+                <option value="2">Şubat</option>
+                <option value="3">Mart</option>
+                <option value="4">Nisan</option>
+                <option value="5">Mayıs</option>
+                <option value="6">Haziran</option>
+                <option value="7">Temmuz</option>
+                <option value="8">Ağustos</option>
+                <option value="9">Eylül</option>
+                <option value="10">Ekim</option>
+                <option value="11">Kasım</option>
+                <option value="12">Aralık</option>
+              </select>
+            </div>
+            <div class="filter-item filter-actions">
+              <button class="btn btn-outline btn-sm" onclick="clearAllGuestFilters()">Temizle</button>
+            </div>
+          </div>
+        </div>
         <div class="table-wrapper">
           <table id="guestsTable">
             <thead>

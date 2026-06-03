@@ -9,6 +9,17 @@ export default function Guests() {
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
 
+  // Filter States
+  const [filterName, setFilterName] = useState('');
+  const [filterNotes, setFilterNotes] = useState('');
+  const [filterBirthMonth, setFilterBirthMonth] = useState('');
+
+  const clearAllFilters = () => {
+    setFilterName('');
+    setFilterNotes('');
+    setFilterBirthMonth('');
+  };
+
   // Paste section target configuration
   const [activePasteSection, setActivePasteSection] = useState('profile');
   
@@ -366,6 +377,35 @@ export default function Guests() {
     return sortConfig.direction === 'asc' ? res : -res;
   });
 
+  const filteredGuests = sortedGuests.filter(guest => {
+    // 1. Name & Surname filter
+    if (filterName) {
+      const searchName = filterName.toLocaleLowerCase('tr-TR');
+      const fullName = (guest.FullName || '').toLocaleLowerCase('tr-TR');
+      if (!fullName.includes(searchName)) {
+        return false;
+      }
+    }
+
+    // 2. Notes filter
+    if (filterNotes) {
+      const searchNotes = filterNotes.toLocaleLowerCase('tr-TR');
+      const notes = (guest.Notes || '').toLocaleLowerCase('tr-TR');
+      if (!notes.includes(searchNotes)) {
+        return false;
+      }
+    }
+
+    // 3. Birth Month filter
+    if (filterBirthMonth) {
+      if (Number(guest.BirthDateMonth) !== Number(filterBirthMonth)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   const renderSortArrow = (key) => {
     if (sortConfig.key === key) {
       return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
@@ -376,10 +416,60 @@ export default function Guests() {
   return (
     <div>
       <div className="section-header">
-        <h2>Misafirler ({guests.length})</h2>
+        <h2>Misafirler ({filteredGuests.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni Misafir
         </button>
+      </div>
+
+      <div className="filters-panel">
+        <div className="filter-group-row">
+          <div className="filter-item">
+            <label htmlFor="filterGuestNameReact">Misafir Adı / Soyadı</label>
+            <input 
+              type="text" 
+              id="filterGuestNameReact" 
+              placeholder="Ad veya soyad ara..." 
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+            />
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterGuestNotesReact">Notlar</label>
+            <input 
+              type="text" 
+              id="filterGuestNotesReact" 
+              placeholder="Not içeriğinde ara..." 
+              value={filterNotes}
+              onChange={(e) => setFilterNotes(e.target.value)}
+            />
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterGuestMonthReact">Doğum Ayı</label>
+            <select 
+              id="filterGuestMonthReact"
+              value={filterBirthMonth}
+              onChange={(e) => setFilterBirthMonth(e.target.value)}
+            >
+              <option value="">Tüm Aylar</option>
+              <option value="1">Ocak</option>
+              <option value="2">Şubat</option>
+              <option value="3">Mart</option>
+              <option value="4">Nisan</option>
+              <option value="5">Mayıs</option>
+              <option value="6">Haziran</option>
+              <option value="7">Temmuz</option>
+              <option value="8">Ağustos</option>
+              <option value="9">Eylül</option>
+              <option value="10">Ekim</option>
+              <option value="11">Kasım</option>
+              <option value="12">Aralık</option>
+            </select>
+          </div>
+          <div className="filter-item filter-actions">
+            <button className="btn btn-outline btn-sm" onClick={clearAllFilters}>Temizle</button>
+          </div>
+        </div>
       </div>
 
       <div className="table-wrapper">
@@ -405,7 +495,7 @@ export default function Guests() {
             </tr>
           </thead>
           <tbody>
-            {sortedGuests.map(guest => (
+            {filteredGuests.map(guest => (
               <tr key={guest.GuestID}>
                 <td data-label="Misafir" className="td-guest-profile">
                   <div className="guest-avatar-wrapper">
@@ -437,7 +527,7 @@ export default function Guests() {
                 </td>
               </tr>
             ))}
-            {sortedGuests.length === 0 && (
+            {filteredGuests.length === 0 && (
               <tr><td colSpan="6" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
