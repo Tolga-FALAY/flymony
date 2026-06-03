@@ -26,13 +26,13 @@ try {
     const insertStmt = db.prepare('INSERT INTO Artists (ArtistName) VALUES (?)');
 
     let insertedCount = 0;
-    let skippedCount = 0;
+    const skippedArtists = [];
 
     const runBulkInsert = db.transaction((artistList) => {
         for (const name of artistList) {
             const existing = checkStmt.get(name);
             if (existing) {
-                skippedCount++;
+                skippedArtists.push(name);
             } else {
                 insertStmt.run(name);
                 insertedCount++;
@@ -44,7 +44,10 @@ try {
 
     console.log(`Bulk insert completed!`);
     console.log(`Inserted: ${insertedCount}`);
-    console.log(`Skipped (already exists): ${skippedCount}`);
+    console.log(`Skipped (already exists): ${skippedArtists.length}`);
+    if (skippedArtists.length > 0) {
+        console.log(`Duplicate Artists:`, skippedArtists);
+    }
     
     // Close database connection
     db.close();
