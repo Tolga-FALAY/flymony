@@ -30,9 +30,14 @@ The most important thing to understand: there are **three parallel implementatio
 
 2. **`backend/` (parallel/legacy REST API)** — Express + `better-sqlite3` (`server.js`, port 5000) exposing `/api/artists|songs|guests|requests` with an **identical contract** to `src/api.js`. The React app never fetches it. `server.js` also serves the built SPA from `frontend/dist` and serves the legacy vanilla app at `/vanilla`. `database.js` owns the SQLite schema and runs in-code migrations on startup.
 
-3. **Root `app.js` / `index.html` / `style.css`** — older standalone vanilla-JS version, served at `/vanilla`.
+3. **Root `app.js` / `index.html` / `style.css`** — standalone vanilla-JS version (also served at `/vanilla` by the backend). It loads data from Firestore directly (`DB.loadFromFirestore()` in `app.js`). **This is what GitHub Pages publishes:** `https://tolgaosman.github.io` is served from this repo's root, so the vanilla app — NOT the React SPA — is what end users (incl. mobile) actually hit in production. Changes to the React `frontend/` do not appear there.
 
-When changing data behavior, decide which layer matters: **the live app is the Firebase path (`frontend/src/api.js`)**. The SQLite backend is kept contract-compatible but is not what users hit.
+When changing data behavior or UI, decide which layer matters:
+- **Production / what users see today = root vanilla app** (`index.html` / `style.css` / `app.js`), deployed via GitHub Pages from the repo root.
+- **`frontend/` React SPA** is the in-development app on the Firebase path (`src/api.js`); it is not what GitHub Pages serves.
+- The SQLite backend is kept contract-compatible but is not what users hit.
+
+UI/data changes meant for the live mobile site must be applied to the **root vanilla files**, not (only) the React frontend.
 
 ## Data model
 
