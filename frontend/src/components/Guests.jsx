@@ -498,16 +498,18 @@ export default function Guests() {
             {filteredGuests.map(guest => (
               <tr key={guest.GuestID}>
                 <td data-label="Misafir" className="td-guest-profile">
-                  <div className="guest-avatar-wrapper">
-                    {guest.ProfilePicture ? (
-                      <img src={guest.ProfilePicture} alt={guest.FullName} className="guest-avatar-img" />
-                    ) : (
-                      <div className="guest-avatar-initials">
-                        {getInitials(guest.FirstName, guest.LastName)}
-                      </div>
-                    )}
+                  <div className="guest-profile-content">
+                    <div className="guest-avatar-wrapper">
+                      {guest.ProfilePicture ? (
+                        <img src={guest.ProfilePicture} alt={guest.FullName} className="guest-avatar-img" />
+                      ) : (
+                        <div className="guest-avatar-initials">
+                          {getInitials(guest.FirstName, guest.LastName)}
+                        </div>
+                      )}
+                    </div>
+                    <span className="guest-name-text">{guest.FullName}</span>
                   </div>
-                  <span className="guest-name-text">{guest.FullName}</span>
                 </td>
                 <td data-label="Telefon">{guest.PhoneNumber || '-'}</td>
                 <td data-label="Instagram">
