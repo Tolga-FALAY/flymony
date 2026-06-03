@@ -200,12 +200,14 @@ function closeMobileMenu() {
     toggle.classList.remove('open');
     toggle.setAttribute('aria-expanded', 'false');
   }
+  document.body.style.overflow = '';
 }
 
 function setupMobileMenu() {
   const navMenu = document.getElementById('navMenu');
   const backdrop = document.getElementById('menuBackdrop');
   const toggle = document.getElementById('menuToggle');
+  const closeBtn = document.getElementById('mobileNavClose');
   if (!navMenu || !toggle) return;
 
   toggle.addEventListener('click', () => {
@@ -213,10 +215,16 @@ function setupMobileMenu() {
     toggle.classList.toggle('open', isOpen);
     if (backdrop) backdrop.classList.toggle('open', isOpen);
     toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    // Lock body scroll when overlay is open
+    document.body.style.overflow = isOpen ? 'hidden' : '';
   });
 
   if (backdrop) {
     backdrop.addEventListener('click', closeMobileMenu);
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeMobileMenu);
   }
 }
 
