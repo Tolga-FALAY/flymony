@@ -24,6 +24,13 @@ let guestsSortKey = 'name';
 let guestsSortDirection = 'asc';
 let vanillaActivePasteSection = 'profile';
 
+// Filter variables
+let filterGuest = '';
+let filterSong = '';
+let filterArtist = '';
+let filterStatus = '';
+let filterSearch = '';
+
 
 
 const DB = {
@@ -1025,13 +1032,6 @@ async function deleteSong(id) {
 
 // ----------------- REQUESTS -----------------
 function renderRequests() {
-  const reqTitleEl = document.getElementById('requestsTitle');
-  if (reqTitleEl) {
-    reqTitleEl.innerText = `Şarkı İstekleri (${DB.requests.length})`;
-  }
-  const tbody = document.querySelector('#requestsTable tbody');
-  tbody.innerHTML = DB.requests.length === 0 ? '<tr><td colspan="5" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
-  
   // Sort requests dynamically based on requestsSortKey and requestsSortDirection
   const sortedReqs = [...DB.requests].sort((a, b) => {
     let res = 0;
@@ -1066,6 +1066,69 @@ function renderRequests() {
     return requestsSortDirection === 'asc' ? res : -res;
   });
 
+  // Filter requests dynamically based on filter variables
+  const filteredReqs = sortedReqs.filter(req => {
+    const guestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
+    
+    // 1. Guest filter
+    if (filterGuest && !guestIds.includes(Number(filterGuest))) {
+      return false;
+    }
+    
+    // Get the song details for this request
+    const song = DB.songs.find(s => s.id == req.songId);
+    
+    // 2. Song filter
+    if (filterSong && req.songId !== Number(filterSong)) {
+      return false;
+    }
+    
+    // 3. Artist filter
+    if (filterArtist) {
+      if (!song) return false;
+      const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
+      if (!artistIds.includes(Number(filterArtist))) {
+        return false;
+      }
+    }
+    
+    // 4. Status filter
+    const statusVal = req.status || 'Kayıtlı';
+    if (filterStatus && statusVal !== filterStatus) {
+      return false;
+    }
+    
+    // 5. Search query (Free text)
+    if (filterSearch) {
+      const searchLower = filterSearch.toLocaleLowerCase('tr-TR');
+      
+      const guests = DB.guests.filter(g => guestIds.includes(g.id));
+      const guestNames = guests.map(g => `${g.firstName} ${g.lastName}`).join(', ').toLocaleLowerCase('tr-TR');
+      
+      const songTitle = song ? (song.title || '').toLocaleLowerCase('tr-TR') : '';
+      
+      const artistIds = song ? DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId) : [];
+      const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ').toLocaleLowerCase('tr-TR');
+      
+      const guestMatch = guestNames.includes(searchLower);
+      const songMatch = songTitle.includes(searchLower);
+      const artistMatch = artistNames.includes(searchLower);
+      
+      if (!guestMatch && !songMatch && !artistMatch) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
+  const reqTitleEl = document.getElementById('requestsTitle');
+  if (reqTitleEl) {
+    reqTitleEl.innerText = `Şarkı İstekleri (${filteredReqs.length})`;
+  }
+  const tbody = document.querySelector('#requestsTable tbody');
+  tbody.innerHTML = filteredReqs.length === 0 ? '<tr><td colspan="5" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+
   // Render header sorting indicators dynamically
   const keys = ['date', 'guest', 'song', 'status'];
   const ids = { date: 'sortIconDate', guest: 'sortIconGuest', song: 'sortIconSong', status: 'sortIconStatus' };
@@ -1082,7 +1145,7 @@ function renderRequests() {
     }
   });
 
-  sortedReqs.forEach(req => {
+  filteredReqs.forEach(req => {
     const guestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
     const guests = DB.guests.filter(g => guestIds.includes(g.id));
     const song = DB.songs.find(s => s.id == req.songId);
@@ -1275,6 +1338,93 @@ function renderAllTables() {
   renderArtists();
   renderGuests();
   renderSongs();
+  populateFilterDropdowns();
+  renderRequests();
+}
+
+// Filtre açılır kutularını doldur
+function populateFilterDropdowns() {
+  const guestSelect = document.getElementById('filterGuestSelect');
+  const songSelect = document.getElementById('filterSongSelect');
+  const artistSelect = document.getElementById('filterArtistSelect');
+
+  if (guestSelect) {
+    const currentVal = guestSelect.value;
+    
+    // Sort guests alphabetically ascending
+    const sortedGuests = [...DB.guests].sort((a, b) => {
+      return (a.fullName || "").toLocaleLowerCase('tr-TR').localeCompare((b.fullName || "").toLocaleLowerCase('tr-TR'), 'tr');
+    });
+    
+    guestSelect.innerHTML = '<option value="">Tüm Misafirler</option>' + 
+      sortedGuests.map(g => `<option value="${g.id}">${g.firstName} ${g.lastName}</option>`).join('');
+    guestSelect.value = currentVal;
+  }
+
+  if (songSelect) {
+    const currentVal = songSelect.value;
+    
+    // Sort songs alphabetically ascending
+    const sortedSongs = [...DB.songs].sort((a, b) => {
+      return (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
+    });
+
+    songSelect.innerHTML = '<option value="">Tüm Şarkılar</option>' + 
+      sortedSongs.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+    songSelect.value = currentVal;
+  }
+
+  if (artistSelect) {
+    const currentVal = artistSelect.value;
+    
+    // Sort artists alphabetically ascending
+    const sortedArtists = [...DB.artists].sort((a, b) => {
+      return (a.name || "").toLocaleLowerCase('tr-TR').localeCompare((b.name || "").toLocaleLowerCase('tr-TR'), 'tr');
+    });
+
+    artistSelect.innerHTML = '<option value="">Tüm Sanatçılar</option>' + 
+      sortedArtists.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+    artistSelect.value = currentVal;
+  }
+}
+
+// Filtre Değişim Olayı
+function handleFilterChange() {
+  const searchInput = document.getElementById('filterSearch');
+  const guestSelect = document.getElementById('filterGuestSelect');
+  const songSelect = document.getElementById('filterSongSelect');
+  const artistSelect = document.getElementById('filterArtistSelect');
+  const statusSelect = document.getElementById('filterStatusSelect');
+
+  filterSearch = searchInput ? searchInput.value : '';
+  filterGuest = guestSelect ? guestSelect.value : '';
+  filterSong = songSelect ? songSelect.value : '';
+  filterArtist = artistSelect ? artistSelect.value : '';
+  filterStatus = statusSelect ? statusSelect.value : '';
+  
+  renderRequests();
+}
+
+// Filtreleri Temizle
+function clearAllFilters() {
+  const searchInput = document.getElementById('filterSearch');
+  const guestSelect = document.getElementById('filterGuestSelect');
+  const songSelect = document.getElementById('filterSongSelect');
+  const artistSelect = document.getElementById('filterArtistSelect');
+  const statusSelect = document.getElementById('filterStatusSelect');
+
+  if (searchInput) searchInput.value = '';
+  if (guestSelect) guestSelect.value = '';
+  if (songSelect) songSelect.value = '';
+  if (artistSelect) artistSelect.value = '';
+  if (statusSelect) statusSelect.value = '';
+  
+  filterSearch = '';
+  filterGuest = '';
+  filterSong = '';
+  filterArtist = '';
+  filterStatus = '';
+  
   renderRequests();
 }
 
@@ -1400,4 +1550,8 @@ window.sortArtists = sortArtists;
 window.sortGuests = sortGuests;
 window.pasteVanillaProfilePicture = pasteVanillaProfilePicture;
 window.pasteVanillaGalleryPhoto = pasteVanillaGalleryPhoto;
+window.handleFilterChange = handleFilterChange;
+window.clearAllFilters = clearAllFilters;
+window.populateFilterDropdowns = populateFilterDropdowns;
+
 

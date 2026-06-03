@@ -5,8 +5,16 @@ export default function Requests() {
   const [requests, setRequests] = useState([]);
   const [songs, setSongs] = useState([]);
   const [guests, setGuests] = useState([]);
+  const [artists, setArtists] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState(null);
+
+  // Filter States
+  const [filterGuest, setFilterGuest] = useState('');
+  const [filterSong, setFilterSong] = useState('');
+  const [filterArtist, setFilterArtist] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterSearch, setFilterSearch] = useState('');
 
   // Default sorting configuration: Sort by SongTitle Ascending
   const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
@@ -22,14 +30,16 @@ export default function Requests() {
   }, []);
 
   const loadData = async () => {
-    const [requestsData, songsData, guestsData] = await Promise.all([
+    const [requestsData, songsData, guestsData, artistsData] = await Promise.all([
       api.getRequests(),
       api.getSongs(),
-      api.getGuests()
+      api.getGuests(),
+      api.getArtists()
     ]);
     setRequests(requestsData);
     setSongs(songsData);
     setGuests(guestsData);
+    setArtists(artistsData);
   };
 
   const openModal = (req = null) => {
@@ -142,6 +152,57 @@ export default function Requests() {
     return sortConfig.direction === 'asc' ? res : -res;
   });
 
+  // Filter Requests dynamically based on filter states
+  const filteredRequests = sortedRequests.filter(req => {
+    // 1. Guest filter
+    if (filterGuest && !req.GuestIDs.includes(Number(filterGuest))) {
+      return false;
+    }
+    
+    // Get the song details for this request to match Song/Artist
+    const song = songs.find(s => s.SongID === req.SongID);
+    
+    // 2. Song filter
+    if (filterSong && req.SongID !== Number(filterSong)) {
+      return false;
+    }
+    
+    // 3. Artist filter
+    if (filterArtist) {
+      if (!song || !song.ArtistIDs.includes(Number(filterArtist))) {
+        return false;
+      }
+    }
+    
+    // 4. Status filter
+    const statusVal = req.Status || 'Kayıtlı';
+    if (filterStatus && statusVal !== filterStatus) {
+      return false;
+    }
+    
+    // 5. Search query (Free text)
+    if (filterSearch) {
+      const searchLower = filterSearch.toLocaleLowerCase('tr-TR');
+      const guestMatch = (req.FullNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
+      const songTitleMatch = song ? song.SongTitle.toLocaleLowerCase('tr-TR').includes(searchLower) : false;
+      const artistMatch = song ? song.ArtistNames.toLocaleLowerCase('tr-TR').includes(searchLower) : false;
+      
+      if (!guestMatch && !songTitleMatch && !artistMatch) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
+  const clearAllFilters = () => {
+    setFilterSearch('');
+    setFilterGuest('');
+    setFilterSong('');
+    setFilterArtist('');
+    setFilterStatus('');
+  };
+
   // Render sorting arrows next to headers
   const renderSortArrow = (key) => {
     if (sortConfig.key === key) {
@@ -157,13 +218,94 @@ export default function Requests() {
     return aTitle.localeCompare(bTitle, 'tr');
   });
 
+  // Sort lists for filters
+  const sortedFilterGuests = [...guests].sort((a, b) => {
+    return (a.FullName || '').toLocaleLowerCase('tr-TR').localeCompare((b.FullName || '').toLocaleLowerCase('tr-TR'), 'tr');
+  });
+
+  const sortedFilterArtists = [...artists].sort((a, b) => {
+    return (a.ArtistName || '').toLocaleLowerCase('tr-TR').localeCompare((b.ArtistName || '').toLocaleLowerCase('tr-TR'), 'tr');
+  });
+
   return (
     <div>
       <div className="section-header">
-        <h2>Şarkı İstekleri ({requests.length})</h2>
+        <h2>Şarkı İstekleri ({filteredRequests.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni İstek Ekle
         </button>
+      </div>
+
+      <div className="filters-panel">
+        <div className="filter-group-row">
+          <div className="filter-item search-box">
+            <label htmlFor="filterSearchReact">Serbest Arama</label>
+            <input 
+              type="text" 
+              id="filterSearchReact" 
+              placeholder="Misafir, şarkı veya sanatçı..." 
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+            />
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterGuestReact">Misafir</label>
+            <select 
+              id="filterGuestReact"
+              value={filterGuest}
+              onChange={(e) => setFilterGuest(e.target.value)}
+            >
+              <option value="">Tüm Misafirler</option>
+              {sortedFilterGuests.map(g => (
+                <option key={g.GuestID} value={String(g.GuestID)}>{g.FullName}</option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterSongReact">Şarkı</label>
+            <select 
+              id="filterSongReact"
+              value={filterSong}
+              onChange={(e) => setFilterSong(e.target.value)}
+            >
+              <option value="">Tüm Şarkılar</option>
+              {sortedSongs.map(s => (
+                <option key={s.SongID} value={String(s.SongID)}>{s.SongTitle}</option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterArtistReact">Sanatçı</label>
+            <select 
+              id="filterArtistReact"
+              value={filterArtist}
+              onChange={(e) => setFilterArtist(e.target.value)}
+            >
+              <option value="">Tüm Sanatçılar</option>
+              {sortedFilterArtists.map(a => (
+                <option key={a.ArtistID} value={String(a.ArtistID)}>{a.ArtistName}</option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterStatusReact">Durum</label>
+            <select 
+              id="filterStatusReact"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="">Tüm Durumlar</option>
+              <option value="Kayıtlı">Kayıtlı</option>
+              <option value="Denemede">Denemede</option>
+              <option value="Eklendi">Eklendi</option>
+              <option value="Vardı">Vardı</option>
+              <option value="İptal">İptal</option>
+            </select>
+          </div>
+          <div className="filter-item filter-actions">
+            <button className="btn btn-outline btn-sm" onClick={clearAllFilters}>Temizle</button>
+          </div>
+        </div>
       </div>
 
       <div className="table-wrapper">
@@ -198,7 +340,7 @@ export default function Requests() {
             </tr>
           </thead>
           <tbody>
-            {sortedRequests.map(req => {
+            {filteredRequests.map(req => {
               const dateObj = new Date(req.RequestDate + 'Z'); // SQLite UTC time
 
               // Helper to assign CSS class to request status badges
@@ -228,7 +370,7 @@ export default function Requests() {
                 </tr>
               );
             })}
-            {sortedRequests.length === 0 && (
+            {filteredRequests.length === 0 && (
               <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>

@@ -31,6 +31,46 @@
           <h2 id="requestsTitle">Şarkı İstekleri</h2>
           <button class="btn btn-primary" onclick="openModal('requestModal')">+ Yeni İstek</button>
         </div>
+        <div class="filters-panel">
+          <div class="filter-group-row">
+            <div class="filter-item search-box">
+              <label for="filterSearch">Serbest Arama</label>
+              <input type="text" id="filterSearch" placeholder="Misafir, şarkı veya sanatçı..." oninput="handleFilterChange()">
+            </div>
+            <div class="filter-item">
+              <label for="filterGuestSelect">Misafir</label>
+              <select id="filterGuestSelect" onchange="handleFilterChange()">
+                <option value="">Tüm Misafirler</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="filterSongSelect">Şarkı</label>
+              <select id="filterSongSelect" onchange="handleFilterChange()">
+                <option value="">Tüm Şarkılar</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="filterArtistSelect">Sanatçı</label>
+              <select id="filterArtistSelect" onchange="handleFilterChange()">
+                <option value="">Tüm Sanatçılar</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="filterStatusSelect">Durum</label>
+              <select id="filterStatusSelect" onchange="handleFilterChange()">
+                <option value="">Tüm Durumlar</option>
+                <option value="Kayıtlı">Kayıtlı</option>
+                <option value="Denemede">Denemede</option>
+                <option value="Eklendi">Eklendi</option>
+                <option value="Vardı">Vardı</option>
+                <option value="İptal">İptal</option>
+              </select>
+            </div>
+            <div class="filter-item filter-actions">
+              <button class="btn btn-outline btn-sm" onclick="clearAllFilters()">Temizle</button>
+            </div>
+          </div>
+        </div>
         <div class="table-wrapper">
           <table id="requestsTable">
             <thead>

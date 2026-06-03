@@ -770,3 +770,82 @@ tr:hover td {
   color: #dc2626;
 }
 
+/* ==========================================================================
+   FILTERS PANEL STYLES
+   ========================================================================== */
+.filters-panel {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 20px 0 rgba(123, 180, 245, 0.04);
+}
+
+.filter-group-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.filter-item {
+  flex: 1 1 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.filter-item.search-box {
+  flex: 2 1 250px;
+}
+
+.filter-item label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-item input,
+.filter-item select {
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.85);
+  width: 100%;
+}
+
+.filter-item input:focus,
+.filter-item select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(123, 180, 245, 0.2);
+}
+
+.filter-actions {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+
+@media (max-width: 768px) {
+  .filter-group-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .filter-item {
+    flex: 1 1 auto;
+  }
+  .filter-actions {
+    margin-top: 0.5rem;
+  }
+  .filter-actions button {
+    width: 100%;
+  }
+}
+
+
