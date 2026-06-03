@@ -4,48 +4,89 @@ import Songs from './components/Songs';
 import Guests from './components/Guests';
 import Requests from './components/Requests';
 
+const NAV_ITEMS = [
+  {
+    key: 'requests',
+    label: 'İstekler',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="18" cy="16" r="3" />
+      </svg>
+    )
+  },
+  {
+    key: 'songs',
+    label: 'Şarkılar',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <line x1="8" y1="6" x2="21" y2="6" />
+        <line x1="8" y1="12" x2="21" y2="12" />
+        <line x1="8" y1="18" x2="21" y2="18" />
+        <line x1="3" y1="6" x2="3.01" y2="6" />
+        <line x1="3" y1="12" x2="3.01" y2="12" />
+        <line x1="3" y1="18" x2="3.01" y2="18" />
+      </svg>
+    )
+  },
+  {
+    key: 'artists',
+    label: 'Sanatçılar',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" y1="19" x2="12" y2="23" />
+        <line x1="8" y1="23" x2="16" y2="23" />
+      </svg>
+    )
+  },
+  {
+    key: 'guests',
+    label: 'Misafirler',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    )
+  }
+];
+
 function App() {
   const [activeTab, setActiveTab] = useState('requests');
 
   return (
-    <div className="container">
-      <header>
-        <div className="logo-area">
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-logo">
           <img src="/flymonyLogo.png" alt="FLY Logo" className="logo-img" />
         </div>
-        <nav>
-          <button 
-            className={`nav-btn ${activeTab === 'requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('requests')}
-          >
-            İstekler
-          </button>
-          <button 
-            className={`nav-btn ${activeTab === 'songs' ? 'active' : ''}`}
-            onClick={() => setActiveTab('songs')}
-          >
-            Şarkılar
-          </button>
-          <button 
-            className={`nav-btn ${activeTab === 'artists' ? 'active' : ''}`}
-            onClick={() => setActiveTab('artists')}
-          >
-            Sanatçılar
-          </button>
-          <button 
-            className={`nav-btn ${activeTab === 'guests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('guests')}
-          >
-            Misafirler
-          </button>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.key}
+              className={`nav-btn ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.key)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+            </button>
+          ))}
         </nav>
-      </header>
+        <div className="sidebar-footer">flymony · yönetim paneli</div>
+      </aside>
 
-      <main className="content-panel">
-        {activeTab === 'requests' && <Requests />}
-        {activeTab === 'songs' && <Songs />}
-        {activeTab === 'artists' && <Artists />}
-        {activeTab === 'guests' && <Guests />}
+      <main className="app-main">
+        <div className="content-panel">
+          {activeTab === 'requests' && <Requests />}
+          {activeTab === 'songs' && <Songs />}
+          {activeTab === 'artists' && <Artists />}
+          {activeTab === 'guests' && <Guests />}
+        </div>
       </main>
     </div>
   );

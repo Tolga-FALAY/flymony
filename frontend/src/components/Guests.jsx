@@ -650,21 +650,13 @@ export default function Guests() {
               {/* Notes Field */}
               <div className="form-group">
                 <label>Notlar</label>
-                <textarea 
-                  name="Notes" 
-                  value={formData.Notes} 
-                  onChange={handleChange} 
-                  rows="4" 
+                <textarea
+                  name="Notes"
+                  value={formData.Notes}
+                  onChange={handleChange}
+                  rows="4"
                   placeholder="Misafir hakkında özel notlar, tercihler..."
-                  style={{
-                    padding: '0.75rem 1rem', 
-                    borderRadius: '8px', 
-                    border: '1px solid #cbd5e1', 
-                    fontFamily: 'inherit',
-                    fontSize: '1rem',
-                    resize: 'vertical',
-                    outline: 'none'
-                  }}
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 
