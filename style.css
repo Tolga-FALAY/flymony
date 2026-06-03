@@ -495,7 +495,7 @@ tr:hover td {
     justify-content: flex-start;
     flex-wrap: nowrap;
     gap: 0.5rem;
-    padding: 4rem 1rem 1.5rem;
+    padding: 5rem 1rem 1.5rem;
     background: var(--bg-color, #fff);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
     transform: translateX(-100%);
@@ -643,10 +643,6 @@ tr:hover td {
 }
 
 @media (max-width: 480px) {
-  .nav-btn {
-    flex: 1 1 100%; /* stack nav buttons on very small screens */
-  }
-
   header {
     border-radius: 12px;
   }
