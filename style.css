@@ -50,14 +50,15 @@ header {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  border-bottom: none;
+  box-shadow: 0 -4px 16px 0 rgba(123, 180, 245, 0.06);
   position: relative;
   z-index: 10;
 }
 
-/* Desktop: nav sits visually merged with header */
+/* Desktop: nav sits visually merged with header as one seamless bar */
 nav#navMenu {
   display: flex;
   gap: 1rem;
@@ -68,11 +69,10 @@ nav#navMenu {
   -webkit-backdrop-filter: blur(12px);
   border-radius: 0 0 var(--border-radius) var(--border-radius);
   border: 1px solid var(--glass-border);
-  border-top: none;
-  box-shadow: var(--glass-shadow);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(123, 180, 245, 0.08);
   padding: 0.5rem 2rem;
   margin-bottom: 2.5rem;
-  margin-top: -1px;
 }
 
 h1 {
@@ -452,6 +452,9 @@ tr:hover td {
     height: 72px;
     padding: 0 1rem;
     border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
     margin-bottom: 1.25rem;
     position: relative;
   }
@@ -528,9 +531,13 @@ tr:hover td {
     align-items: center;
     gap: 0.5rem;
     padding: 3rem 2rem;
+    margin: 0;
+    border: none;
+    border-radius: 0;
     background: linear-gradient(160deg, #dce9fa 0%, #f4f9fd 40%, #e8f0fe 100%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    box-shadow: none;
     z-index: 1100;
     opacity: 0;
     visibility: hidden;
