@@ -93,6 +93,21 @@
           <h2 id="songsTitle">Şarkılar</h2>
           <button class="btn btn-primary" onclick="openModal('songModal')">+ Yeni Şarkı</button>
         </div>
+        <div class="filters-panel">
+          <div class="filter-group-row">
+            <div class="filter-item">
+              <label for="filterSongTitle">Şarkı Adı</label>
+              <input type="text" id="filterSongTitle" placeholder="Şarkı adı ara..." oninput="handleSongFilterChange()">
+            </div>
+            <div class="filter-item">
+              <label for="filterSongArtist">Sanatçı</label>
+              <input type="text" id="filterSongArtist" placeholder="Sanatçı adı ara..." oninput="handleSongFilterChange()">
+            </div>
+            <div class="filter-item filter-actions">
+              <button class="btn btn-outline btn-sm" onclick="clearAllSongFilters()">Temizle</button>
+            </div>
+          </div>
+        </div>
         <div class="table-wrapper">
           <table id="songsTable">
             <thead>
@@ -112,6 +127,17 @@
         <div class="section-header">
           <h2 id="artistsTitle">Sanatçılar</h2>
           <button class="btn btn-primary" onclick="openModal('artistModal')">+ Yeni Sanatçı</button>
+        </div>
+        <div class="filters-panel">
+          <div class="filter-group-row">
+            <div class="filter-item">
+              <label for="filterArtistName">Sanatçı Adı</label>
+              <input type="text" id="filterArtistName" placeholder="Sanatçı adı ara..." oninput="handleArtistFilterChange()">
+            </div>
+            <div class="filter-item filter-actions">
+              <button class="btn btn-outline btn-sm" onclick="clearAllArtistFilters()">Temizle</button>
+            </div>
+          </div>
         </div>
         <div class="table-wrapper">
           <table id="artistsTable">

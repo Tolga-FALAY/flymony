@@ -36,6 +36,13 @@ let filterGuestName = '';
 let filterGuestNotes = '';
 let filterGuestMonth = '';
 
+// Artist Filter variables
+let filterArtistName = '';
+
+// Song Filter variables
+let filterSongTitle = '';
+let filterSongArtist = '';
+
 
 
 const DB = {
@@ -321,14 +328,22 @@ function populateDropdowns(guestFilter = '', songFilter = '') {
 
 // ----------------- ARTISTS -----------------
 function renderArtists() {
+  const filteredArtists = DB.artists.filter(artist => {
+    if (filterArtistName) {
+      const searchName = filterArtistName.toLocaleLowerCase('tr-TR');
+      return (artist.name || "").toLocaleLowerCase('tr-TR').includes(searchName);
+    }
+    return true;
+  });
+
   const artistsTitleEl = document.getElementById('artistsTitle');
   if (artistsTitleEl) {
-    artistsTitleEl.innerText = `Sanatçılar (${DB.artists.length})`;
+    artistsTitleEl.innerText = `Sanatçılar (${filteredArtists.length})`;
   }
   const tbody = document.querySelector('#artistsTable tbody');
-  tbody.innerHTML = DB.artists.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+  tbody.innerHTML = filteredArtists.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
-  const sortedArtists = [...DB.artists].sort((a, b) => {
+  const sortedArtists = [...filteredArtists].sort((a, b) => {
     let res = (a.name || "").toLocaleLowerCase('tr-TR').localeCompare((b.name || "").toLocaleLowerCase('tr-TR'), 'tr');
     return artistsSortDirection === 'asc' ? res : -res;
   });
@@ -934,14 +949,36 @@ async function deleteGuest(id) {
 
 // ----------------- SONGS -----------------
 function renderSongs() {
+  const filteredSongs = DB.songs.filter(song => {
+    // 1. Song Title filter
+    if (filterSongTitle) {
+      const searchTitle = filterSongTitle.toLocaleLowerCase('tr-TR');
+      if (!(song.title || '').toLocaleLowerCase('tr-TR').includes(searchTitle)) {
+        return false;
+      }
+    }
+
+    // 2. Song Artist filter
+    if (filterSongArtist) {
+      const searchArtist = filterSongArtist.toLocaleLowerCase('tr-TR');
+      const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
+      const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ').toLocaleLowerCase('tr-TR');
+      if (!artistNames.includes(searchArtist)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   const songsTitleEl = document.getElementById('songsTitle');
   if (songsTitleEl) {
-    songsTitleEl.innerText = `Şarkılar (${DB.songs.length})`;
+    songsTitleEl.innerText = `Şarkılar (${filteredSongs.length})`;
   }
   const tbody = document.querySelector('#songsTable tbody');
-  tbody.innerHTML = DB.songs.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+  tbody.innerHTML = filteredSongs.length === 0 ? '<tr><td colspan="3" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
   
-  const sortedSongs = [...DB.songs].sort((a, b) => {
+  const sortedSongs = [...filteredSongs].sort((a, b) => {
     let res = 0;
     if (songsSortKey === 'title') {
       res = (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
@@ -1492,6 +1529,46 @@ function clearAllGuestFilters() {
   renderGuests();
 }
 
+// Sanatçı Filtre Değişim Olayı
+function handleArtistFilterChange() {
+  const nameInput = document.getElementById('filterArtistName');
+  filterArtistName = nameInput ? nameInput.value : '';
+  renderArtists();
+}
+
+// Sanatçı Filtrelerini Temizle
+function clearAllArtistFilters() {
+  const nameInput = document.getElementById('filterArtistName');
+  if (nameInput) nameInput.value = '';
+  filterArtistName = '';
+  renderArtists();
+}
+
+// Şarkı Filtre Değişim Olayı
+function handleSongFilterChange() {
+  const titleInput = document.getElementById('filterSongTitle');
+  const artistInput = document.getElementById('filterSongArtist');
+
+  filterSongTitle = titleInput ? titleInput.value : '';
+  filterSongArtist = artistInput ? artistInput.value : '';
+
+  renderSongs();
+}
+
+// Şarkı Filtrelerini Temizle
+function clearAllSongFilters() {
+  const titleInput = document.getElementById('filterSongTitle');
+  const artistInput = document.getElementById('filterSongArtist');
+
+  if (titleInput) titleInput.value = '';
+  if (artistInput) artistInput.value = '';
+
+  filterSongTitle = '';
+  filterSongArtist = '';
+
+  renderSongs();
+}
+
 // Sanatçı Arama Filtresi
 function setupArtistSearch() {
   const searchInput = document.getElementById('artistSearchInput');
@@ -1619,5 +1696,9 @@ window.clearAllFilters = clearAllFilters;
 window.populateFilterDropdowns = populateFilterDropdowns;
 window.handleGuestFilterChange = handleGuestFilterChange;
 window.clearAllGuestFilters = clearAllGuestFilters;
+window.handleArtistFilterChange = handleArtistFilterChange;
+window.clearAllArtistFilters = clearAllArtistFilters;
+window.handleSongFilterChange = handleSongFilterChange;
+window.clearAllSongFilters = clearAllSongFilters;
 
 

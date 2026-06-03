@@ -10,6 +10,9 @@ export default function Artists() {
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'ArtistName', direction: 'asc' });
 
+  // Filter State
+  const [filterText, setFilterText] = useState('');
+
   useEffect(() => {
     loadArtists();
   }, []);
@@ -73,6 +76,15 @@ export default function Artists() {
     return sortConfig.direction === 'asc' ? res : -res;
   });
 
+  const filteredArtists = sortedArtists.filter(artist => {
+    if (filterText) {
+      const search = filterText.toLocaleLowerCase('tr-TR');
+      const name = (artist.ArtistName || '').toLocaleLowerCase('tr-TR');
+      if (!name.includes(search)) return false;
+    }
+    return true;
+  });
+
   const renderSortArrow = (key) => {
     if (sortConfig.key === key) {
       return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
@@ -83,10 +95,28 @@ export default function Artists() {
   return (
     <div>
       <div className="section-header">
-        <h2>Sanatçılar ({artists.length})</h2>
+        <h2>Sanatçılar ({filteredArtists.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni Sanatçı
         </button>
+      </div>
+
+      <div className="filters-panel">
+        <div className="filter-group-row">
+          <div className="filter-item">
+            <label htmlFor="filterArtistNameReact">Sanatçı Adı</label>
+            <input 
+              type="text" 
+              id="filterArtistNameReact" 
+              placeholder="Sanatçı adı ara..." 
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+            />
+          </div>
+          <div className="filter-item filter-actions">
+            <button className="btn btn-outline btn-sm" onClick={() => setFilterText('')}>Temizle</button>
+          </div>
+        </div>
       </div>
 
       <div className="table-wrapper">
@@ -104,7 +134,7 @@ export default function Artists() {
             </tr>
           </thead>
           <tbody>
-            {sortedArtists.map(artist => (
+            {filteredArtists.map(artist => (
               <tr key={artist.ArtistID}>
                 <td data-label="ID">{artist.ArtistID}</td>
                 <td data-label="Sanatçı Adı">{artist.ArtistName}</td>
@@ -114,7 +144,7 @@ export default function Artists() {
                 </td>
               </tr>
             ))}
-            {sortedArtists.length === 0 && (
+            {filteredArtists.length === 0 && (
               <tr><td colSpan="3" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>

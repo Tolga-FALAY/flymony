@@ -10,6 +10,15 @@ export default function Songs() {
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
 
+  // Filter States
+  const [filterSong, setFilterSong] = useState('');
+  const [filterArtist, setFilterArtist] = useState('');
+
+  const clearAllFilters = () => {
+    setFilterSong('');
+    setFilterArtist('');
+  };
+
   const [formData, setFormData] = useState({
     SongTitle: '',
     Duration: '',
@@ -125,6 +134,20 @@ export default function Songs() {
     return sortConfig.direction === 'asc' ? res : -res;
   });
 
+  const filteredSongs = sortedSongs.filter(song => {
+    if (filterSong) {
+      const searchSong = filterSong.toLocaleLowerCase('tr-TR');
+      const title = (song.SongTitle || '').toLocaleLowerCase('tr-TR');
+      if (!title.includes(searchSong)) return false;
+    }
+    if (filterArtist) {
+      const searchArtist = filterArtist.toLocaleLowerCase('tr-TR');
+      const artistsVal = (song.ArtistNames || '').toLocaleLowerCase('tr-TR');
+      if (!artistsVal.includes(searchArtist)) return false;
+    }
+    return true;
+  });
+
   const renderSortArrow = (key) => {
     if (sortConfig.key === key) {
       return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
@@ -135,10 +158,38 @@ export default function Songs() {
   return (
     <div>
       <div className="section-header">
-        <h2>Şarkılar ({songs.length})</h2>
+        <h2>Şarkılar ({filteredSongs.length})</h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni Şarkı
         </button>
+      </div>
+
+      <div className="filters-panel">
+        <div className="filter-group-row">
+          <div className="filter-item">
+            <label htmlFor="filterSongTitleReact">Şarkı Adı</label>
+            <input 
+              type="text" 
+              id="filterSongTitleReact" 
+              placeholder="Şarkı adı ara..." 
+              value={filterSong}
+              onChange={(e) => setFilterSong(e.target.value)}
+            />
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterSongArtistReact">Sanatçı</label>
+            <input 
+              type="text" 
+              id="filterSongArtistReact" 
+              placeholder="Sanatçı adı ara..." 
+              value={filterArtist}
+              onChange={(e) => setFilterArtist(e.target.value)}
+            />
+          </div>
+          <div className="filter-item filter-actions">
+            <button className="btn btn-outline btn-sm" onClick={clearAllFilters}>Temizle</button>
+          </div>
+        </div>
       </div>
 
       <div className="table-wrapper">
@@ -162,7 +213,7 @@ export default function Songs() {
             </tr>
           </thead>
           <tbody>
-            {sortedSongs.map(song => (
+            {filteredSongs.map(song => (
               <tr key={song.SongID}>
                 <td data-label="Şarkı Adı">{song.SongTitle}</td>
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
@@ -173,7 +224,7 @@ export default function Songs() {
                 </td>
               </tr>
             ))}
-            {sortedSongs.length === 0 && (
+            {filteredSongs.length === 0 && (
               <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
