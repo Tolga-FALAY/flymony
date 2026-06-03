@@ -853,20 +853,20 @@ tr:hover td {
 
 .filter-group-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
   align-items: flex-end;
 }
 
 .filter-item {
-  flex: 1 1 180px;
+  flex: 1 1 140px;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
 .filter-item.search-box {
-  flex: 2 1 250px;
+  flex: 1.8 1 200px;
 }
 
 .filter-item label {
