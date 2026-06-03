@@ -43,7 +43,7 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 0;
   height: 90px;
   /* fixed height to narrow navbar by ~20% */
   padding: 0 2rem;
@@ -54,17 +54,31 @@ header {
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   position: relative;
+  z-index: 10;
+}
+
+/* Desktop: nav sits visually merged with header */
+nav#navMenu {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  border: 1px solid var(--glass-border);
+  border-top: none;
+  box-shadow: var(--glass-shadow);
+  padding: 0.5rem 2rem;
+  margin-bottom: 2.5rem;
+  margin-top: -1px;
 }
 
 h1 {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--primary-color);
-}
-
-nav {
-  display: flex;
-  gap: 1rem;
 }
 
 .nav-btn {
