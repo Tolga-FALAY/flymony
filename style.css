@@ -33,46 +33,47 @@ body {
 }
 
 .container {
-  max-width: 1200px;
+  padding: 2rem 2rem 2rem calc(260px + 2rem);
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 2rem;
 }
 
-/* Desktop: left sidebar holding logo header + vertical nav as one glass card */
+/* Desktop: full-height fixed left rail holding logo + vertical nav as one glass card */
 .app-sidebar {
   display: flex;
   flex-direction: column;
-  width: 240px;
-  flex-shrink: 0;
-  position: sticky;
-  top: 2rem;
+  width: 260px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  height: 100vh;
+  z-index: 50;
 }
 
-/* Glassmorphism Dashboard Header */
+/* Glassmorphism Dashboard Header — top of the full-height rail */
 header {
   display: flex;
   justify-content: center;
   align-items: center;
   margin-bottom: 0;
   height: auto;
-  padding: 1.5rem 1rem;
+  padding: 2rem 1rem 1.5rem;
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: var(--border-radius) var(--border-radius) 0 0;
-  border: 1px solid var(--glass-border);
-  border-bottom: none;
-  box-shadow: 0 -4px 16px 0 rgba(123, 180, 245, 0.06);
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid var(--glass-border);
+  box-shadow: none;
   position: relative;
   z-index: 10;
 }
 
-/* Desktop: nav is a vertical stack below the logo, sharing the sidebar glass card */
+/* Desktop: nav fills the rest of the rail as a vertical stack below the logo */
 nav#navMenu {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.5rem;
   align-items: stretch;
@@ -80,10 +81,10 @@ nav#navMenu {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: 0 0 var(--border-radius) var(--border-radius);
-  border: 1px solid var(--glass-border);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(123, 180, 245, 0.08);
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid var(--glass-border);
+  box-shadow: 4px 0 24px 0 rgba(123, 180, 245, 0.08);
   padding: 1rem;
 }
 
