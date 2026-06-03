@@ -58,10 +58,16 @@ const NAV_ITEMS = [
 
 function App() {
   const [activeTab, setActiveTab] = useState('requests');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  function handleNavClick(key) {
+    setActiveTab(key);
+    setMenuOpen(false);
+  }
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${menuOpen ? ' sidebar--open' : ''}`}>
         <div className="sidebar-logo">
           <img src="/flymonyLogo.png" alt="FLY Logo" className="logo-img" />
         </div>
@@ -70,7 +76,7 @@ function App() {
             <button
               key={item.key}
               className={`nav-btn ${activeTab === item.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.key)}
+              onClick={() => handleNavClick(item.key)}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
@@ -80,7 +86,18 @@ function App() {
         <div className="sidebar-footer">flymony · yönetim paneli</div>
       </aside>
 
+      {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
+
       <main className="app-main">
+        <button
+          className="hamburger-btn"
+          onClick={() => setMenuOpen(o => !o)}
+          aria-label="Menüyü aç/kapat"
+        >
+          <span className={`hamburger-icon${menuOpen ? ' hamburger-icon--open' : ''}`}>
+            <span /><span /><span />
+          </span>
+        </button>
         <div className="content-panel">
           {activeTab === 'requests' && <Requests />}
           {activeTab === 'songs' && <Songs />}
