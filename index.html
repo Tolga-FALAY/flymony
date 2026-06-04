@@ -7,22 +7,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
   <link rel="icon" href="flymonyFavicon.png" type="image/png">
 </head>
 <body>
   <div class="container">
-    <header>
-      <div class="logo-area">
-        <img src="flymonyLogo.png" alt="FLY Logo" class="logo-img">
-      </div>
+    <aside class="app-sidebar">
+      <header>
+        <button id="menuToggle" class="menu-toggle" aria-label="Menü" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="logo-area">
+          <img src="flymonyLogo.png" alt="FLY Logo" class="logo-img">
+        </div>
+      </header>
       <nav id="navMenu">
+        <button id="mobileNavClose" class="mobile-nav-close" aria-label="Menüyü Kapat"></button>
         <button class="nav-btn active" data-target="requests">İstekler</button>
         <button class="nav-btn" data-target="songs">Şarkılar</button>
         <button class="nav-btn" data-target="artists">Sanatçılar</button>
         <button class="nav-btn" data-target="guests">Misafirler</button>
       </nav>
-    </header>
+      <div id="menuBackdrop" class="menu-backdrop"></div>
+    </aside>
 
     <main class="content-panel">
       <!-- İSTEKLER SEKMESİ -->

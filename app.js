@@ -162,6 +162,7 @@ const DB = {
 // Sayfa yüklendiğinde tabloları oluştur
 document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
+  setupMobileMenu();
   await DB.loadFromFirestore();
   renderAllTables();
   populateDropdowns();
@@ -182,8 +183,49 @@ function setupTabs() {
       
       btn.classList.add('active');
       document.getElementById(btn.dataset.target).classList.add('active');
+
+      closeMobileMenu();
     });
   });
+}
+
+// Mobil hamburger menü
+function closeMobileMenu() {
+  const navMenu = document.getElementById('navMenu');
+  const backdrop = document.getElementById('menuBackdrop');
+  const toggle = document.getElementById('menuToggle');
+  if (navMenu) navMenu.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('open');
+  if (toggle) {
+    toggle.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+  document.body.style.overflow = '';
+}
+
+function setupMobileMenu() {
+  const navMenu = document.getElementById('navMenu');
+  const backdrop = document.getElementById('menuBackdrop');
+  const toggle = document.getElementById('menuToggle');
+  const closeBtn = document.getElementById('mobileNavClose');
+  if (!navMenu || !toggle) return;
+
+  toggle.addEventListener('click', () => {
+    const isOpen = navMenu.classList.toggle('open');
+    toggle.classList.toggle('open', isOpen);
+    if (backdrop) backdrop.classList.toggle('open', isOpen);
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    // Lock body scroll when overlay is open
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  });
+
+  if (backdrop) {
+    backdrop.addEventListener('click', closeMobileMenu);
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeMobileMenu);
+  }
 }
 
 // Modal Kontrolleri
