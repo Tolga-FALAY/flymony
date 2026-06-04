@@ -70,6 +70,10 @@ app.put('/api/artists/:id', (req, res) => {
 
 app.delete('/api/artists/:id', (req, res) => {
     try {
+        const isLinked = db.prepare('SELECT 1 FROM Song_Artists WHERE ArtistID = ?').get(req.params.id);
+        if (isLinked) {
+            return res.status(400).json({ error: 'Bu sanatçı bir şarkıda kayıtlı, sanatçıyı silmek için önce ilgili şarkı kaydınız silmeniz gerekir' });
+        }
         db.prepare('DELETE FROM Artists WHERE ArtistID = ?').run(req.params.id);
         res.json({ message: 'Artist deleted' });
     } catch (err) {
@@ -209,6 +213,10 @@ app.put('/api/songs/:id', (req, res) => {
 
 app.delete('/api/songs/:id', (req, res) => {
     try {
+        const isLinked = db.prepare('SELECT 1 FROM Requests WHERE SongID = ?').get(req.params.id);
+        if (isLinked) {
+            return res.status(400).json({ error: 'Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz' });
+        }
         db.prepare('DELETE FROM Songs WHERE SongID = ?').run(req.params.id);
         res.json({ message: 'Song deleted' });
     } catch (err) {
@@ -304,6 +312,10 @@ app.put('/api/guests/:id', (req, res) => {
 
 app.delete('/api/guests/:id', (req, res) => {
     try {
+        const isLinked = db.prepare('SELECT 1 FROM Request_Guests WHERE GuestID = ?').get(req.params.id);
+        if (isLinked) {
+            return res.status(400).json({ error: 'Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz' });
+        }
         db.prepare('DELETE FROM Guests WHERE GuestID = ?').run(req.params.id);
         res.json({ message: 'Guest deleted' });
     } catch (err) {

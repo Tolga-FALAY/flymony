@@ -476,6 +476,11 @@ function editArtist(id) {
 }
 
 async function deleteArtist(id) {
+  const isLinked = DB.song_artists.some(sa => sa.artistId == id);
+  if (isLinked) {
+    alert("Bu sanatçı bir şarkıda kayıtlı, sanatçıyı silmek için önce ilgili şarkı kaydınız silmeniz gerekir");
+    return;
+  }
   if (confirm('Emin misiniz?')) {
     try {
       await db.collection("artists").doc(String(id)).delete();
@@ -1022,6 +1027,11 @@ function editGuest(id) {
 }
 
 async function deleteGuest(id) {
+  const isLinked = DB.requests.some(r => (r.guestIds || []).includes(Number(id)));
+  if (isLinked) {
+    alert("Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz");
+    return;
+  }
   if (confirm('Emin misiniz?')) {
     try {
       await db.collection("guests").doc(String(id)).delete();
@@ -1190,6 +1200,11 @@ function editSong(id) {
 }
 
 async function deleteSong(id) {
+  const isLinked = DB.requests.some(r => r.songId == id);
+  if (isLinked) {
+    alert("Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz");
+    return;
+  }
   if (confirm('Emin misiniz?')) {
     try {
       await db.collection("songs").doc(String(id)).delete();

@@ -143,9 +143,19 @@ export default function Songs() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bu şarkıyı silmek istediğinize emin misiniz?')) {
-      await api.deleteSong(id);
-      loadData();
+    try {
+      const requests = await api.getRequests();
+      const isLinked = requests.some(r => r.SongID === Number(id));
+      if (isLinked) {
+        alert("Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz");
+        return;
+      }
+      if (window.confirm('Bu şarkıyı silmek istediğinize emin misiniz?')) {
+        await api.deleteSong(id);
+        loadData();
+      }
+    } catch (err) {
+      alert("Silme hatası: " + err.message);
     }
   };
 

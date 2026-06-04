@@ -55,9 +55,19 @@ export default function Artists() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bu sanatçıyı silmek istediğinize emin misiniz?')) {
-      await api.deleteArtist(id);
-      loadArtists();
+    try {
+      const songs = await api.getSongs();
+      const isLinked = songs.some(s => (s.ArtistIDs || []).includes(Number(id)));
+      if (isLinked) {
+        alert("Bu sanatçı bir şarkıda kayıtlı, sanatçıyı silmek için önce ilgili şarkı kaydınız silmeniz gerekir");
+        return;
+      }
+      if (window.confirm('Bu sanatçıyı silmek istediğinize emin misiniz?')) {
+        await api.deleteArtist(id);
+        loadArtists();
+      }
+    } catch (err) {
+      alert("Silme hatası: " + err.message);
     }
   };
 

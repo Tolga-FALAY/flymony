@@ -317,9 +317,19 @@ export default function Guests() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bu misafiri silmek istediğinize emin misiniz?')) {
-      await api.deleteGuest(id);
-      loadGuests();
+    try {
+      const requests = await api.getRequests();
+      const isLinked = requests.some(r => (r.GuestIDs || []).includes(Number(id)));
+      if (isLinked) {
+        alert("Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz");
+        return;
+      }
+      if (window.confirm('Bu misafiri silmek istediğinize emin misiniz?')) {
+        await api.deleteGuest(id);
+        loadGuests();
+      }
+    } catch (err) {
+      alert("Silme hatası: " + err.message);
     }
   };
 
