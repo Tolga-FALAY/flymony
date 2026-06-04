@@ -25,6 +25,16 @@ export default function Requests() {
     Status: 'Kayıtlı'
   });
 
+  const [guestSearch, setGuestSearch] = useState('');
+  const [songSearch, setSongSearch] = useState('');
+  
+  const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
+  const [isSongModalOpen, setIsSongModalOpen] = useState(false);
+
+  const [newGuestData, setNewGuestData] = useState({ FirstName: '', LastName: '', PhoneNumber: '' });
+  const [newSongData, setNewSongData] = useState({ SongTitle: '', ArtistIDs: [] });
+  const [songArtistSearch, setSongArtistSearch] = useState('');
+
   useEffect(() => {
     loadData();
   }, []);
@@ -60,6 +70,92 @@ export default function Requests() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingRequest(null);
+    setGuestSearch('');
+    setSongSearch('');
+  };
+
+  const handleCreateGuestInline = async (e) => {
+    e.preventDefault();
+    const fName = newGuestData.FirstName.trim();
+    const lName = newGuestData.LastName.trim();
+    if (!fName || !lName) {
+      alert("Ad ve Soyad alanları boş bırakılamaz!");
+      return;
+    }
+
+    const isDuplicate = guests.some(g => 
+      g.FirstName.trim().toLowerCase() === fName.toLowerCase() && 
+      g.LastName.trim().toLowerCase() === lName.toLowerCase()
+    );
+    if (isDuplicate) {
+      alert("Bu isimde bir misafir zaten kayıtlı!");
+      return;
+    }
+
+    try {
+      const res = await api.createGuest({
+        FirstName: fName,
+        LastName: lName,
+        PhoneNumber: newGuestData.PhoneNumber
+      });
+      const guestsData = await api.getGuests();
+      setGuests(guestsData);
+      
+      setFormData(prev => ({
+        ...prev,
+        GuestIDs: [...prev.GuestIDs, String(res.GuestID)]
+      }));
+      
+      setNewGuestData({ FirstName: '', LastName: '', PhoneNumber: '' });
+      setGuestSearch('');
+      setIsGuestModalOpen(false);
+    } catch (err) {
+      alert("Misafir ekleme hatası: " + err.message);
+    }
+  };
+
+  const handleCreateSongInline = async (e) => {
+    e.preventDefault();
+    const title = newSongData.SongTitle.trim();
+    if (!title) {
+      alert("Şarkı adı boş olamaz!");
+      return;
+    }
+
+    const isDuplicate = songs.some(s => {
+      const titleMatch = s.SongTitle && s.SongTitle.trim().toLowerCase() === title.toLowerCase();
+      if (!titleMatch) return false;
+      const existingArtistIDs = s.ArtistIDs || [];
+      const newArtistIDs = newSongData.ArtistIDs.map(Number);
+      if (existingArtistIDs.length === 0 && newArtistIDs.length === 0) return true;
+      return newArtistIDs.some(id => existingArtistIDs.includes(id));
+    });
+
+    if (isDuplicate) {
+      alert("Bu şarkı zaten kayıtlı!");
+      return;
+    }
+
+    try {
+      const res = await api.createSong({
+        SongTitle: title,
+        ArtistIDs: newSongData.ArtistIDs.map(Number)
+      });
+      const songsData = await api.getSongs();
+      setSongs(songsData);
+      
+      setFormData(prev => ({
+        ...prev,
+        SongID: String(res.SongID)
+      }));
+      
+      setNewSongData({ SongTitle: '', ArtistIDs: [] });
+      setSongSearch('');
+      setSongArtistSearch('');
+      setIsSongModalOpen(false);
+    } catch (err) {
+      alert("Şarkı ekleme hatası: " + err.message);
+    }
   };
 
   const handleChange = (e) => {
@@ -387,21 +483,72 @@ export default function Requests() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Misafirler (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Misafir ara..."
+                    value={guestSearch}
+                    onChange={(e) => setGuestSearch(e.target.value)}
+                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setIsGuestModalOpen(true)}
+                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
+                  >
+                    +
+                  </button>
+                </div>
                 <select multiple name="GuestIDs" value={formData.GuestIDs} onChange={handleGuestChange} style={{ height: '100px' }} required>
-                  {guests.map(g => (
-                    <option key={g.GuestID} value={String(g.GuestID)}>{g.FullName}</option>
-                  ))}
+                  {guests.map(g => {
+                    const isVisible = (g.FullName || '').toLocaleLowerCase('tr-TR').includes(guestSearch.toLocaleLowerCase('tr-TR'));
+                    return (
+                      <option 
+                        key={g.GuestID} 
+                        value={String(g.GuestID)}
+                        style={{ display: isVisible ? 'block' : 'none' }}
+                      >
+                        {g.FullName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="form-group">
                 <label>Şarkı Seçin</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Şarkı ara..."
+                    value={songSearch}
+                    onChange={(e) => setSongSearch(e.target.value)}
+                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setIsSongModalOpen(true)}
+                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
+                  >
+                    +
+                  </button>
+                </div>
                 <select name="SongID" value={formData.SongID} onChange={handleChange} required>
-                  <option value="">-- Şarkı --</option>
-                  {sortedSongs.map(s => (
-                    <option key={s.SongID} value={String(s.SongID)}>
-                      {s.SongTitle} {s.ArtistNames && s.ArtistNames !== '-' ? `(${s.ArtistNames})` : ''}
-                    </option>
-                  ))}
+                  <option value="">-- Şarkı Seçin --</option>
+                  {sortedSongs.map(s => {
+                    const isVisible = (s.SongTitle || '').toLocaleLowerCase('tr-TR').includes(songSearch.toLocaleLowerCase('tr-TR')) || 
+                                      (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(songSearch.toLocaleLowerCase('tr-TR'));
+                    return (
+                      <option 
+                        key={s.SongID} 
+                        value={String(s.SongID)}
+                        style={{ display: isVisible ? 'block' : 'none' }}
+                      >
+                        {s.SongTitle} {s.ArtistNames && s.ArtistNames !== '-' ? `(${s.ArtistNames})` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="form-group">
@@ -422,6 +569,110 @@ export default function Requests() {
           </div>
         </div>
       )}
+
+      {isGuestModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Yeni Misafir Ekle</h2>
+              <button className="close-btn" onClick={() => setIsGuestModalOpen(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleCreateGuestInline}>
+              <div className="form-group">
+                <label>Ad</label>
+                <input 
+                  type="text" 
+                  value={newGuestData.FirstName} 
+                  onChange={e => setNewGuestData({ ...newGuestData, FirstName: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Soyad</label>
+                <input 
+                  type="text" 
+                  value={newGuestData.LastName} 
+                  onChange={e => setNewGuestData({ ...newGuestData, LastName: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Telefon</label>
+                <input 
+                  type="text" 
+                  value={newGuestData.PhoneNumber} 
+                  onChange={e => setNewGuestData({ ...newGuestData, PhoneNumber: e.target.value })} 
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setIsGuestModalOpen(false)}>İptal</button>
+                <button type="submit" className="btn btn-primary">Kaydet</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isSongModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Yeni Şarkı Ekle</h2>
+              <button className="close-btn" onClick={() => setIsSongModalOpen(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleCreateSongInline}>
+              <div className="form-group">
+                <label>Şarkı Adı</label>
+                <input 
+                  type="text" 
+                  value={newSongData.SongTitle} 
+                  onChange={e => setNewSongData({ ...newSongData, SongTitle: e.target.value })} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Sanatçılar (CTRL/CMD ile çoklu seçim, arama filtresi yapılabilir)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Sanatçı ara..."
+                    value={songArtistSearch}
+                    onChange={(e) => setSongArtistSearch(e.target.value)}
+                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <select 
+                  multiple 
+                  value={newSongData.ArtistIDs} 
+                  onChange={e => {
+                    const selected = Array.from(e.target.selectedOptions, option => option.value);
+                    setNewSongData({ ...newSongData, ArtistIDs: selected });
+                  }} 
+                  style={{ height: '100px' }}
+                >
+                  {artists.map(artist => {
+                    const isVisible = (artist.ArtistName || '').toLocaleLowerCase('tr-TR').includes(songArtistSearch.toLocaleLowerCase('tr-TR'));
+                    return (
+                      <option 
+                        key={artist.ArtistID} 
+                        value={String(artist.ArtistID)}
+                        style={{ display: isVisible ? 'block' : 'none' }}
+                      >
+                        {artist.ArtistName}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setIsSongModalOpen(false)}>İptal</button>
+                <button type="submit" className="btn btn-primary">Kaydet</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 }

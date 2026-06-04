@@ -968,6 +968,24 @@ async function saveGuest(e) {
     closeModal('guestModal');
     await DB.loadFromFirestore();
     renderAllTables();
+
+    if (window.openedFromRequestModalGuest) {
+      let selectedIDs = document.getElementById('reqGuestID').value ? document.getElementById('reqGuestID').value.split(',').map(Number) : [];
+      if (!selectedIDs.includes(Number(guestId))) {
+        selectedIDs.push(Number(guestId));
+      }
+      document.getElementById('reqGuestID').value = selectedIDs.join(',');
+      
+      populateDropdowns();
+      
+      const searchInput = document.getElementById('guestSearchInput');
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+      }
+      
+      window.openedFromRequestModalGuest = false;
+    }
   } catch (err) {
     alert("Kaydetme hatası: " + err.message);
   }
@@ -1135,6 +1153,20 @@ async function saveSong(e) {
     closeModal('songModal');
     await DB.loadFromFirestore();
     renderAllTables();
+
+    if (window.openedFromRequestModalSong) {
+      document.getElementById('reqSongID').value = Number(songId);
+      
+      populateDropdowns();
+      
+      const searchInput = document.getElementById('songSearchInput');
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+      }
+      
+      window.openedFromRequestModalSong = false;
+    }
   } catch (err) {
     alert("Kaydetme hatası: " + err.message);
   }
@@ -1750,8 +1782,20 @@ function openArtistModalFromSongModal() {
   openModal('artistModal');
 }
 
+function openGuestModalFromRequestModal() {
+  window.openedFromRequestModalGuest = true;
+  openModal('guestModal');
+}
+
+function openSongModalFromRequestModal() {
+  window.openedFromRequestModalSong = true;
+  openModal('songModal');
+}
+
 // Bind compat functions to global window for HTML inline actions support
 window.openArtistModalFromSongModal = openArtistModalFromSongModal;
+window.openGuestModalFromRequestModal = openGuestModalFromRequestModal;
+window.openSongModalFromRequestModal = openSongModalFromRequestModal;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.saveArtist = saveArtist;

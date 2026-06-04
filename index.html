@@ -230,13 +230,19 @@
         <input type="hidden" id="requestID">
         <div class="form-group">
           <label>Misafir Seçin</label>
-          <input type="text" id="guestSearchInput" placeholder="Misafir ara..." style="margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <input type="text" id="guestSearchInput" placeholder="Misafir ara..." style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+            <button type="button" class="btn btn-outline" onclick="openGuestModalFromRequestModal()" style="padding: 0.5rem 1rem; font-weight: bold; font-size: 1.1rem; line-height: 1;">+</button>
+          </div>
           <div id="guestListboxContainer" class="listbox-container"></div>
           <input type="hidden" id="reqGuestID" required>
         </div>
         <div class="form-group">
           <label>Şarkı Seçin</label>
-          <input type="text" id="songSearchInput" placeholder="Şarkı ara..." style="margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <input type="text" id="songSearchInput" placeholder="Şarkı ara..." style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+            <button type="button" class="btn btn-outline" onclick="openSongModalFromRequestModal()" style="padding: 0.5rem 1rem; font-weight: bold; font-size: 1.1rem; line-height: 1;">+</button>
+          </div>
           <div id="songListboxContainer" class="listbox-container"></div>
           <input type="hidden" id="reqSongID" required>
         </div>
