@@ -27,6 +27,7 @@
         <button class="nav-btn" data-target="songs">Şarkılar</button>
         <button class="nav-btn" data-target="artists">Sanatçılar</button>
         <button class="nav-btn" data-target="guests">Misafirler</button>
+        <button class="nav-btn" data-target="otherOperations">Diğer İşlemler</button>
       </nav>
       <div id="menuBackdrop" class="menu-backdrop"></div>
     </aside>
@@ -213,6 +214,98 @@
             </thead>
             <tbody></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- DİĞER İŞLEMLER SEKMESİ -->
+      <section id="otherOperations" class="tab-content">
+        <!-- Anasayfa Görünümü -->
+        <div id="otherOperationsHome">
+          <div class="section-header">
+            <h2>Diğer İşlemler</h2>
+          </div>
+          <div class="operations-grid">
+            <div class="operation-card active" onclick="showBulkPhotoPanel()">
+              <div class="operation-icon">👥📷</div>
+              <h3>Toplu Foto İşleme</h3>
+              <p>Cihazınızdan seçtiğiniz veya kamerayla çektiğiniz fotoğrafları, birden fazla misafirin profiline tek seferde kaydedin.</p>
+              <span class="btn btn-primary btn-sm" style="margin-top: 0.5rem; width: 100%;">Başlat</span>
+            </div>
+            <div class="operation-card disabled">
+              <div class="operation-icon">📊</div>
+              <h3>Veri İşleme</h3>
+              <p>Sistem verilerini dışa aktarın veya yedeklerden geri yükleyin.</p>
+              <span class="badge-soon" style="margin-top: 0.5rem;">Yakında</span>
+            </div>
+            <div class="operation-card disabled">
+              <div class="operation-icon">⚙️</div>
+              <h3>Bakım Programları</h3>
+              <p>Kullanılmayan veya mükerrer verileri temizleyerek veritabanını optimize edin.</p>
+              <span class="badge-soon" style="margin-top: 0.5rem;">Yakında</span>
+            </div>
+            <div class="operation-card disabled">
+              <div class="operation-icon">📋</div>
+              <h3>Raporlar Alma</h3>
+              <p>Detaylı istatistikler ve istek analizi raporları oluşturun.</p>
+              <span class="badge-soon" style="margin-top: 0.5rem;">Yakında</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toplu Foto İşleme Paneli -->
+        <div id="bulkPhotoPanel" style="display: none;">
+          <div class="section-header">
+            <button class="btn btn-outline btn-sm" onclick="showOtherOperationsHome()">← Geri Dön</button>
+            <h2>Toplu Fotoğraf İşleme</h2>
+          </div>
+          <p class="section-subtitle">Yükleyeceğiniz fotoğraflar, işaretleyeceğiniz tüm misafirlerin albümlerine ayrı ayrı eklenecektir.</p>
+          
+          <div class="bulk-layout">
+            <!-- Sol Sütun: Fotoğraf Yükleme -->
+            <div class="bulk-col">
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <label style="margin: 0; font-weight: 600;">Fotoğrafları Seçin</label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('bulkCameraInput').click()">📷 Fotoğraf Çek</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('bulkBrowseInput').click()">📂 Görsel Ekle</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="pasteVanillaBulkPhoto()">📋 Yapıştır</button>
+                  </div>
+                </div>
+                
+                <input type="file" id="bulkCameraInput" accept="image/*" capture="environment" multiple style="display: none;" onchange="handleVanillaBulkPhotoUpload(this)">
+                <input type="file" id="bulkBrowseInput" accept="image/*" multiple style="display: none;" onchange="handleVanillaBulkPhotoUpload(this)">
+
+                <div id="bulkPhotoPreviewsGrid" class="gallery-previews-grid" style="min-height: 150px; max-height: 300px;">
+                  <div class="gallery-empty-placeholder">
+                    <span>Henüz fotoğraf eklenmemiş. Fotoğraf çekebilir, galeriden seçebilir veya panodan yapıştırabilirsiniz (CTRL+V).</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sağ Sütun: Misafir Seçimi -->
+            <div class="bulk-col">
+              <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+                <label style="font-weight: 600; margin-bottom: 0.25rem;">Misafirleri İşaretleyin</label>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                  <input type="text" id="bulkGuestSearchInput" placeholder="Misafir ara..." oninput="handleBulkGuestSearch()" style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                  <button type="button" class="btn btn-sm btn-outline" style="flex: 1;" onclick="bulkSelectAllGuests()">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-outline" style="flex: 1;" onclick="bulkClearGuestSelection()">Seçimleri Temizle</button>
+                </div>
+                <div id="bulkGuestListboxContainer" class="listbox-container" style="flex: 1; min-height: 200px; max-height: 300px;">
+                  <!-- Misafir listesi dinamik olarak dolacak -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 2rem; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 1.5rem;">
+            <button type="button" class="btn btn-outline" onclick="cancelBulkPhotoProcessing()">İptal</button>
+            <button type="button" id="btnSaveBulkPhotos" class="btn btn-primary" onclick="saveBulkPhotos()">Fotoğrafları Kaydet</button>
+          </div>
         </div>
       </section>
     </main>

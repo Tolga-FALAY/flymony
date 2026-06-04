@@ -24,6 +24,11 @@ let guestsSortKey = 'name';
 let guestsSortDirection = 'asc';
 let vanillaActivePasteSection = 'profile';
 
+// Bulk Photo Processing state
+let bulkSelectedPhotos = [];
+let bulkSelectedGuestIds = new Set();
+let bulkGuestFilter = '';
+
 // Filter variables
 let filterGuest = '';
 let filterSong = '';
@@ -813,10 +818,15 @@ async function pasteVanillaGalleryPhoto() {
 function setupVanillaGlobalPasteListener() {
   document.addEventListener('paste', async (event) => {
     const guestModal = document.getElementById('guestModal');
-    if (!guestModal || guestModal.style.display === 'none') return;
+    const bulkPhotoPanel = document.getElementById('bulkPhotoPanel');
+    
+    const isGuestModalOpen = guestModal && guestModal.style.display !== 'none';
+    const isBulkPanelVisible = bulkPhotoPanel && bulkPhotoPanel.style.display !== 'none';
+    
+    if (!isGuestModalOpen && !isBulkPanelVisible) return;
 
-    // Do not hijack paste event if focus is in Notes textarea
-    if (document.activeElement && document.activeElement.id === 'guestNotes') {
+    // Do not hijack paste event if focus is in Notes textarea or search inputs
+    if (document.activeElement && (document.activeElement.id === 'guestNotes' || document.activeElement.id === 'bulkGuestSearchInput')) {
       return;
     }
 
@@ -832,22 +842,28 @@ function setupVanillaGlobalPasteListener() {
     if (imageFile) {
       event.preventDefault(); // prevent default paste behavior if any
       try {
-        if (vanillaActivePasteSection === 'profile') {
-          const compressedBase64 = await compressVanillaImage(imageFile, 250, 250, 0.75);
-          document.getElementById('guestProfilePicture').value = compressedBase64;
-          renderVanillaProfilePreview();
-        } else if (vanillaActivePasteSection === 'gallery') {
-          const compressedBase64 = await compressVanillaImage(imageFile, 800, 800, 0.7);
-          const photosInput = document.getElementById('guestPhotos');
-          let currentPhotos = [];
-          try {
-            currentPhotos = JSON.parse(photosInput.value || "[]");
-          } catch(e) {
-            currentPhotos = [];
+        if (isGuestModalOpen) {
+          if (vanillaActivePasteSection === 'profile') {
+            const compressedBase64 = await compressVanillaImage(imageFile, 250, 250, 0.75);
+            document.getElementById('guestProfilePicture').value = compressedBase64;
+            renderVanillaProfilePreview();
+          } else if (vanillaActivePasteSection === 'gallery') {
+            const compressedBase64 = await compressVanillaImage(imageFile, 800, 800, 0.7);
+            const photosInput = document.getElementById('guestPhotos');
+            let currentPhotos = [];
+            try {
+              currentPhotos = JSON.parse(photosInput.value || "[]");
+            } catch(e) {
+              currentPhotos = [];
+            }
+            currentPhotos.push(compressedBase64);
+            photosInput.value = JSON.stringify(currentPhotos);
+            renderVanillaGalleryPreviews();
           }
-          currentPhotos.push(compressedBase64);
-          photosInput.value = JSON.stringify(currentPhotos);
-          renderVanillaGalleryPreviews();
+        } else if (isBulkPanelVisible) {
+          const compressedBase64 = await compressVanillaImage(imageFile, 800, 800, 0.7);
+          bulkSelectedPhotos.push(compressedBase64);
+          renderBulkPhotoPreviews();
         }
       } catch (err) {
         alert("Görsel yapıştırılırken hata oluştu: " + err.message);
@@ -1792,6 +1808,219 @@ function toggleListboxItem(hiddenInputId, containerId, id) {
   }
 }
 
+// ----------------- BULK PHOTO PROCESSING -----------------
+function showBulkPhotoPanel() {
+  document.getElementById('otherOperationsHome').style.display = 'none';
+  document.getElementById('bulkPhotoPanel').style.display = 'block';
+  
+  // Clear states
+  bulkSelectedPhotos = [];
+  bulkSelectedGuestIds.clear();
+  bulkGuestFilter = '';
+  
+  // Reset search input
+  const searchInput = document.getElementById('bulkGuestSearchInput');
+  if (searchInput) searchInput.value = '';
+  
+  // Render views
+  renderBulkPhotoPreviews();
+  populateBulkGuestListbox();
+}
+
+function showOtherOperationsHome() {
+  document.getElementById('bulkPhotoPanel').style.display = 'none';
+  document.getElementById('otherOperationsHome').style.display = 'block';
+}
+
+function populateBulkGuestListbox() {
+  const container = document.getElementById('bulkGuestListboxContainer');
+  if (!container) return;
+  
+  const filteredGuests = DB.guests.filter(g => {
+    const fullName = `${g.firstName} ${g.lastName}`.toLocaleLowerCase('tr-TR');
+    return fullName.includes(bulkGuestFilter.toLocaleLowerCase('tr-TR'));
+  });
+  
+  container.innerHTML = filteredGuests.map(g => `
+    <div class="listbox-item ${bulkSelectedGuestIds.has(g.id) ? 'selected' : ''}" data-id="${g.id}" onclick="toggleBulkGuestSelection(${g.id})">
+      <span>${g.firstName} ${g.lastName}</span>
+      ${bulkSelectedGuestIds.has(g.id) ? '<span style="font-size:0.8rem;">✓</span>' : ''}
+    </div>
+  `).join('') || '<div style="color:var(--text-muted);font-size:0.9rem;padding:0.5rem;">Misafir bulunamadı.</div>';
+}
+
+function toggleBulkGuestSelection(id) {
+  const container = document.getElementById('bulkGuestListboxContainer');
+  if (!container) return;
+  
+  if (bulkSelectedGuestIds.has(id)) {
+    bulkSelectedGuestIds.delete(id);
+  } else {
+    bulkSelectedGuestIds.add(id);
+  }
+  
+  const item = container.querySelector(`.listbox-item[data-id="${id}"]`);
+  if (item) {
+    if (bulkSelectedGuestIds.has(id)) {
+      item.classList.add('selected');
+      if (!item.querySelector('span:nth-child(2)')) {
+        const checkSpan = document.createElement('span');
+        checkSpan.style.fontSize = '0.8rem';
+        checkSpan.innerText = '✓';
+        item.appendChild(checkSpan);
+      }
+    } else {
+      item.classList.remove('selected');
+      const checkSpan = item.querySelector('span:nth-child(2)');
+      if (checkSpan && checkSpan.innerText === '✓') {
+        checkSpan.remove();
+      }
+    }
+  }
+}
+
+function handleBulkGuestSearch() {
+  const searchInput = document.getElementById('bulkGuestSearchInput');
+  bulkGuestFilter = searchInput ? searchInput.value : '';
+  populateBulkGuestListbox();
+}
+
+function bulkSelectAllGuests() {
+  const filteredGuests = DB.guests.filter(g => {
+    const fullName = `${g.firstName} ${g.lastName}`.toLocaleLowerCase('tr-TR');
+    return fullName.includes(bulkGuestFilter.toLocaleLowerCase('tr-TR'));
+  });
+  
+  filteredGuests.forEach(g => bulkSelectedGuestIds.add(g.id));
+  populateBulkGuestListbox();
+}
+
+function bulkClearGuestSelection() {
+  bulkSelectedGuestIds.clear();
+  populateBulkGuestListbox();
+}
+
+async function handleVanillaBulkPhotoUpload(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  try {
+    const promises = files.map(file => compressVanillaImage(file, 800, 800, 0.7));
+    const compressedImages = await Promise.all(promises);
+    bulkSelectedPhotos = [...bulkSelectedPhotos, ...compressedImages];
+    renderBulkPhotoPreviews();
+  } catch (err) {
+    alert("Görsel yüklenirken hata oluştu: " + err.message);
+  }
+  input.value = "";
+}
+
+async function pasteVanillaBulkPhoto() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error("Tarayıcı doğrudan pano okuma özelliğini desteklemiyor.");
+    }
+    const clipboardItems = await navigator.clipboard.read();
+    let found = false;
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const compressedBase64 = await compressVanillaImage(blob, 800, 800, 0.7);
+          bulkSelectedPhotos.push(compressedBase64);
+          renderBulkPhotoPreviews();
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (!found) {
+      alert("Panoda doğrudan okunabilir bir görsel bulunamadı.\n\nEğer Windows Explorer'dan bir dosya kopyaladıysanız, lütfen bu sekme açıkken klavyenizden CTRL+V tuşlarına basarak yapıştırın!");
+    }
+  } catch (err) {
+    alert("Doğrudan pano okuma engellendi (Güvenlik Kısıtlaması).\n\nLütfen görselinizi yapıştırmak için klavyenizden CTRL+V kısayolunu kullanın!");
+  }
+}
+
+function removeVanillaBulkPhoto(index) {
+  bulkSelectedPhotos.splice(index, 1);
+  renderBulkPhotoPreviews();
+}
+
+function renderBulkPhotoPreviews() {
+  const container = document.getElementById('bulkPhotoPreviewsGrid');
+  if (!container) return;
+  
+  if (bulkSelectedPhotos.length > 0) {
+    container.innerHTML = bulkSelectedPhotos.map((photo, index) => `
+      <div class="gallery-preview-item">
+        <img src="${photo}" alt="Toplu Görsel ${index + 1}">
+        <button type="button" class="gallery-preview-delete-badge" onclick="removeVanillaBulkPhoto(${index})" title="Sil">&times;</button>
+      </div>
+    `).join('');
+  } else {
+    container.innerHTML = `
+      <div class="gallery-empty-placeholder">
+        <span>Henüz fotoğraf eklenmemiş. Fotoğraf çekebilir, galeriden seçebilir veya panodan yapıştırabilirsiniz (CTRL+V).</span>
+      </div>
+    `;
+  }
+}
+
+function cancelBulkPhotoProcessing() {
+  if (confirm("Yapılan tüm seçimler iptal edilecektir. Emin misiniz?")) {
+    showOtherOperationsHome();
+  }
+}
+
+async function saveBulkPhotos() {
+  if (bulkSelectedPhotos.length === 0) {
+    alert("Lütfen en az bir fotoğraf ekleyin.");
+    return;
+  }
+  if (bulkSelectedGuestIds.size === 0) {
+    alert("Lütfen en az bir misafir seçin.");
+    return;
+  }
+  
+  const saveBtn = document.getElementById('btnSaveBulkPhotos');
+  const originalText = saveBtn.innerText;
+  saveBtn.disabled = true;
+  saveBtn.innerText = "Kaydediliyor...";
+  
+  try {
+    const savePromises = Array.from(bulkSelectedGuestIds).map(async (guestId) => {
+      const guest = DB.guests.find(g => g.id == guestId);
+      if (!guest) return;
+      const currentPhotos = guest.photos || [];
+      const updatedPhotos = [...currentPhotos, ...bulkSelectedPhotos];
+      return db.collection("guests").doc(String(guestId)).update({
+        Photos: updatedPhotos,
+        UpdatedAt: new Date().toISOString()
+      });
+    });
+    
+    await Promise.all(savePromises);
+    alert(`Fotoğraflar seçilen ${bulkSelectedGuestIds.size} misafirin albümüne başarıyla ayrı ayrı kaydedildi!`);
+    
+    // Clear state
+    bulkSelectedPhotos = [];
+    bulkSelectedGuestIds.clear();
+    
+    // Reload and redraw
+    await DB.loadFromFirestore();
+    renderAllTables();
+    
+    // Go back to other operations home dashboard
+    showOtherOperationsHome();
+  } catch (err) {
+    alert("Kaydetme işlemi sırasında hata oluştu: " + err.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerText = originalText;
+  }
+}
+
 function openArtistModalFromSongModal() {
   window.openedFromSongModal = true;
   openModal('artistModal');
@@ -1847,5 +2076,16 @@ window.handleArtistFilterChange = handleArtistFilterChange;
 window.clearAllArtistFilters = clearAllArtistFilters;
 window.handleSongFilterChange = handleSongFilterChange;
 window.clearAllSongFilters = clearAllSongFilters;
+window.showBulkPhotoPanel = showBulkPhotoPanel;
+window.showOtherOperationsHome = showOtherOperationsHome;
+window.toggleBulkGuestSelection = toggleBulkGuestSelection;
+window.handleBulkGuestSearch = handleBulkGuestSearch;
+window.bulkSelectAllGuests = bulkSelectAllGuests;
+window.bulkClearGuestSelection = bulkClearGuestSelection;
+window.handleVanillaBulkPhotoUpload = handleVanillaBulkPhotoUpload;
+window.pasteVanillaBulkPhoto = pasteVanillaBulkPhoto;
+window.removeVanillaBulkPhoto = removeVanillaBulkPhoto;
+window.cancelBulkPhotoProcessing = cancelBulkPhotoProcessing;
+window.saveBulkPhotos = saveBulkPhotos;
 
 
