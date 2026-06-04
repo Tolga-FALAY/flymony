@@ -673,6 +673,5 @@ export default function Requests() {
         </div>
       )}
     </div>
-    </div>
   );
 }
