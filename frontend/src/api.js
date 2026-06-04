@@ -257,7 +257,8 @@ export const api = {
         SongTitle: songsMap[songId] || "Bilinmeyen Şarkı",
         GuestIDs: guestIds.map(Number),
         FullNames: fullNames || "-",
-        Status: data.Status || "Kayıtlı"
+        Status: data.Status || "Kayıtlı",
+        Link: data.Link || ""
       });
     });
     
@@ -272,6 +273,7 @@ export const api = {
       SongID: Number(data.SongID),
       GuestIDs: (data.GuestIDs || []).map(Number),
       Status: data.Status || 'Kayıtlı',
+      Link: data.Link || '',
       RequestDate: new Date().toISOString()
     });
     notifyUpdate();
@@ -282,7 +284,8 @@ export const api = {
     await updateDoc(doc(db, "requests", String(id)), {
       SongID: Number(data.SongID),
       GuestIDs: (data.GuestIDs || []).map(Number),
-      Status: data.Status || 'Kayıtlı'
+      Status: data.Status || 'Kayıtlı',
+      Link: data.Link || ''
     });
     notifyUpdate();
     return { message: 'İstek başarıyla güncellendi' };

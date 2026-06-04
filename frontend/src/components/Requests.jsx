@@ -22,7 +22,8 @@ export default function Requests() {
   const [formData, setFormData] = useState({
     SongID: '',
     GuestIDs: [],
-    Status: 'Kayıtlı'
+    Status: 'Kayıtlı',
+    Link: ''
   });
 
   const [guestSearch, setGuestSearch] = useState('');
@@ -58,11 +59,12 @@ export default function Requests() {
       setFormData({
         SongID: String(req.SongID),
         GuestIDs: (req.GuestIDs || []).map(String),
-        Status: req.Status || 'Kayıtlı'
+        Status: req.Status || 'Kayıtlı',
+        Link: req.Link || ''
       });
     } else {
       setEditingRequest(null);
-      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı' });
+      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '' });
     }
     setIsModalOpen(true);
   };
@@ -196,7 +198,8 @@ export default function Requests() {
     const dataToSend = {
       SongID: songIdNum,
       GuestIDs: formData.GuestIDs.map(Number),
-      Status: formData.Status
+      Status: formData.Status,
+      Link: formData.Link || ''
     };
     try {
       if (editingRequest) {
@@ -455,7 +458,21 @@ export default function Requests() {
                 <tr key={req.RequestID}>
                   <td data-label="Tarih / Saat">{dateObj.toLocaleString('tr-TR')}</td>
                   <td data-label="Misafir">{req.FullNames || '-'}</td>
-                  <td data-label="İstenen Şarkı">{req.SongTitle}</td>
+                  <td data-label="İstenen Şarkı">
+                    {req.SongTitle}
+                    {req.Link && (
+                      <a 
+                        href={req.Link} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="song-link-icon" 
+                        title="Şarkı Bağlantısı" 
+                        style={{ marginLeft: '0.5rem', textDecoration: 'none', fontSize: '1.1rem', verticalAlign: 'middle' }}
+                      >
+                        🔗
+                      </a>
+                    )}
+                  </td>
                   <td data-label="Durum">
                     <span className={getStatusBadgeClass(req.Status)}>{req.Status}</span>
                   </td>
@@ -560,6 +577,16 @@ export default function Requests() {
                   <option value="Vardı">Vardı</option>
                   <option value="İptal">İptal</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label>Link (YouTube, Spotify vb. - Opsiyonel)</label>
+                <input 
+                  type="url" 
+                  name="Link" 
+                  value={formData.Link} 
+                  onChange={handleChange} 
+                  placeholder="https://..." 
+                />
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>

@@ -1336,4 +1336,17 @@ tr:hover td {
   .bulk-layout {
     gap: 1.25rem;
   }
+}
+
+.song-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  transition: var(--transition);
+}
+
+.song-link-icon:hover {
+  color: var(--primary-hover);
+  transform: scale(1.18);
 }

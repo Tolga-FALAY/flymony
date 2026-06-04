@@ -155,7 +155,8 @@ const DB = {
           guestIds: guestIds.map(Number),
           guestId: guestIds[0] || null, // backward compatibility
           date: data.RequestDate ? new Date(data.RequestDate).getTime() : Date.now(),
-          status: data.Status || 'Kayıtlı'
+          status: data.Status || 'Kayıtlı',
+          link: data.Link || ''
         });
       });
     } catch (err) {
@@ -273,6 +274,8 @@ function closeModal(modalId) {
     if (songSearch) songSearch.value = '';
     document.getElementById('reqGuestID').value = '';
     document.getElementById('reqSongID').value = '';
+    const reqLink = document.getElementById('reqLink');
+    if (reqLink) reqLink.value = '';
     populateDropdowns(); // listenin tamamını geri getir
   }
 
@@ -1380,7 +1383,10 @@ function renderRequests() {
     tr.innerHTML = `
       <td data-label="Tarih">${dateStr}</td>
       <td data-label="Misafir">${guestNames}</td>
-      <td data-label="İstenen Şarkı">${songDisplay}</td>
+      <td data-label="İstenen Şarkı">
+        ${songDisplay}
+        ${req.link ? `<a href="${req.link}" target="_blank" class="song-link-icon" title="Şarkı Bağlantısı" style="margin-left: 0.5rem; text-decoration: none; font-size: 1.1rem; vertical-align: middle;">🔗</a>` : ''}
+      </td>
       <td data-label="Durum">${statusHtml}</td>
       <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editRequest(${req.id})">Düzenle</button>
@@ -1438,6 +1444,7 @@ async function saveRequest(e) {
   const guestIDsVal = document.getElementById('reqGuestID').value;
   const songId = parseInt(document.getElementById('reqSongID').value);
   const status = document.getElementById('reqStatus').value;
+  const link = document.getElementById('reqLink').value.trim();
 
   if (!guestIDsVal) {
     alert("Lütfen en az bir misafir seçin.");
@@ -1469,6 +1476,7 @@ async function saveRequest(e) {
       SongID: Number(songId),
       GuestIDs: guestIds.map(Number),
       Status: status || 'Kayıtlı',
+      Link: link || '',
       RequestDate: id 
         ? (DB.requests.find(r => r.id == id)?.date ? new Date(DB.requests.find(r => r.id == id).date).toISOString() : new Date().toISOString()) 
         : new Date().toISOString()
@@ -1503,6 +1511,7 @@ function editRequest(id) {
   document.getElementById('reqGuestID').value = guestIds.join(',');
   document.getElementById('reqSongID').value = req.songId;
   document.getElementById('reqStatus').value = req.status || 'Kayıtlı';
+  document.getElementById('reqLink').value = req.link || '';
 
   document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
   openModal('requestModal');

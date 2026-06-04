@@ -1115,3 +1115,16 @@ tbody tr:hover td {
     font-size: 0.85rem;
   }
 }
+
+.song-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  transition: var(--transition);
+}
+
+.song-link-icon:hover {
+  color: var(--primary-hover);
+  transform: scale(1.18);
+}

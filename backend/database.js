@@ -178,6 +178,18 @@ export const initializeDB = () => {
         console.error("Migration error while adding Status column to Requests table:", e);
     }
 
+    // Migration for adding Link column to Requests table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Requests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('Link')) {
+            console.log("Migrating database: Adding column Link to Requests table...");
+            db.exec("ALTER TABLE Requests ADD COLUMN Link TEXT;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding Link column to Requests table:", e);
+    }
+
     console.log("Database tables initialized.");
 };
 
