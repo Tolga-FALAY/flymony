@@ -521,7 +521,7 @@ export default function Guests() {
                   {formatBirthDate(guest.BirthDateDay, guest.BirthDateMonth, guest.BirthDateYear)}
                 </td>
                 <td data-label="Notlar" className="td-notes-preview" title={guest.Notes}>
-                  {guest.Notes ? (guest.Notes.length > 30 ? guest.Notes.substring(0, 30) + '...' : guest.Notes) : '-'}
+                  <span className="notes-text">{guest.Notes || '-'}</span>
                 </td>
                 <td data-label="İşlemler" className="action-btns">
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(guest)}>Düzenle</button>

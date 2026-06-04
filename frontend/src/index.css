@@ -630,11 +630,15 @@ tbody tr:hover td {
 /* Notlar sütunu kısaltma */
 .td-notes-preview {
   max-width: 180px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.notes-text {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-muted);
-  font-size: 0.9rem;
 }
 
 .birthdate-select-row select {
@@ -1075,6 +1079,34 @@ tbody tr:hover td {
 
   .modal-actions .btn {
     width: 100%;
+  }
+
+  /* ── Guest profile row on mobile ── */
+  .td-guest-profile {
+    justify-content: space-between !important;
+  }
+
+  .td-notes-preview {
+    max-width: none !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    min-height: 2.2rem;
+  }
+
+  .td-notes-preview::before {
+    margin-top: 0.2rem;
+  }
+
+  .td-notes-preview .notes-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: normal;
+    text-align: right;
+    max-width: 70%;
+    word-break: break-word;
   }
 }
 

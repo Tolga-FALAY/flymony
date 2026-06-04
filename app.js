@@ -564,23 +564,22 @@ function renderGuests() {
     };
     const birthDateStr = formatBirthDate(guest.birthDateDay, guest.birthDateMonth, guest.birthDateYear);
 
-    // Notes summary
-    const notesSummary = guest.notes
-      ? (guest.notes.length > 30 ? guest.notes.substring(0, 30) + '...' : guest.notes)
-      : '-';
-
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="Misafir" class="td-guest-profile">
-        <div class="guest-avatar-wrapper">${avatarHtml}</div>
-        <span class="guest-name-text">${guest.firstName} ${guest.lastName}</span>
+        <div class="guest-profile-content">
+          <div class="guest-avatar-wrapper">${avatarHtml}</div>
+          <span class="guest-name-text">${guest.firstName} ${guest.lastName}</span>
+        </div>
       </td>
       <td data-label="Telefon">${guest.phone || '-'}</td>
       <td data-label="Instagram">
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
       <td data-label="Doğum Tarihi">${birthDateStr}</td>
-      <td data-label="Notlar" class="td-notes-preview" title="${guest.notes || ''}">${notesSummary}</td>
+      <td data-label="Notlar" class="td-notes-preview" title="${guest.notes || ''}">
+        <span class="notes-text">${guest.notes || '-'}</span>
+      </td>
       <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteGuest(${guest.id})">Sil</button>
