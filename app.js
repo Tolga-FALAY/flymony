@@ -1384,8 +1384,10 @@ function renderRequests() {
       <td data-label="Tarih">${dateStr}</td>
       <td data-label="Misafir">${guestNames}</td>
       <td data-label="İstenen Şarkı">
-        ${songDisplay}
-        ${req.link ? `<a href="${req.link}" target="_blank" class="song-link-icon" title="Şarkı Bağlantısı" style="margin-left: 0.5rem; text-decoration: none; font-size: 1.1rem; vertical-align: middle;">🔗</a>` : ''}
+        <span class="song-title-wrapper">
+          <span>${songDisplay}</span>
+          ${req.link ? `<a href="${req.link}" target="_blank" class="song-link-icon" title="Şarkı Bağlantısı">🔗</a>` : ''}
+        </span>
       </td>
       <td data-label="Durum">${statusHtml}</td>
       <td data-label="İşlemler" class="action-btns">

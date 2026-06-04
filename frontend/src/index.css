@@ -1116,6 +1116,12 @@ tbody tr:hover td {
   }
 }
 
+.song-title-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 1ch;
+}
+
 .song-link-icon {
   display: inline-flex;
   align-items: center;

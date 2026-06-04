@@ -459,19 +459,20 @@ export default function Requests() {
                   <td data-label="Tarih / Saat">{dateObj.toLocaleString('tr-TR')}</td>
                   <td data-label="Misafir">{req.FullNames || '-'}</td>
                   <td data-label="İstenen Şarkı">
-                    {req.SongTitle}
-                    {req.Link && (
-                      <a 
-                        href={req.Link} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="song-link-icon" 
-                        title="Şarkı Bağlantısı" 
-                        style={{ marginLeft: '0.5rem', textDecoration: 'none', fontSize: '1.1rem', verticalAlign: 'middle' }}
-                      >
-                        🔗
-                      </a>
-                    )}
+                    <span className="song-title-wrapper">
+                      <span>{req.SongTitle}</span>
+                      {req.Link && (
+                        <a 
+                          href={req.Link} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="song-link-icon" 
+                          title="Şarkı Bağlantısı"
+                        >
+                          🔗
+                        </a>
+                      )}
+                    </span>
                   </td>
                   <td data-label="Durum">
                     <span className={getStatusBadgeClass(req.Status)}>{req.Status}</span>
