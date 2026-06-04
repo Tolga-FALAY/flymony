@@ -25,6 +25,10 @@ export default function Songs() {
     ArtistIDs: []
   });
 
+  const [artistSearch, setArtistSearch] = useState('');
+  const [isArtistModalOpen, setIsArtistModalOpen] = useState(false);
+  const [newArtistName, setNewArtistName] = useState('');
+
   useEffect(() => {
     loadData();
   }, []);
@@ -56,6 +60,39 @@ export default function Songs() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingSong(null);
+    setArtistSearch('');
+  };
+
+  const handleCreateArtistInline = async (e) => {
+    e.preventDefault();
+    const trimmed = newArtistName.trim();
+    if (!trimmed) {
+      alert("Sanatçı adı boş olamaz!");
+      return;
+    }
+
+    const isDuplicate = artists.some(a => a.ArtistName.trim().toLowerCase() === trimmed.toLowerCase());
+    if (isDuplicate) {
+      alert("Bu isimde bir sanatçı zaten var!");
+      return;
+    }
+
+    try {
+      const newArtist = await api.createArtist({ ArtistName: trimmed });
+      const updatedArtists = await api.getArtists();
+      setArtists(updatedArtists);
+      
+      setFormData(prev => ({
+        ...prev,
+        ArtistIDs: [...prev.ArtistIDs, String(newArtist.ArtistID)]
+      }));
+      
+      setArtistSearch('');
+      setNewArtistName('');
+      setIsArtistModalOpen(false);
+    } catch (err) {
+      alert("Sanatçı ekleme hatası: " + err.message);
+    }
   };
 
   const handleChange = (e) => {
@@ -249,14 +286,66 @@ export default function Songs() {
               </div>
               <div className="form-group">
                 <label>Sanatçılar (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Sanatçı ara..."
+                    value={artistSearch}
+                    onChange={(e) => setArtistSearch(e.target.value)}
+                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setIsArtistModalOpen(true)}
+                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
+                  >
+                    +
+                  </button>
+                </div>
                 <select multiple name="ArtistIDs" value={formData.ArtistIDs} onChange={handleArtistChange} style={{ height: '100px' }}>
-                  {artists.map(artist => (
-                    <option key={artist.ArtistID} value={String(artist.ArtistID)}>{artist.ArtistName}</option>
-                  ))}
+                  {artists.map(artist => {
+                    const isVisible = (artist.ArtistName || '').toLocaleLowerCase('tr-TR').includes(artistSearch.toLocaleLowerCase('tr-TR'));
+                    return (
+                      <option 
+                        key={artist.ArtistID} 
+                        value={String(artist.ArtistID)}
+                        style={{ display: isVisible ? 'block' : 'none' }}
+                      >
+                        {artist.ArtistName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
+                <button type="submit" className="btn btn-primary">Kaydet</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isArtistModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Yeni Sanatçı Ekle</h2>
+              <button className="close-btn" onClick={() => setIsArtistModalOpen(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleCreateArtistInline}>
+              <div className="form-group">
+                <label>Sanatçı Adı</label>
+                <input 
+                  type="text" 
+                  value={newArtistName} 
+                  onChange={e => setNewArtistName(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setIsArtistModalOpen(false)}>İptal</button>
                 <button type="submit" className="btn btn-primary">Kaydet</button>
               </div>
             </form>

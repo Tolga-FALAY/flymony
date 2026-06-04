@@ -434,6 +434,33 @@ async function saveArtist(e) {
     closeModal('artistModal');
     await DB.loadFromFirestore();
     renderAllTables();
+
+    if (window.openedFromSongModal) {
+      // Get currently checked artist IDs
+      const checkedIds = Array.from(document.querySelectorAll('input[name="songArtists"]:checked')).map(cb => Number(cb.value));
+      // Add the new artist ID
+      checkedIds.push(Number(artistId));
+      
+      // Repopulate checkboxes
+      populateDropdowns();
+      
+      // Re-check them
+      const checkboxes = document.querySelectorAll('input[name="songArtists"]');
+      checkboxes.forEach(cb => {
+        if (checkedIds.includes(Number(cb.value))) {
+          cb.checked = true;
+        }
+      });
+      
+      // Clear search input
+      const searchInput = document.getElementById('artistSearchInput');
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+      }
+      
+      window.openedFromSongModal = false;
+    }
   } catch (err) {
     alert("Kaydetme hatası: " + err.message);
   }
@@ -1718,7 +1745,13 @@ function toggleListboxItem(hiddenInputId, containerId, id) {
   }
 }
 
+function openArtistModalFromSongModal() {
+  window.openedFromSongModal = true;
+  openModal('artistModal');
+}
+
 // Bind compat functions to global window for HTML inline actions support
+window.openArtistModalFromSongModal = openArtistModalFromSongModal;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.saveArtist = saveArtist;
