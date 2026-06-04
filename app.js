@@ -1446,6 +1446,19 @@ function editRequest(id) {
   }
 }
 
+// Sidebar üzerindeki menü kayıt sayılarını güncelle
+function updateSidebarCounts() {
+  const reqBtn = document.querySelector('#navMenu button[data-target="requests"]');
+  const songsBtn = document.querySelector('#navMenu button[data-target="songs"]');
+  const artistsBtn = document.querySelector('#navMenu button[data-target="artists"]');
+  const guestsBtn = document.querySelector('#navMenu button[data-target="guests"]');
+
+  if (reqBtn) reqBtn.innerText = `İstekler (${DB.requests.length})`;
+  if (songsBtn) songsBtn.innerText = `Şarkılar (${DB.songs.length})`;
+  if (artistsBtn) artistsBtn.innerText = `Sanatçılar (${DB.artists.length})`;
+  if (guestsBtn) guestsBtn.innerText = `Misafirler (${DB.guests.length})`;
+}
+
 // Tüm Tabloları Güncelle
 function renderAllTables() {
   renderArtists();
@@ -1453,6 +1466,7 @@ function renderAllTables() {
   renderSongs();
   populateFilterDropdowns();
   renderRequests();
+  updateSidebarCounts();
 }
 
 // Filtre açılır kutularını doldur

@@ -8,6 +8,12 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 
+const notifyUpdate = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('db-update'));
+  }
+};
+
 export const api = {
   // ========================
   // ARTISTS API
@@ -30,6 +36,7 @@ export const api = {
     await setDoc(doc(db, "artists", id), {
       ArtistName: data.ArtistName
     });
+    notifyUpdate();
     return { ArtistID: Number(id), ArtistName: data.ArtistName };
   },
   
@@ -37,11 +44,13 @@ export const api = {
     await updateDoc(doc(db, "artists", String(id)), {
       ArtistName: data.ArtistName
     });
+    notifyUpdate();
     return { message: 'Artist updated' };
   },
   
   deleteArtist: async (id) => {
     await deleteDoc(doc(db, "artists", String(id)));
+    notifyUpdate();
     return { message: 'Artist deleted' };
   },
 
@@ -80,6 +89,7 @@ export const api = {
       Duration: data.Duration || "",
       ArtistIDs: (data.ArtistIDs || []).map(Number)
     });
+    notifyUpdate();
     return { SongID: Number(id), message: 'Song created successfully' };
   },
   
@@ -89,11 +99,13 @@ export const api = {
       Duration: data.Duration || "",
       ArtistIDs: (data.ArtistIDs || []).map(Number)
     });
+    notifyUpdate();
     return { message: 'Song updated successfully' };
   },
   
   deleteSong: async (id) => {
     await deleteDoc(doc(db, "songs", String(id)));
+    notifyUpdate();
     return { message: 'Song deleted' };
   },
 
@@ -172,6 +184,7 @@ export const api = {
       CreatedAt: nowStr,
       UpdatedAt: nowStr
     });
+    notifyUpdate();
     return { GuestID: Number(id), message: 'Guest created successfully' };
   },
   
@@ -190,11 +203,13 @@ export const api = {
       Photos: data.Photos || [],
       UpdatedAt: nowStr
     });
+    notifyUpdate();
     return { message: 'Guest updated successfully' };
   },
   
   deleteGuest: async (id) => {
     await deleteDoc(doc(db, "guests", String(id)));
+    notifyUpdate();
     return { message: 'Guest deleted' };
   },
 
@@ -259,6 +274,7 @@ export const api = {
       Status: data.Status || 'Kayıtlı',
       RequestDate: new Date().toISOString()
     });
+    notifyUpdate();
     return { RequestID: Number(id), message: 'İstek başarıyla oluşturuldu' };
   },
   
@@ -268,11 +284,13 @@ export const api = {
       GuestIDs: (data.GuestIDs || []).map(Number),
       Status: data.Status || 'Kayıtlı'
     });
+    notifyUpdate();
     return { message: 'İstek başarıyla güncellendi' };
   },
   
   deleteRequest: async (id) => {
     await deleteDoc(doc(db, "requests", String(id)));
+    notifyUpdate();
     return { message: 'Request deleted' };
   }
 };

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Artists from './components/Artists';
 import Songs from './components/Songs';
 import Guests from './components/Guests';
 import Requests from './components/Requests';
+import { api } from './api';
 
 const NAV_ITEMS = [
   {
@@ -59,6 +60,32 @@ const NAV_ITEMS = [
 function App() {
   const [activeTab, setActiveTab] = useState('requests');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [counts, setCounts] = useState({ requests: 0, songs: 0, artists: 0, guests: 0 });
+
+  const fetchCounts = async () => {
+    try {
+      const [reqs, sngs, arts, gsts] = await Promise.all([
+        api.getRequests(),
+        api.getSongs(),
+        api.getArtists(),
+        api.getGuests()
+      ]);
+      setCounts({
+        requests: reqs.length,
+        songs: sngs.length,
+        artists: arts.length,
+        guests: gsts.length
+      });
+    } catch (err) {
+      console.error("Error fetching counts:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCounts();
+    window.addEventListener('db-update', fetchCounts);
+    return () => window.removeEventListener('db-update', fetchCounts);
+  }, []);
 
   function handleNavClick(key) {
     setActiveTab(key);
@@ -79,7 +106,9 @@ function App() {
               onClick={() => handleNavClick(item.key)}
             >
               <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
+              <span className="nav-label">
+                {item.label} {counts[item.key] !== undefined ? `(${counts[item.key]})` : ''}
+              </span>
             </button>
           ))}
         </nav>
