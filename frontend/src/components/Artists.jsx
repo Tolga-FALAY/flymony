@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
+import store from '../store';
 
 export default function Artists() {
   const [artists, setArtists] = useState([]);
@@ -14,13 +15,15 @@ export default function Artists() {
   const [filterText, setFilterText] = useState('');
 
   useEffect(() => {
-    loadArtists();
+    const syncFromStore = () => setArtists([...store.artists]);
+    if (store.isLoaded) {
+      syncFromStore();
+    } else {
+      store.load().then(syncFromStore);
+    }
+    window.addEventListener('store-updated', syncFromStore);
+    return () => window.removeEventListener('store-updated', syncFromStore);
   }, []);
-
-  const loadArtists = async () => {
-    const data = await api.getArtists();
-    setArtists(data);
-  };
 
   const openModal = (artist = null) => {
     if (artist) {
@@ -44,11 +47,13 @@ export default function Artists() {
     try {
       if (editingArtist) {
         await api.updateArtist(editingArtist.ArtistID, { ArtistName: artistName });
+        // Store'u güncelle — Firestore'a okuma yapmadan
+        store.updateArtist(editingArtist.ArtistID, { ArtistName: artistName });
       } else {
-        await api.createArtist({ ArtistName: artistName });
+        const result = await api.createArtist({ ArtistName: artistName });
+        store.addArtist({ ArtistID: result.ArtistID, ArtistName: artistName });
       }
       closeModal();
-      loadArtists();
     } catch (err) {
       alert(err.message);
     }
@@ -56,15 +61,15 @@ export default function Artists() {
 
   const handleDelete = async (id) => {
     try {
-      const songs = await api.getSongs();
-      const isLinked = songs.some(s => (s.ArtistIDs || []).includes(Number(id)));
+      // Bağlantı kontrolü: Firestore okuma YOK — bellekteki store kullanılır
+      const isLinked = store.songs.some(s => (s.ArtistIDs || []).includes(Number(id)));
       if (isLinked) {
         alert("Bu sanatçı bir şarkıda kayıtlı, sanatçıyı silmek için önce ilgili şarkı kaydınız silmeniz gerekir");
         return;
       }
       if (window.confirm('Bu sanatçıyı silmek istediğinize emin misiniz?')) {
         await api.deleteArtist(id);
-        loadArtists();
+        store.removeArtist(Number(id));
       }
     } catch (err) {
       alert("Silme hatası: " + err.message);

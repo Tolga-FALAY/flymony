@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
+import store from '../store';
 
 export default function Songs() {
   const [songs, setSongs] = useState([]);
@@ -30,17 +31,18 @@ export default function Songs() {
   const [newArtistName, setNewArtistName] = useState('');
 
   useEffect(() => {
-    loadData();
+    const syncFromStore = () => {
+      setSongs([...store.songs]);
+      setArtists([...store.artists]);
+    };
+    if (store.isLoaded) {
+      syncFromStore();
+    } else {
+      store.load().then(syncFromStore);
+    }
+    window.addEventListener('store-updated', syncFromStore);
+    return () => window.removeEventListener('store-updated', syncFromStore);
   }, []);
-
-  const loadData = async () => {
-    const [songsData, artistsData] = await Promise.all([
-      api.getSongs(),
-      api.getArtists()
-    ]);
-    setSongs(songsData);
-    setArtists(artistsData);
-  };
 
   const openModal = (song = null) => {
     if (song) {
@@ -79,14 +81,14 @@ export default function Songs() {
 
     try {
       const newArtist = await api.createArtist({ ArtistName: trimmed });
-      const updatedArtists = await api.getArtists();
-      setArtists(updatedArtists);
-      
+      // Firestore okuma YOK — store'a ekle, store event ile lokal state güncellenir
+      store.addArtist({ ArtistID: newArtist.ArtistID, ArtistName: trimmed });
+
       setFormData(prev => ({
         ...prev,
         ArtistIDs: [...prev.ArtistIDs, String(newArtist.ArtistID)]
       }));
-      
+
       setArtistSearch('');
       setNewArtistName('');
       setIsArtistModalOpen(false);
@@ -132,11 +134,25 @@ export default function Songs() {
     try {
       if (editingSong) {
         await api.updateSong(editingSong.SongID, dataToSend);
+        const artistNames = store.resolveArtistNames(dataToSend.ArtistIDs) || '-';
+        store.updateSong(editingSong.SongID, {
+          SongTitle: dataToSend.SongTitle,
+          Duration:  dataToSend.Duration || '',
+          ArtistIDs: dataToSend.ArtistIDs,
+          ArtistNames: artistNames
+        });
       } else {
-        await api.createSong(dataToSend);
+        const result = await api.createSong(dataToSend);
+        const artistNames = store.resolveArtistNames(dataToSend.ArtistIDs) || '-';
+        store.addSong({
+          SongID:      result.SongID,
+          SongTitle:   dataToSend.SongTitle,
+          Duration:    dataToSend.Duration || '',
+          ArtistIDs:   dataToSend.ArtistIDs,
+          ArtistNames: artistNames
+        });
       }
       closeModal();
-      loadData();
     } catch (err) {
       alert(err.message);
     }
@@ -144,15 +160,15 @@ export default function Songs() {
 
   const handleDelete = async (id) => {
     try {
-      const requests = await api.getRequests();
-      const isLinked = requests.some(r => r.SongID === Number(id));
+      // Bağlantı kontrolü: Firestore okuma YOK — bellekteki store kullanılır
+      const isLinked = store.requests.some(r => r.SongID === Number(id));
       if (isLinked) {
         alert("Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz");
         return;
       }
       if (window.confirm('Bu şarkıyı silmek istediğinize emin misiniz?')) {
         await api.deleteSong(id);
-        loadData();
+        store.removeSong(Number(id));
       }
     } catch (err) {
       alert("Silme hatası: " + err.message);

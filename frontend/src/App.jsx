@@ -4,7 +4,7 @@ import Songs from './components/Songs';
 import Guests from './components/Guests';
 import Requests from './components/Requests';
 import OtherOperations from './components/OtherOperations';
-import { api } from './api';
+import store from './store';
 
 const NAV_ITEMS = [
   {
@@ -71,31 +71,27 @@ const NAV_ITEMS = [
 function App() {
   const [activeTab, setActiveTab] = useState('requests');
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Kayıt sayaçları — store'daki listelerin length'inden okunur.
+  // Firestore'a ekstra okuma yapılmaz.
   const [counts, setCounts] = useState({ requests: 0, songs: 0, artists: 0, guests: 0 });
 
-  const fetchCounts = async () => {
-    try {
-      const [reqs, sngs, arts, gsts] = await Promise.all([
-        api.getRequests(),
-        api.getSongs(),
-        api.getArtists(),
-        api.getGuests()
-      ]);
-      setCounts({
-        requests: reqs.length,
-        songs: sngs.length,
-        artists: arts.length,
-        guests: gsts.length
-      });
-    } catch (err) {
-      console.error("Error fetching counts:", err);
-    }
+  const updateCounts = () => {
+    setCounts({
+      requests: store.requests.length,
+      songs:    store.songs.length,
+      artists:  store.artists.length,
+      guests:   store.guests.length
+    });
   };
 
   useEffect(() => {
-    fetchCounts();
-    window.addEventListener('db-update', fetchCounts);
-    return () => window.removeEventListener('db-update', fetchCounts);
+    // Uygulama açılışında tüm koleksiyonları bir kez yükle (4 okuma toplamda)
+    store.load().then(updateCounts);
+
+    // Store her güncellendiğinde (CRUD sonrası) sayaçları yenile — Firestore okuma YOK
+    window.addEventListener('store-updated', updateCounts);
+    return () => window.removeEventListener('store-updated', updateCounts);
   }, []);
 
   function handleNavClick(key) {
@@ -139,11 +135,11 @@ function App() {
           </span>
         </button>
         <div className="content-panel">
-          {activeTab === 'requests' && <Requests />}
-          {activeTab === 'songs' && <Songs />}
-          {activeTab === 'artists' && <Artists />}
-          {activeTab === 'guests' && <Guests />}
-          {activeTab === 'otherOperations' && <OtherOperations />}
+          {activeTab === 'requests'         && <Requests />}
+          {activeTab === 'songs'            && <Songs />}
+          {activeTab === 'artists'          && <Artists />}
+          {activeTab === 'guests'           && <Guests />}
+          {activeTab === 'otherOperations'  && <OtherOperations />}
         </div>
       </main>
     </div>

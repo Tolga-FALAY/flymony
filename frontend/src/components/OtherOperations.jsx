@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import store from '../store';
 
 export default function OtherOperations() {
   const [currentView, setCurrentView] = useState('home'); // 'home' or 'bulk-photo'
@@ -12,11 +13,6 @@ export default function OtherOperations() {
   const cameraInputRef = useRef(null);
   const browseInputRef = useRef(null);
 
-  useEffect(() => {
-    if (currentView === 'bulk-photo') {
-      loadGuests();
-    }
-  }, [currentView]);
 
   // Global paste handler for images when in bulk photo panel
   useEffect(() => {
@@ -52,14 +48,16 @@ export default function OtherOperations() {
     };
   }, [currentView]);
 
-  const loadGuests = async () => {
-    try {
-      const data = await api.getGuests();
-      setGuests(data);
-    } catch (err) {
-      console.error("Error loading guests:", err);
+  useEffect(() => {
+    const syncFromStore = () => setGuests([...store.guests]);
+    if (store.isLoaded) {
+      syncFromStore();
+    } else {
+      store.load().then(syncFromStore);
     }
-  };
+    window.addEventListener('store-updated', syncFromStore);
+    return () => window.removeEventListener('store-updated', syncFromStore);
+  }, []);
 
   const compressImage = (file, maxWidth, maxHeight, quality = 0.7) => {
     return new Promise((resolve, reject) => {
@@ -189,16 +187,19 @@ export default function OtherOperations() {
         const updatedPhotos = [...currentPhotos, ...selectedPhotos];
         
         return api.updateGuest(guestId, {
-          FirstName: guest.FirstName,
-          LastName: guest.LastName,
-          PhoneNumber: guest.PhoneNumber,
-          InstagramLink: guest.InstagramLink,
-          Notes: guest.Notes,
+          FirstName:      guest.FirstName,
+          LastName:       guest.LastName,
+          PhoneNumber:    guest.PhoneNumber,
+          InstagramLink:  guest.InstagramLink,
+          Notes:          guest.Notes,
           ProfilePicture: guest.ProfilePicture,
-          BirthDateDay: guest.BirthDateDay,
+          BirthDateDay:   guest.BirthDateDay,
           BirthDateMonth: guest.BirthDateMonth,
-          BirthDateYear: guest.BirthDateYear,
-          Photos: updatedPhotos
+          BirthDateYear:  guest.BirthDateYear,
+          Photos:         updatedPhotos
+        }).then(() => {
+          // Store'u güncelle — Firestore okuma YOK
+          store.updateGuest(guestId, { ...guest, Photos: updatedPhotos });
         });
       });
 

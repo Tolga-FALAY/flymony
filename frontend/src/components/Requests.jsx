@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
+import store from '../store';
 
 export default function Requests() {
   const [requests, setRequests] = useState([]);
@@ -37,21 +38,20 @@ export default function Requests() {
   const [songArtistSearch, setSongArtistSearch] = useState('');
 
   useEffect(() => {
-    loadData();
+    const syncFromStore = () => {
+      setRequests([...store.requests]);
+      setSongs([...store.songs]);
+      setGuests([...store.guests]);
+      setArtists([...store.artists]);
+    };
+    if (store.isLoaded) {
+      syncFromStore();
+    } else {
+      store.load().then(syncFromStore);
+    }
+    window.addEventListener('store-updated', syncFromStore);
+    return () => window.removeEventListener('store-updated', syncFromStore);
   }, []);
-
-  const loadData = async () => {
-    const [requestsData, songsData, guestsData, artistsData] = await Promise.all([
-      api.getRequests(),
-      api.getSongs(),
-      api.getGuests(),
-      api.getArtists()
-    ]);
-    setRequests(requestsData);
-    setSongs(songsData);
-    setGuests(guestsData);
-    setArtists(artistsData);
-  };
 
   const openModal = (req = null) => {
     if (req) {
@@ -100,14 +100,20 @@ export default function Requests() {
         LastName: lName,
         PhoneNumber: newGuestData.PhoneNumber
       });
-      const guestsData = await api.getGuests();
-      setGuests(guestsData);
-      
+      // Firestore okuma YOK — store'a ekle, event ile lokal state güncellenir
+      store.addGuest({
+        GuestID:     res.GuestID,
+        FirstName:   fName,
+        LastName:    lName,
+        FullName:    `${fName} ${lName}`.trim(),
+        PhoneNumber: newGuestData.PhoneNumber || ''
+      });
+
       setFormData(prev => ({
         ...prev,
         GuestIDs: [...prev.GuestIDs, String(res.GuestID)]
       }));
-      
+
       setNewGuestData({ FirstName: '', LastName: '', PhoneNumber: '' });
       setGuestSearch('');
       setIsGuestModalOpen(false);
@@ -143,14 +149,21 @@ export default function Requests() {
         SongTitle: title,
         ArtistIDs: newSongData.ArtistIDs.map(Number)
       });
-      const songsData = await api.getSongs();
-      setSongs(songsData);
-      
+      // Firestore okuma YOK — store'a ekle, event ile lokal state güncellenir
+      const artistNames = store.resolveArtistNames(newSongData.ArtistIDs.map(Number)) || '-';
+      store.addSong({
+        SongID:      res.SongID,
+        SongTitle:   title,
+        Duration:    '',
+        ArtistIDs:   newSongData.ArtistIDs.map(Number),
+        ArtistNames: artistNames
+      });
+
       setFormData(prev => ({
         ...prev,
         SongID: String(res.SongID)
       }));
-      
+
       setNewSongData({ SongTitle: '', ArtistIDs: [] });
       setSongSearch('');
       setSongArtistSearch('');
@@ -204,11 +217,30 @@ export default function Requests() {
     try {
       if (editingRequest) {
         await api.updateRequest(editingRequest.RequestID, dataToSend);
+        // Store'u güncelle — Firestore okuma YOK
+        store.updateRequest(editingRequest.RequestID, {
+          ...editingRequest,
+          SongID:    songIdNum,
+          SongTitle: store.resolveSongDisplay(songIdNum),
+          GuestIDs:  dataToSend.GuestIDs,
+          FullNames: store.resolveGuestNames(dataToSend.GuestIDs),
+          Status:    dataToSend.Status,
+          Link:      dataToSend.Link || ''
+        });
       } else {
-        await api.createRequest(dataToSend);
+        const result = await api.createRequest(dataToSend);
+        store.addRequest({
+          RequestID:   result.RequestID,
+          RequestDate: new Date().toISOString(),
+          SongID:      songIdNum,
+          SongTitle:   store.resolveSongDisplay(songIdNum),
+          GuestIDs:    dataToSend.GuestIDs,
+          FullNames:   store.resolveGuestNames(dataToSend.GuestIDs),
+          Status:      dataToSend.Status,
+          Link:        dataToSend.Link || ''
+        });
       }
       closeModal();
-      loadData();
     } catch (err) {
       alert(err.message);
     }
@@ -217,7 +249,7 @@ export default function Requests() {
   const handleDelete = async (id) => {
     if (window.confirm('Bu isteği silmek istediğinize emin misiniz?')) {
       await api.deleteRequest(id);
-      loadData();
+      store.removeRequest(id);
     }
   };
 

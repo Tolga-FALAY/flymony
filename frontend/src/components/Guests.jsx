@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import store from '../store';
 
 export default function Guests() {
   const [guests, setGuests] = useState([]);
@@ -42,7 +43,14 @@ export default function Guests() {
   const galleryBrowseInputRef = useRef(null);
 
   useEffect(() => {
-    loadGuests();
+    const syncFromStore = () => setGuests([...store.guests]);
+    if (store.isLoaded) {
+      syncFromStore();
+    } else {
+      store.load().then(syncFromStore);
+    }
+    window.addEventListener('store-updated', syncFromStore);
+    return () => window.removeEventListener('store-updated', syncFromStore);
   }, []);
 
   useEffect(() => {
@@ -86,10 +94,6 @@ export default function Guests() {
     };
   }, [isModalOpen, activePasteSection]);
 
-  const loadGuests = async () => {
-    const data = await api.getGuests();
-    setGuests(data);
-  };
 
   const openModal = (guest = null) => {
     if (guest) {
@@ -306,11 +310,23 @@ export default function Guests() {
     try {
       if (editingGuest) {
         await api.updateGuest(editingGuest.GuestID, formData);
+        // Store'u güncelle — Firestore okuma YOK
+        store.updateGuest(editingGuest.GuestID, {
+          ...formData,
+          GuestID:  editingGuest.GuestID,
+          FullName: `${formData.FirstName} ${formData.LastName}`.trim()
+        });
       } else {
-        await api.createGuest(formData);
+        const result = await api.createGuest(formData);
+        store.addGuest({
+          ...formData,
+          GuestID:  result.GuestID,
+          FullName: `${formData.FirstName} ${formData.LastName}`.trim(),
+          CreatedAt: new Date().toISOString(),
+          UpdatedAt: new Date().toISOString()
+        });
       }
       closeModal();
-      loadGuests();
     } catch (err) {
       alert(err.message);
     }
@@ -318,15 +334,15 @@ export default function Guests() {
 
   const handleDelete = async (id) => {
     try {
-      const requests = await api.getRequests();
-      const isLinked = requests.some(r => (r.GuestIDs || []).includes(Number(id)));
+      // Bağlantı kontrolü: Firestore okuma YOK — bellekteki store kullanılır
+      const isLinked = store.requests.some(r => (r.GuestIDs || []).includes(Number(id)));
       if (isLinked) {
         alert("Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz");
         return;
       }
       if (window.confirm('Bu misafiri silmek istediğinize emin misiniz?')) {
         await api.deleteGuest(id);
-        loadGuests();
+        store.removeGuest(Number(id));
       }
     } catch (err) {
       alert("Silme hatası: " + err.message);

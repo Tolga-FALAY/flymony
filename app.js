@@ -73,28 +73,9 @@ const DB = {
       // 2. Fetch guests
       const guestsSnapshot = await db.collection("guests").get();
       this.guests = [];
-      const nowStr = new Date().toISOString();
       guestsSnapshot.forEach((doc) => {
         const data = doc.data();
         const docId = doc.id;
-        
-        let needsUpdate = false;
-        const updateData = {};
-        if (!data.CreatedAt) {
-          updateData.CreatedAt = nowStr;
-          needsUpdate = true;
-        }
-        if (!data.UpdatedAt) {
-          updateData.UpdatedAt = nowStr;
-          needsUpdate = true;
-        }
-        
-        if (needsUpdate) {
-          db.collection("guests").doc(docId).update(updateData).catch(err => 
-            console.error("Migration error for guest " + docId + " (Vanilla):", err)
-          );
-        }
-
         this.guests.push({
           id: Number(docId),
           firstName: data.FirstName || "",
@@ -108,8 +89,8 @@ const DB = {
           birthDateMonth: data.BirthDateMonth || "",
           birthDateYear: data.BirthDateYear || "",
           photos: data.Photos || [],
-          createdAt: data.CreatedAt || updateData.CreatedAt || nowStr,
-          updatedAt: data.UpdatedAt || updateData.UpdatedAt || nowStr
+          createdAt: data.CreatedAt || "",
+          updatedAt: data.UpdatedAt || ""
         });
       });
 
