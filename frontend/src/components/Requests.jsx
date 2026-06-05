@@ -472,7 +472,8 @@ export default function Requests() {
           </thead>
           <tbody>
             {filteredRequests.map(req => {
-              const dateObj = new Date(req.RequestDate + 'Z'); // SQLite UTC time
+              const rawDate = req.RequestDate || '';
+              const dateObj = new Date(rawDate.endsWith('Z') ? rawDate : (rawDate ? rawDate + 'Z' : Date.now()));
 
               // Helper to assign CSS class to request status badges
               const getStatusBadgeClass = (status) => {
@@ -551,18 +552,14 @@ export default function Requests() {
                   </button>
                 </div>
                 <select multiple name="GuestIDs" value={formData.GuestIDs} onChange={handleGuestChange} style={{ height: '100px' }} required>
-                  {guests.map(g => {
-                    const isVisible = (g.FullName || '').toLocaleLowerCase('tr-TR').includes(guestSearch.toLocaleLowerCase('tr-TR'));
-                    return (
-                      <option 
-                        key={g.GuestID} 
-                        value={String(g.GuestID)}
-                        style={{ display: isVisible ? 'block' : 'none' }}
-                      >
+                  {guests
+                    .filter(g => (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR')))
+                    .map(g => (
+                      <option key={g.GuestID} value={String(g.GuestID)}>
                         {g.FullName}
                       </option>
-                    );
-                  })}
+                    ))
+                  }
                 </select>
               </div>
               <div className="form-group">
@@ -586,19 +583,18 @@ export default function Requests() {
                 </div>
                 <select name="SongID" value={formData.SongID} onChange={handleChange} required>
                   <option value="">-- Şarkı Seçin --</option>
-                  {sortedSongs.map(s => {
-                    const isVisible = (s.SongTitle || '').toLocaleLowerCase('tr-TR').includes(songSearch.toLocaleLowerCase('tr-TR')) || 
-                                      (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(songSearch.toLocaleLowerCase('tr-TR'));
-                    return (
-                      <option 
-                        key={s.SongID} 
-                        value={String(s.SongID)}
-                        style={{ display: isVisible ? 'block' : 'none' }}
-                      >
+                  {sortedSongs
+                    .filter(s => {
+                      const searchLower = (songSearch || '').toLocaleLowerCase('tr-TR');
+                      return (s.SongTitle || '').toLocaleLowerCase('tr-TR').includes(searchLower) ||
+                             (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
+                    })
+                    .map(s => (
+                      <option key={s.SongID} value={String(s.SongID)}>
                         {s.SongTitle} {s.ArtistNames && s.ArtistNames !== '-' ? `(${s.ArtistNames})` : ''}
                       </option>
-                    );
-                  })}
+                    ))
+                  }
                 </select>
               </div>
               <div className="form-group">
