@@ -58,7 +58,30 @@ const DB = {
   song_artists: [],
 
   // Load all tables from Firestore and construct in-memory lists
-  loadFromFirestore: async function() {
+  loadFromFirestore: async function(force = false) {
+    const cacheKey = 'flymony_db_cache';
+    const cacheTimeKey = 'flymony_db_cache_time';
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 dakikalık önbellek süresi
+
+    if (!force) {
+      const cachedData = localStorage.getItem(cacheKey);
+      const cachedTime = localStorage.getItem(cacheTimeKey);
+      if (cachedData && cachedTime && (Date.now() - Number(cachedTime) < CACHE_DURATION)) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          this.artists = parsed.artists || [];
+          this.guests = parsed.guests || [];
+          this.songs = parsed.songs || [];
+          this.song_artists = parsed.song_artists || [];
+          this.requests = parsed.requests || [];
+          console.log("Veriler localStorage önbelleğinden yüklendi.");
+          return;
+        } catch (e) {
+          console.warn("Önbellek çözümlenemedi, Firestore'dan okunuyor...", e);
+        }
+      }
+    }
+
     try {
       // 1. Fetch artists
       const artistsSnapshot = await db.collection("artists").get();
@@ -140,6 +163,17 @@ const DB = {
           link: data.Link || ''
         });
       });
+
+      // Önbelleğe kaydet
+      const dataToCache = {
+        artists: this.artists,
+        guests: this.guests,
+        songs: this.songs,
+        song_artists: this.song_artists,
+        requests: this.requests
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
+      localStorage.setItem(cacheTimeKey, Date.now().toString());
     } catch (err) {
       console.error("Firestore loading error:", err);
     }
@@ -421,7 +455,7 @@ async function saveArtist(e) {
       ArtistName: name
     });
     closeModal('artistModal');
-    await DB.loadFromFirestore();
+    await DB.loadFromFirestore(true);
     renderAllTables();
 
     if (window.openedFromSongModal) {
@@ -473,7 +507,7 @@ async function deleteArtist(id) {
   if (confirm('Emin misiniz?')) {
     try {
       await db.collection("artists").doc(String(id)).delete();
-      await DB.loadFromFirestore();
+      await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
       alert("Silme hatası: " + err.message);
@@ -971,7 +1005,7 @@ async function saveGuest(e) {
       UpdatedAt: nowStr
     });
     closeModal('guestModal');
-    await DB.loadFromFirestore();
+    await DB.loadFromFirestore(true);
     renderAllTables();
 
     if (window.openedFromRequestModalGuest) {
@@ -1035,7 +1069,7 @@ async function deleteGuest(id) {
   if (confirm('Emin misiniz?')) {
     try {
       await db.collection("guests").doc(String(id)).delete();
-      await DB.loadFromFirestore();
+      await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
       alert("Silme hatası: " + err.message);
@@ -1161,7 +1195,7 @@ async function saveSong(e) {
       ArtistIDs: selectedArtistIds.map(Number)
     });
     closeModal('songModal');
-    await DB.loadFromFirestore();
+    await DB.loadFromFirestore(true);
     renderAllTables();
 
     if (window.openedFromRequestModalSong) {
@@ -1208,7 +1242,7 @@ async function deleteSong(id) {
   if (confirm('Emin misiniz?')) {
     try {
       await db.collection("songs").doc(String(id)).delete();
-      await DB.loadFromFirestore();
+      await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
       alert("Silme hatası: " + err.message);
@@ -1465,7 +1499,7 @@ async function saveRequest(e) {
         : new Date().toISOString()
     });
     closeModal('requestModal');
-    await DB.loadFromFirestore();
+    await DB.loadFromFirestore(true);
     renderAllTables();
   } catch (err) {
     alert("Kaydetme hatası: " + err.message);
@@ -1476,7 +1510,7 @@ async function deleteRequest(id) {
   if (confirm('Emin misiniz?')) {
     try {
       await db.collection("requests").doc(String(id)).delete();
-      await DB.loadFromFirestore();
+      await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
       alert("Silme hatası: " + err.message);
@@ -2000,7 +2034,7 @@ async function saveBulkPhotos() {
     bulkSelectedGuestIds.clear();
     
     // Reload and redraw
-    await DB.loadFromFirestore();
+    await DB.loadFromFirestore(true);
     renderAllTables();
     
     // Go back to other operations home dashboard

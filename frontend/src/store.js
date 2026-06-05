@@ -42,8 +42,23 @@ function _buildSongDisplay(song) {
     : song.SongTitle;
 }
 
-// ─── Yardımcı: store güncellendiğini bildiren event ─────────────────────────
+// ─── Yardımcı: store güncellendiğini bildiren event ve localStorage önbellekleme ──
 function _notify() {
+  try {
+    const cacheKey = 'flymony_db_cache';
+    const cacheTimeKey = 'flymony_db_cache_time';
+    const dataToCache = {
+      artists: _artists,
+      songs: _songs,
+      guests: _guests,
+      requests: _requests
+    };
+    localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
+    localStorage.setItem(cacheTimeKey, Date.now().toString());
+  } catch (e) {
+    console.warn("LocalStorage önbelleğe kaydetme hatası:", e);
+  }
+
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('store-updated'));
   }
@@ -65,7 +80,30 @@ const store = {
    * force=true ile zorla yeniden yükleme yapılabilir (örn: manuel "Yenile" butonu).
    */
   async load(force = false) {
+    const cacheKey = 'flymony_db_cache';
+    const cacheTimeKey = 'flymony_db_cache_time';
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika önbellek süresi
+
     if (_loaded && !force) return;
+
+    if (!force) {
+      const cachedData = localStorage.getItem(cacheKey);
+      const cachedTime = localStorage.getItem(cacheTimeKey);
+      if (cachedData && cachedTime && (Date.now() - Number(cachedTime) < CACHE_DURATION)) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          _artists = parsed.artists || [];
+          _songs = parsed.songs || [];
+          _guests = parsed.guests || [];
+          _requests = parsed.requests || [];
+          _loaded = true;
+          _notify();
+          return;
+        } catch (e) {
+          console.warn("Önbellekten veri okunamadı, Firestore'dan yüklenecek...", e);
+        }
+      }
+    }
 
     const [artistsSnap, songsSnap, guestsSnap, requestsSnap] = await Promise.all([
       getDocs(collection(db, 'artists')),
