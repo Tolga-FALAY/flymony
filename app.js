@@ -13,6 +13,30 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore(app);
 
+const BACKEND_MODE = 'rest'; // 'firebase' veya 'rest'
+const API_BASE_URL = (typeof window !== 'undefined' && (window.location.protocol === 'file:' || window.location.port === '5173'))
+  ? 'http://localhost:5000/api'
+  : '/api';
+
+async function apiRequest(endpoint, method = 'GET', data = null) {
+  const options = {
+    method,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  };
+  if (data) {
+    options.body = JSON.stringify(data);
+  }
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+}
+
+
 // In-memory lists mapped dynamically from Firestore
 let requestsSortKey = 'song';
 let requestsSortDirection = 'asc';
@@ -77,92 +101,155 @@ const DB = {
           console.log("Veriler localStorage önbelleğinden yüklendi.");
           return;
         } catch (e) {
-          console.warn("Önbellek çözümlenemedi, Firestore'dan okunuyor...", e);
+          console.warn("Önbellek çözümlenemedi, veritabanından okunuyor...", e);
         }
       }
     }
 
     try {
-      // 1. Fetch artists
-      const artistsSnapshot = await db.collection("artists").get();
-      this.artists = [];
-      artistsSnapshot.forEach((doc) => {
-        this.artists.push({ 
-          id: Number(doc.id), 
-          name: doc.data().ArtistName 
-        });
-      });
+      if (BACKEND_MODE === 'rest') {
+        const [artistsList, songsList, guestsList, requestsList] = await Promise.all([
+          apiRequest('/artists'),
+          apiRequest('/songs'),
+          apiRequest('/guests'),
+          apiRequest('/requests')
+        ]);
 
-      // 2. Fetch guests
-      const guestsSnapshot = await db.collection("guests").get();
-      this.guests = [];
-      guestsSnapshot.forEach((doc) => {
-        const data = doc.data();
-        const docId = doc.id;
-        this.guests.push({
-          id: Number(docId),
-          firstName: data.FirstName || "",
-          lastName: data.LastName || "",
-          fullName: `${data.FirstName || ""} ${data.LastName || ""}`.trim(),
-          phone: data.PhoneNumber || "",
-          instagram: data.InstagramLink || "",
-          notes: data.Notes || "",
-          profilePicture: data.ProfilePicture || "",
-          birthDateDay: data.BirthDateDay || "",
-          birthDateMonth: data.BirthDateMonth || "",
-          birthDateYear: data.BirthDateYear || "",
-          photos: data.Photos || [],
-          createdAt: data.CreatedAt || "",
-          updatedAt: data.UpdatedAt || ""
-        });
-      });
+        this.artists = artistsList.map(a => ({ id: Number(a.ArtistID), name: a.ArtistName }));
 
-      // Sort guests ascending by FirstName & LastName (Turkish locale aware)
-      this.guests.sort((a, b) => {
-        const fNameCompare = a.firstName.toLocaleLowerCase('tr-TR').localeCompare(b.firstName.toLocaleLowerCase('tr-TR'), 'tr');
-        if (fNameCompare !== 0) return fNameCompare;
-        return a.lastName.toLocaleLowerCase('tr-TR').localeCompare(b.lastName.toLocaleLowerCase('tr-TR'), 'tr');
-      });
-
-      // 3. Fetch songs
-      const songsSnapshot = await db.collection("songs").get();
-      this.songs = [];
-      this.song_artists = [];
-      songsSnapshot.forEach((doc) => {
-        const data = doc.data();
-        const songId = Number(doc.id);
-        this.songs.push({
-          id: songId,
-          title: data.SongTitle,
-          duration: data.Duration || ""
+        this.guests = guestsList.map(g => ({
+          id: Number(g.GuestID),
+          firstName: g.FirstName || "",
+          lastName: g.LastName || "",
+          fullName: `${g.FirstName || ""} ${g.LastName || ""}`.trim(),
+          phone: g.PhoneNumber || "",
+          instagram: g.InstagramLink || "",
+          notes: g.Notes || "",
+          profilePicture: g.ProfilePicture || "",
+          birthDateDay: g.BirthDateDay || "",
+          birthDateMonth: g.BirthDateMonth || "",
+          birthDateYear: g.BirthDateYear || "",
+          photos: g.Photos || [],
+          createdAt: g.CreatedAt || "",
+          updatedAt: g.UpdatedAt || ""
+        }));
+        // Sort guests ascending by FirstName & LastName (Turkish locale aware)
+        this.guests.sort((a, b) => {
+          const fNameCompare = a.firstName.toLocaleLowerCase('tr-TR').localeCompare(b.firstName.toLocaleLowerCase('tr-TR'), 'tr');
+          if (fNameCompare !== 0) return fNameCompare;
+          return a.lastName.toLocaleLowerCase('tr-TR').localeCompare(b.lastName.toLocaleLowerCase('tr-TR'), 'tr');
         });
-        const artistIds = data.ArtistIDs || [];
-        artistIds.forEach(aid => {
-          this.song_artists.push({ songId, artistId: Number(aid) });
-        });
-      });
 
-      // Sort songs alphabetically ascending (Turkish locale aware)
-      this.songs.sort((a, b) => {
-        return (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
-      });
-
-      // 4. Fetch requests
-      const requestsSnapshot = await db.collection("requests").get();
-      this.requests = [];
-      requestsSnapshot.forEach((doc) => {
-        const data = doc.data();
-        const guestIds = data.GuestIDs || [];
-        this.requests.push({
-          id: Number(doc.id),
-          songId: Number(data.SongID),
-          guestIds: guestIds.map(Number),
-          guestId: guestIds[0] || null, // backward compatibility
-          date: data.RequestDate ? new Date(data.RequestDate).getTime() : Date.now(),
-          status: data.Status || 'Kayıtlı',
-          link: data.Link || ''
+        this.songs = [];
+        this.song_artists = [];
+        songsList.forEach(s => {
+          const songId = Number(s.SongID);
+          this.songs.push({
+            id: songId,
+            title: s.SongTitle,
+            duration: s.Duration || ""
+          });
+          const artistIds = s.ArtistIDs || [];
+          artistIds.forEach(aid => {
+            this.song_artists.push({ songId, artistId: Number(aid) });
+          });
         });
-      });
+        // Sort songs alphabetically ascending (Turkish locale aware)
+        this.songs.sort((a, b) => {
+          return (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
+        });
+
+        this.requests = requestsList.map(r => ({
+          id: Number(r.RequestID),
+          songId: Number(r.SongID),
+          guestIds: (r.GuestIDs || []).map(Number),
+          guestId: (r.GuestIDs || [])[0] || null,
+          date: r.RequestDate ? new Date(r.RequestDate).getTime() : Date.now(),
+          status: r.Status || 'Kayıtlı',
+          link: r.Link || ''
+        }));
+      } else {
+        // 1. Fetch artists
+        const artistsSnapshot = await db.collection("artists").get();
+        this.artists = [];
+        artistsSnapshot.forEach((doc) => {
+          this.artists.push({ 
+            id: Number(doc.id), 
+            name: doc.data().ArtistName 
+          });
+        });
+
+        // 2. Fetch guests
+        const guestsSnapshot = await db.collection("guests").get();
+        this.guests = [];
+        guestsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const docId = doc.id;
+          this.guests.push({
+            id: Number(docId),
+            firstName: data.FirstName || "",
+            lastName: data.LastName || "",
+            fullName: `${data.FirstName || ""} ${data.LastName || ""}`.trim(),
+            phone: data.PhoneNumber || "",
+            instagram: data.InstagramLink || "",
+            notes: data.Notes || "",
+            profilePicture: data.ProfilePicture || "",
+            birthDateDay: data.BirthDateDay || "",
+            birthDateMonth: data.BirthDateMonth || "",
+            birthDateYear: data.BirthDateYear || "",
+            photos: data.Photos || [],
+            createdAt: data.CreatedAt || "",
+            updatedAt: data.UpdatedAt || ""
+          });
+        });
+
+        // Sort guests ascending by FirstName & LastName (Turkish locale aware)
+        this.guests.sort((a, b) => {
+          const fNameCompare = a.firstName.toLocaleLowerCase('tr-TR').localeCompare(b.firstName.toLocaleLowerCase('tr-TR'), 'tr');
+          if (fNameCompare !== 0) return fNameCompare;
+          return a.lastName.toLocaleLowerCase('tr-TR').localeCompare(b.lastName.toLocaleLowerCase('tr-TR'), 'tr');
+        });
+
+        // 3. Fetch songs
+        const songsSnapshot = await db.collection("songs").get();
+        this.songs = [];
+        this.song_artists = [];
+        songsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const songId = Number(doc.id);
+          this.songs.push({
+            id: songId,
+            title: data.SongTitle,
+            duration: data.Duration || ""
+          });
+          const artistIds = data.ArtistIDs || [];
+          artistIds.forEach(aid => {
+            this.song_artists.push({ songId, artistId: Number(aid) });
+          });
+        });
+
+        // Sort songs alphabetically ascending (Turkish locale aware)
+        this.songs.sort((a, b) => {
+          return (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
+        });
+
+        // 4. Fetch requests
+        const requestsSnapshot = await db.collection("requests").get();
+        this.requests = [];
+        requestsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const guestIds = data.GuestIDs || [];
+          this.requests.push({
+            id: Number(doc.id),
+            songId: Number(data.SongID),
+            guestIds: guestIds.map(Number),
+            guestId: guestIds[0] || null, // backward compatibility
+            date: data.RequestDate ? new Date(data.RequestDate).getTime() : Date.now(),
+            status: data.Status || 'Kayıtlı',
+            link: data.Link || ''
+          });
+        });
+      }
 
       // Önbelleğe kaydet
       const dataToCache = {
@@ -175,7 +262,7 @@ const DB = {
       localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
       localStorage.setItem(cacheTimeKey, Date.now().toString());
     } catch (err) {
-      console.error("Firestore loading error:", err);
+      console.error("Firestore/API loading error:", err);
     }
   }
 };
@@ -450,10 +537,20 @@ async function saveArtist(e) {
   }
 
   try {
-    const artistId = id || String(Date.now());
-    await db.collection("artists").doc(artistId).set({
-      ArtistName: name
-    });
+    let artistId = id;
+    if (BACKEND_MODE === 'firebase') {
+      artistId = id || String(Date.now());
+      await db.collection("artists").doc(artistId).set({
+        ArtistName: name
+      });
+    } else {
+      if (id) {
+        await apiRequest(`/artists/${id}`, 'PUT', { ArtistName: name });
+      } else {
+        const result = await apiRequest('/artists', 'POST', { ArtistName: name });
+        artistId = String(result.id);
+      }
+    }
     closeModal('artistModal');
     await DB.loadFromFirestore(true);
     renderAllTables();
@@ -506,7 +603,11 @@ async function deleteArtist(id) {
   }
   if (confirm('Emin misiniz?')) {
     try {
-      await db.collection("artists").doc(String(id)).delete();
+      if (BACKEND_MODE === 'firebase') {
+        await db.collection("artists").doc(String(id)).delete();
+      } else {
+        await apiRequest(`/artists/${id}`, 'DELETE');
+      }
       await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
@@ -979,7 +1080,7 @@ async function saveGuest(e) {
   }
 
   try {
-    const guestId = id || String(Date.now());
+    let guestId = id;
     const nowStr = new Date().toISOString();
     
     let createdAtVal = nowStr;
@@ -990,20 +1091,37 @@ async function saveGuest(e) {
       }
     }
 
-    await db.collection("guests").doc(guestId).set({
+    const guestData = {
       FirstName: firstName,
       LastName: lastName,
       PhoneNumber: phone || "",
       InstagramLink: instagram || "",
       Notes: notes || "",
       ProfilePicture: profilePicture || "",
-      BirthDateDay: birthDay ? Number(birthDay) : "",
-      BirthDateMonth: birthMonth ? Number(birthMonth) : "",
-      BirthDateYear: birthYear ? Number(birthYear) : "",
-      Photos: photos,
-      CreatedAt: createdAtVal,
-      UpdatedAt: nowStr
-    });
+      BirthDateDay: birthDay ? Number(birthDay) : null,
+      BirthDateMonth: birthMonth ? Number(birthMonth) : null,
+      BirthDateYear: birthYear ? Number(birthYear) : null,
+      Photos: photos
+    };
+
+    if (BACKEND_MODE === 'firebase') {
+      guestId = id || String(Date.now());
+      await db.collection("guests").doc(guestId).set({
+        ...guestData,
+        BirthDateDay: birthDay ? Number(birthDay) : "",
+        BirthDateMonth: birthMonth ? Number(birthMonth) : "",
+        BirthDateYear: birthYear ? Number(birthYear) : "",
+        CreatedAt: createdAtVal,
+        UpdatedAt: nowStr
+      });
+    } else {
+      if (id) {
+        await apiRequest(`/guests/${id}`, 'PUT', guestData);
+      } else {
+        const result = await apiRequest('/guests', 'POST', guestData);
+        guestId = String(result.id);
+      }
+    }
     closeModal('guestModal');
     await DB.loadFromFirestore(true);
     renderAllTables();
@@ -1068,7 +1186,11 @@ async function deleteGuest(id) {
   }
   if (confirm('Emin misiniz?')) {
     try {
-      await db.collection("guests").doc(String(id)).delete();
+      if (BACKEND_MODE === 'firebase') {
+        await db.collection("guests").doc(String(id)).delete();
+      } else {
+        await apiRequest(`/guests/${id}`, 'DELETE');
+      }
       await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
@@ -1188,12 +1310,24 @@ async function saveSong(e) {
   }
 
   try {
-    const songId = id || String(Date.now());
-    await db.collection("songs").doc(songId).set({
+    let songId = id;
+    const songData = {
       SongTitle: title,
       Duration: "",
       ArtistIDs: selectedArtistIds.map(Number)
-    });
+    };
+
+    if (BACKEND_MODE === 'firebase') {
+      songId = id || String(Date.now());
+      await db.collection("songs").doc(songId).set(songData);
+    } else {
+      if (id) {
+        await apiRequest(`/songs/${id}`, 'PUT', songData);
+      } else {
+        const result = await apiRequest('/songs', 'POST', songData);
+        songId = String(result.id);
+      }
+    }
     closeModal('songModal');
     await DB.loadFromFirestore(true);
     renderAllTables();
@@ -1241,7 +1375,11 @@ async function deleteSong(id) {
   }
   if (confirm('Emin misiniz?')) {
     try {
-      await db.collection("songs").doc(String(id)).delete();
+      if (BACKEND_MODE === 'firebase') {
+        await db.collection("songs").doc(String(id)).delete();
+      } else {
+        await apiRequest(`/songs/${id}`, 'DELETE');
+      }
       await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
@@ -1488,16 +1626,29 @@ async function saveRequest(e) {
   }
 
   try {
-    const requestId = id || String(Date.now());
-    await db.collection("requests").doc(requestId).set({
+    let requestId = id;
+    const reqData = {
       SongID: Number(songId),
       GuestIDs: guestIds.map(Number),
       Status: status || 'Kayıtlı',
-      Link: link || '',
-      RequestDate: id 
-        ? (DB.requests.find(r => r.id == id)?.date ? new Date(DB.requests.find(r => r.id == id).date).toISOString() : new Date().toISOString()) 
-        : new Date().toISOString()
-    });
+      Link: link || ''
+    };
+
+    if (BACKEND_MODE === 'firebase') {
+      requestId = id || String(Date.now());
+      await db.collection("requests").doc(requestId).set({
+        ...reqData,
+        RequestDate: id 
+          ? (DB.requests.find(r => r.id == id)?.date ? new Date(DB.requests.find(r => r.id == id).date).toISOString() : new Date().toISOString()) 
+          : new Date().toISOString()
+      });
+    } else {
+      if (id) {
+        await apiRequest(`/requests/${id}`, 'PUT', reqData);
+      } else {
+        await apiRequest('/requests', 'POST', reqData);
+      }
+    }
     closeModal('requestModal');
     await DB.loadFromFirestore(true);
     renderAllTables();
@@ -1509,7 +1660,11 @@ async function saveRequest(e) {
 async function deleteRequest(id) {
   if (confirm('Emin misiniz?')) {
     try {
-      await db.collection("requests").doc(String(id)).delete();
+      if (BACKEND_MODE === 'firebase') {
+        await db.collection("requests").doc(String(id)).delete();
+      } else {
+        await apiRequest(`/requests/${id}`, 'DELETE');
+      }
       await DB.loadFromFirestore(true);
       renderAllTables();
     } catch (err) {
@@ -2020,10 +2175,26 @@ async function saveBulkPhotos() {
       if (!guest) return;
       const currentPhotos = guest.photos || [];
       const updatedPhotos = [...currentPhotos, ...bulkSelectedPhotos];
-      return db.collection("guests").doc(String(guestId)).update({
-        Photos: updatedPhotos,
-        UpdatedAt: new Date().toISOString()
-      });
+      if (BACKEND_MODE === 'firebase') {
+        return db.collection("guests").doc(String(guestId)).update({
+          Photos: updatedPhotos,
+          UpdatedAt: new Date().toISOString()
+        });
+      } else {
+        const guestData = {
+          FirstName: guest.firstName,
+          LastName: guest.lastName,
+          PhoneNumber: guest.phone || "",
+          InstagramLink: guest.instagram || "",
+          Notes: guest.notes || "",
+          ProfilePicture: guest.profilePicture || "",
+          BirthDateDay: guest.birthDateDay ? Number(guest.birthDateDay) : null,
+          BirthDateMonth: guest.birthDateMonth ? Number(guest.birthDateMonth) : null,
+          BirthDateYear: guest.birthDateYear ? Number(guest.birthDateYear) : null,
+          Photos: updatedPhotos
+        };
+        return apiRequest(`/guests/${guestId}`, 'PUT', guestData);
+      }
     });
     
     await Promise.all(savePromises);

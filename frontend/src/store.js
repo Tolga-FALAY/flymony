@@ -5,8 +5,7 @@
  * CRUD işlemlerinden sonra Firestore'a tekrar okuma yapmadan bellekteki
  * veriyi günceller. Bu sayede günlük okuma sayısı dramatik ölçüde azalır.
  */
-import { db } from './firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { api } from './api';
 
 // ─── Özel modül-seviyesi state (dışarıdan doğrudan erişilemez) ───────────────
 let _artists = [];
@@ -100,82 +99,72 @@ const store = {
           _notify();
           return;
         } catch (e) {
-          console.warn("Önbellekten veri okunamadı, Firestore'dan yüklenecek...", e);
+          console.warn("Önbellekten veri okunamadı, veritabanından yüklenecek...", e);
         }
       }
     }
 
-    const [artistsSnap, songsSnap, guestsSnap, requestsSnap] = await Promise.all([
-      getDocs(collection(db, 'artists')),
-      getDocs(collection(db, 'songs')),
-      getDocs(collection(db, 'guests')),
-      getDocs(collection(db, 'requests'))
+    const [artistsList, songsList, guestsList, requestsList] = await Promise.all([
+      api.getArtists(),
+      api.getSongs(),
+      api.getGuests(),
+      api.getRequests()
     ]);
 
     // 1. Sanatçıları yükle
-    _artists = [];
-    artistsSnap.forEach(doc => {
-      _artists.push({ ArtistID: Number(doc.id), ArtistName: doc.data().ArtistName });
-    });
+    _artists = artistsList.map(a => ({
+      ArtistID: Number(a.ArtistID),
+      ArtistName: a.ArtistName
+    }));
 
     // 2. Şarkıları yükle (sanatçı adlarını bellekte çöz)
-    _songs = [];
-    songsSnap.forEach(doc => {
-      const data = doc.data();
-      const artistIds = (data.ArtistIDs || []).map(Number);
+    _songs = songsList.map(s => {
+      const artistIds = (s.ArtistIDs || []).map(Number);
       const artistNames = _resolveArtistNames(artistIds, _artists) || '-';
-      _songs.push({
-        SongID: Number(doc.id),
-        SongTitle: data.SongTitle,
-        Duration: data.Duration || '',
+      return {
+        SongID: Number(s.SongID),
+        SongTitle: s.SongTitle,
+        Duration: s.Duration || '',
         ArtistIDs: artistIds,
         ArtistNames: artistNames
-      });
+      };
     });
 
     // 3. Misafirleri yükle
-    _guests = [];
-    guestsSnap.forEach(doc => {
-      const data = doc.data();
-      const firstName = data.FirstName || '';
-      const lastName  = data.LastName  || '';
-      _guests.push({
-        GuestID:        Number(doc.id),
-        FirstName:      firstName,
-        LastName:       lastName,
-        FullName:       `${firstName} ${lastName}`.trim(),
-        PhoneNumber:    data.PhoneNumber    || '',
-        InstagramLink:  data.InstagramLink  || '',
-        Notes:          data.Notes          || '',
-        ProfilePicture: data.ProfilePicture || '',
-        BirthDateDay:   data.BirthDateDay   || '',
-        BirthDateMonth: data.BirthDateMonth || '',
-        BirthDateYear:  data.BirthDateYear  || '',
-        Photos:         data.Photos         || [],
-        CreatedAt:      data.CreatedAt      || new Date().toISOString(),
-        UpdatedAt:      data.UpdatedAt      || new Date().toISOString()
-      });
-    });
+    _guests = guestsList.map(g => ({
+      GuestID:        Number(g.GuestID),
+      FirstName:      g.FirstName || '',
+      LastName:       g.LastName  || '',
+      FullName:       (g.FullName || `${g.FirstName || ""} ${g.LastName || ""}`).trim(),
+      PhoneNumber:    g.PhoneNumber    || '',
+      InstagramLink:  g.InstagramLink  || '',
+      Notes:          g.Notes          || '',
+      ProfilePicture: g.ProfilePicture || '',
+      BirthDateDay:   g.BirthDateDay   || '',
+      BirthDateMonth: g.BirthDateMonth || '',
+      BirthDateYear:  g.BirthDateYear  || '',
+      Photos:         g.Photos         || [],
+      CreatedAt:      g.CreatedAt      || new Date().toISOString(),
+      UpdatedAt:      g.UpdatedAt      || new Date().toISOString()
+    }));
     // Türkçe ada göre sırala
     _sortGuests();
 
     // 4. İstekleri yükle (misafir ve şarkı adlarını bellekte çöz)
-    _requests = [];
-    requestsSnap.forEach(doc => {
-      const data    = doc.data();
-      const guestIds = (data.GuestIDs || []).map(Number);
-      const songId   = Number(data.SongID);
+    _requests = requestsList.map(r => {
+      const guestIds = (r.GuestIDs || []).map(Number);
+      const songId   = Number(r.SongID);
       const song     = _songs.find(s => s.SongID === songId);
-      _requests.push({
-        RequestID:   Number(doc.id),
-        RequestDate: data.RequestDate || new Date().toISOString(),
+      return {
+        RequestID:   Number(r.RequestID),
+        RequestDate: r.RequestDate || new Date().toISOString(),
         SongID:      songId,
         SongTitle:   _buildSongDisplay(song),
         GuestIDs:    guestIds,
         FullNames:   _resolveGuestNames(guestIds, _guests),
-        Status:      data.Status || 'Kayıtlı',
-        Link:        data.Link   || ''
-      });
+        Status:      r.Status || 'Kayıtlı',
+        Link:        r.Link   || ''
+      };
     });
     // Yeniden eskiye sırala
     _requests.sort((a, b) => new Date(b.RequestDate) - new Date(a.RequestDate));
