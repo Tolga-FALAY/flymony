@@ -24,7 +24,8 @@ export default function Requests() {
     SongID: '',
     GuestIDs: [],
     Status: 'Kayıtlı',
-    Link: ''
+    Link: '',
+    Vardi: false
   });
 
   const [guestSearch, setGuestSearch] = useState('');
@@ -60,11 +61,12 @@ export default function Requests() {
         SongID: String(req.SongID),
         GuestIDs: (req.GuestIDs || []).map(String),
         Status: req.Status || 'Kayıtlı',
-        Link: req.Link || ''
+        Link: req.Link || '',
+        Vardi: req.Vardi ? true : false
       });
     } else {
       setEditingRequest(null);
-      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '' });
+      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '', Vardi: false });
     }
     setIsModalOpen(true);
   };
@@ -212,7 +214,8 @@ export default function Requests() {
       SongID: songIdNum,
       GuestIDs: formData.GuestIDs.map(Number),
       Status: formData.Status,
-      Link: formData.Link || ''
+      Link: formData.Link || '',
+      Vardi: formData.Vardi ? 1 : 0
     };
     try {
       if (editingRequest) {
@@ -225,7 +228,8 @@ export default function Requests() {
           GuestIDs:  dataToSend.GuestIDs,
           FullNames: store.resolveGuestNames(dataToSend.GuestIDs),
           Status:    dataToSend.Status,
-          Link:      dataToSend.Link || ''
+          Link:      dataToSend.Link || '',
+          Vardi:     formData.Vardi
         });
       } else {
         const result = await api.createRequest(dataToSend);
@@ -237,7 +241,8 @@ export default function Requests() {
           GuestIDs:    dataToSend.GuestIDs,
           FullNames:   store.resolveGuestNames(dataToSend.GuestIDs),
           Status:      dataToSend.Status,
-          Link:        dataToSend.Link || ''
+          Link:        dataToSend.Link || '',
+          Vardi:       formData.Vardi
         });
       }
       closeModal();
@@ -429,7 +434,7 @@ export default function Requests() {
               <option value="Kayıtlı">Kayıtlı</option>
               <option value="Denemede">Denemede</option>
               <option value="Eklendi">Eklendi</option>
-              <option value="Vardı">Vardı</option>
+              <option value="Bakalım">Bakalım</option>
               <option value="İptal">İptal</option>
             </select>
           </div>
@@ -481,7 +486,7 @@ export default function Requests() {
                   case 'Kayıtlı': return 'status-badge status-registered';
                   case 'Denemede': return 'status-badge status-trial';
                   case 'Eklendi': return 'status-badge status-added';
-                  case 'Vardı': return 'status-badge status-existed';
+                  case 'Bakalım': return 'status-badge status-existed';
                   case 'İptal': return 'status-badge status-cancelled';
                   default: return 'status-badge';
                 }
@@ -508,7 +513,10 @@ export default function Requests() {
                     </span>
                   </td>
                   <td data-label="Durum">
-                    <span className={getStatusBadgeClass(req.Status)}>{req.Status}</span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
+                      <span className={getStatusBadgeClass(req.Status)}>{req.Status}</span>
+                    </div>
                   </td>
                   <td data-label="İşlemler" className="action-btns">
                     <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
@@ -581,8 +589,14 @@ export default function Requests() {
                     +
                   </button>
                 </div>
-                <select name="SongID" value={formData.SongID} onChange={handleChange} required>
-                  <option value="">-- Şarkı Seçin --</option>
+                <select 
+                  name="SongID" 
+                  value={formData.SongID} 
+                  onChange={handleChange} 
+                  size={6} 
+                  style={{ height: '100px' }} 
+                  required
+                >
                   {sortedSongs
                     .filter(s => {
                       const searchLower = (songSearch || '').toLocaleLowerCase('tr-TR');
@@ -603,9 +617,20 @@ export default function Requests() {
                   <option value="Kayıtlı">Kayıtlı</option>
                   <option value="Denemede">Denemede</option>
                   <option value="Eklendi">Eklendi</option>
-                  <option value="Vardı">Vardı</option>
+                  <option value="Bakalım">Bakalım</option>
                   <option value="İptal">İptal</option>
                 </select>
+              </div>
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '-0.25rem', marginBottom: '1rem' }}>
+                <input 
+                  type="checkbox" 
+                  id="reqVardi" 
+                  name="Vardi" 
+                  checked={formData.Vardi} 
+                  onChange={(e) => setFormData(prev => ({ ...prev, Vardi: e.target.checked }))}
+                  style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
+                />
+                <label htmlFor="reqVardi" style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}>Vardı</label>
               </div>
               <div className="form-group">
                 <label>Link (YouTube, Spotify vb. - Opsiyonel)</label>

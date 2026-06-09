@@ -149,7 +149,8 @@ const DB = {
         guestId: (r.GuestIDs || [])[0] || null,
         date: r.RequestDate ? new Date(r.RequestDate).getTime() : Date.now(),
         status: r.Status || 'Kayıtlı',
-        link: r.Link || ''
+        link: r.Link || '',
+        vardi: r.Vardi ? 1 : 0
       }));
 
       // Önbelleğe kaydet
@@ -280,6 +281,8 @@ function closeModal(modalId) {
     document.getElementById('reqSongID').value = '';
     const reqLink = document.getElementById('reqLink');
     if (reqLink) reqLink.value = '';
+    const reqVardi = document.getElementById('reqVardi');
+    if (reqVardi) reqVardi.checked = false;
     populateDropdowns(); // listenin tamamını geri getir
   }
 
@@ -1390,13 +1393,14 @@ function renderRequests() {
         case 'Kayıtlı': return 'status-badge status-registered';
         case 'Denemede': return 'status-badge status-trial';
         case 'Eklendi': return 'status-badge status-added';
-        case 'Vardı': return 'status-badge status-existed';
+        case 'Bakalım': return 'status-badge status-existed';
         case 'İptal': return 'status-badge status-cancelled';
         default: return 'status-badge';
       }
     };
     
-    const statusHtml = `<span class="${getStatusClass(req.status)}">${req.status || 'Kayıtlı'}</span>`;
+    const tickHtml = req.vardi ? `<span style="color: #059669; font-weight: bold; font-size: 1.2rem; margin-right: 0.35rem;" title="Vardı">✓</span>` : '';
+    const statusHtml = `<div style="display: inline-flex; align-items: center;">${tickHtml}<span class="${getStatusClass(req.status)}">${req.status || 'Kayıtlı'}</span></div>`;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1497,7 +1501,8 @@ async function saveRequest(e) {
       SongID: Number(songId),
       GuestIDs: guestIds.map(Number),
       Status: status || 'Kayıtlı',
-      Link: link || ''
+      Link: link || '',
+      Vardi: document.getElementById('reqVardi').checked ? 1 : 0
     };
 
     if (id) {
@@ -1536,6 +1541,7 @@ function editRequest(id) {
   document.getElementById('reqSongID').value = req.songId;
   document.getElementById('reqStatus').value = req.status || 'Kayıtlı';
   document.getElementById('reqLink').value = req.link || '';
+  document.getElementById('reqVardi').checked = req.vardi ? true : false;
 
   document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
   openModal('requestModal');

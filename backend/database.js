@@ -190,6 +190,26 @@ export const initializeDB = () => {
         console.error("Migration error while adding Link column to Requests table:", e);
     }
 
+    // Migration for adding Vardi column to Requests table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Requests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('Vardi')) {
+            console.log("Migrating database: Adding column Vardi to Requests table...");
+            db.exec("ALTER TABLE Requests ADD COLUMN Vardi INTEGER DEFAULT 0;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding Vardi column to Requests table:", e);
+    }
+
+    // Migration for updating Status 'Vardı' to 'Bakalım'
+    try {
+        console.log("Migrating database: Updating status 'Vardı' to 'Bakalım'...");
+        db.prepare("UPDATE Requests SET Status = 'Bakalım' WHERE Status = 'Vardı'").run();
+    } catch (e) {
+        console.error("Migration error while updating Status 'Vardı' to 'Bakalım':", e);
+    }
+
     console.log("Database tables initialized.");
 };
 
