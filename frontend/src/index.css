@@ -393,10 +393,11 @@ tbody tr:hover td {
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
-  padding: 1.5rem;
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
   animation: fadeIn 0.18s ease-out;
 }
 
@@ -408,6 +409,7 @@ tbody tr:hover td {
   max-width: 500px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
+  margin: auto;
   animation: popIn 0.2s ease-out;
 }
 
