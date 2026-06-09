@@ -563,7 +563,7 @@ export default function Requests() {
                     +
                   </button>
                 </div>
-                <div className="listbox-container" style={{ height: '100px', maxHeight: '100px', overflowY: 'auto' }}>
+                <div className="listbox-container" style={{ height: '115px', maxHeight: '115px', overflowY: 'auto' }}>
                   {guests
                     .filter(g => (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR')))
                     .map(g => {
@@ -613,7 +613,7 @@ export default function Requests() {
                     +
                   </button>
                 </div>
-                <div className="listbox-container" style={{ height: '100px', maxHeight: '100px', overflowY: 'auto' }}>
+                <div className="listbox-container" style={{ height: '115px', maxHeight: '115px', overflowY: 'auto' }}>
                   {sortedSongs
                     .filter(s => {
                       const searchLower = (songSearch || '').toLocaleLowerCase('tr-TR');
