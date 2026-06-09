@@ -72,9 +72,10 @@ export default function Requests() {
         setSongSearch(selectedSong.SongTitle);
       }
       const selectedGuestList = guests.filter(g => (req.GuestIDs || []).includes(g.GuestID));
-      if (selectedGuestList.length > 0) {
-        selectedGuestList.sort((a, b) => (a.FullName || '').toLocaleLowerCase('tr-TR').localeCompare((b.FullName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+      if (selectedGuestList.length === 1) {
         setGuestSearch(selectedGuestList[0].FullName);
+      } else {
+        setGuestSearch('');
       }
     } else {
       setEditingRequest(null);
@@ -539,19 +540,21 @@ export default function Requests() {
                       {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
                     </div>
                   </td>
-                  <td data-label="İşlemler" className="action-btns">
-                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
-                      {req.Notes && req.Notes.trim() ? (
-                        <span
-                          style={{ cursor: 'help', fontSize: '1.1rem', lineHeight: 1 }}
-                          title={req.Notes}
-                        >
-                          📄
-                        </span>
-                      ) : null}
+                  <td data-label="İşlemler">
+                    <div className="action-btns">
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
+                        {req.Notes && req.Notes.trim() ? (
+                          <span
+                            style={{ cursor: 'help', fontSize: '1.1rem', lineHeight: 1 }}
+                            title={req.Notes}
+                          >
+                            📄
+                          </span>
+                        ) : null}
+                      </div>
+                      <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
                     </div>
-                    <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
                   </td>
                 </tr>
               );
@@ -592,7 +595,17 @@ export default function Requests() {
                 </div>
                 <div className="listbox-container" style={{ height: '115px', maxHeight: '115px', overflowY: 'auto' }}>
                   {guests
-                    .filter(g => (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR')))
+                    .filter(g => {
+                      const isSelected = formData.GuestIDs.includes(String(g.GuestID));
+                      if (isSelected) return true;
+                      return (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'));
+                    })
+                    .sort((a, b) => {
+                      const aSel = formData.GuestIDs.includes(String(a.GuestID)) ? 1 : 0;
+                      const bSel = formData.GuestIDs.includes(String(b.GuestID)) ? 1 : 0;
+                      if (aSel !== bSel) return bSel - aSel;
+                      return (a.FullName || '').toLocaleLowerCase('tr-TR').localeCompare((b.FullName || '').toLocaleLowerCase('tr-TR'), 'tr');
+                    })
                     .map(g => {
                       const isSelected = formData.GuestIDs.includes(String(g.GuestID));
                       return (
@@ -616,7 +629,11 @@ export default function Requests() {
                       );
                     })
                   }
-                  {guests.filter(g => (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'))).length === 0 && (
+                  {guests.filter(g => {
+                    const isSelected = formData.GuestIDs.includes(String(g.GuestID));
+                    if (isSelected) return true;
+                    return (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'));
+                  }).length === 0 && (
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem' }}>Misafir bulunamadı.</div>
                   )}
                 </div>

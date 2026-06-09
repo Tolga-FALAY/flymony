@@ -549,9 +549,11 @@ export default function Guests() {
                 <td data-label="Notlar" className="td-notes-preview" title={guest.Notes}>
                   <span className="notes-text">{guest.Notes || '-'}</span>
                 </td>
-                <td data-label="İşlemler" className="action-btns">
-                  <button className="btn btn-sm btn-outline" onClick={() => openModal(guest)}>Düzenle</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(guest.GuestID)}>Sil</button>
+                <td data-label="İşlemler">
+                  <div className="action-btns">
+                    <button className="btn btn-sm btn-outline" onClick={() => openModal(guest)}>Düzenle</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(guest.GuestID)}>Sil</button>
+                  </div>
                 </td>
               </tr>
             ))}
