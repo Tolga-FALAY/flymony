@@ -1399,8 +1399,8 @@ function renderRequests() {
       }
     };
     
-    const tickHtml = req.vardi ? `<span style="color: #059669; font-weight: bold; font-size: 1.2rem; margin-right: 0.35rem;" title="Vardı">✓</span>` : '';
-    const statusHtml = `<div style="display: inline-flex; align-items: center;">${tickHtml}<span class="${getStatusClass(req.status)}">${req.status || 'Kayıtlı'}</span></div>`;
+    const tickHtml = req.vardi ? `<span style="color: #059669; font-weight: bold; font-size: 1.2rem; margin-left: 0.35rem;" title="Vardı">✓</span>` : '';
+    const statusHtml = `<div style="display: inline-flex; align-items: center;"><span class="${getStatusClass(req.status)}">${req.status || 'Kayıtlı'}</span>${tickHtml}</div>`;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `

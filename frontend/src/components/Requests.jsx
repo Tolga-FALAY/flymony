@@ -190,6 +190,10 @@ export default function Requests() {
       alert("Lütfen en az bir misafir seçin.");
       return;
     }
+    if (!formData.SongID) {
+      alert("Lütfen bir şarkı seçin.");
+      return;
+    }
 
     const songIdNum = Number(formData.SongID);
 
@@ -514,8 +518,8 @@ export default function Requests() {
                   </td>
                   <td data-label="Durum">
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
                       <span className={getStatusBadgeClass(req.Status)}>{req.Status}</span>
+                      {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
                     </div>
                   </td>
                   <td data-label="İşlemler" className="action-btns">
@@ -559,16 +563,36 @@ export default function Requests() {
                     +
                   </button>
                 </div>
-                <select multiple name="GuestIDs" value={formData.GuestIDs} onChange={handleGuestChange} style={{ height: '100px' }} required>
+                <div className="listbox-container" style={{ height: '100px', maxHeight: '100px', overflowY: 'auto' }}>
                   {guests
                     .filter(g => (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR')))
-                    .map(g => (
-                      <option key={g.GuestID} value={String(g.GuestID)}>
-                        {g.FullName}
-                      </option>
-                    ))
+                    .map(g => {
+                      const isSelected = formData.GuestIDs.includes(String(g.GuestID));
+                      return (
+                        <div 
+                          key={g.GuestID} 
+                          className={`listbox-item ${isSelected ? 'selected' : ''}`}
+                          onClick={() => {
+                            setFormData(prev => {
+                              const guestIdStr = String(g.GuestID);
+                              const isAlreadySelected = prev.GuestIDs.includes(guestIdStr);
+                              const newGuestIDs = isAlreadySelected
+                                ? prev.GuestIDs.filter(id => id !== guestIdStr)
+                                : [...prev.GuestIDs, guestIdStr];
+                              return { ...prev, GuestIDs: newGuestIDs };
+                            });
+                          }}
+                        >
+                          <span>{g.FullName}</span>
+                          {isSelected && <span style={{ fontSize: '0.8rem' }}>✓</span>}
+                        </div>
+                      );
+                    })
                   }
-                </select>
+                  {guests.filter(g => (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'))).length === 0 && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem' }}>Misafir bulunamadı.</div>
+                  )}
+                </div>
               </div>
               <div className="form-group">
                 <label>Şarkı Seçin</label>
@@ -589,27 +613,37 @@ export default function Requests() {
                     +
                   </button>
                 </div>
-                <select 
-                  name="SongID" 
-                  value={formData.SongID} 
-                  onChange={handleChange} 
-                  size={6} 
-                  style={{ height: '100px' }} 
-                  required
-                >
+                <div className="listbox-container" style={{ height: '100px', maxHeight: '100px', overflowY: 'auto' }}>
                   {sortedSongs
                     .filter(s => {
                       const searchLower = (songSearch || '').toLocaleLowerCase('tr-TR');
                       return (s.SongTitle || '').toLocaleLowerCase('tr-TR').includes(searchLower) ||
                              (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
                     })
-                    .map(s => (
-                      <option key={s.SongID} value={String(s.SongID)}>
-                        {s.SongTitle} {s.ArtistNames && s.ArtistNames !== '-' ? `(${s.ArtistNames})` : ''}
-                      </option>
-                    ))
+                    .map(s => {
+                      const isSelected = formData.SongID === String(s.SongID);
+                      return (
+                        <div 
+                          key={s.SongID}
+                          className={`listbox-item ${isSelected ? 'selected' : ''}`}
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, SongID: String(s.SongID) }));
+                          }}
+                        >
+                          <span>{s.SongTitle}</span>
+                          <span style={{ fontSize: '0.8rem', opacity: isSelected ? 1 : 0.7 }}>{s.ArtistNames && s.ArtistNames !== '-' ? `(${s.ArtistNames})` : ''}</span>
+                        </div>
+                      );
+                    })
                   }
-                </select>
+                  {sortedSongs.filter(s => {
+                    const searchLower = (songSearch || '').toLocaleLowerCase('tr-TR');
+                    return (s.SongTitle || '').toLocaleLowerCase('tr-TR').includes(searchLower) ||
+                           (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
+                  }).length === 0 && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem' }}>Şarkı bulunamadı.</div>
+                  )}
+                </div>
               </div>
               <div className="form-group">
                 <label>İstek Durumu</label>

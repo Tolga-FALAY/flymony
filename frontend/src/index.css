@@ -1134,3 +1134,45 @@ tbody tr:hover td {
   color: var(--primary-hover);
   transform: scale(1.18);
 }
+
+/* Custom Listbox Styling */
+.listbox-container {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.listbox-item {
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.listbox-item:hover {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.listbox-item.selected {
+  background: var(--primary);
+  color: white !important;
+  font-weight: 500;
+}
+
+.listbox-item.selected span {
+  color: white !important;
+}
