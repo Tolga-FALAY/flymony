@@ -121,7 +121,8 @@ export const api = {
       GuestIDs:    (r.GuestIDs || []).map(Number),
       Status:      r.Status || 'Kayıtlı',
       Link:        r.Link || '',
-      Vardi:       r.Vardi ? true : false
+      Vardi:       r.Vardi ? true : false,
+      Notes:       r.Notes || ''
     }));
   },
 

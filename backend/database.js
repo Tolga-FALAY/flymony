@@ -89,6 +89,10 @@ export const initializeDB = () => {
                         RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
                         SongID INTEGER NOT NULL,
                         RequestDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        Status TEXT DEFAULT 'Kayıtlı',
+                        Link TEXT,
+                        Vardi INTEGER DEFAULT 0,
+                        Notes TEXT,
                         FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
                     );
 
@@ -108,6 +112,10 @@ export const initializeDB = () => {
                     RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
                     SongID INTEGER NOT NULL,
                     RequestDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    Status TEXT DEFAULT 'Kayıtlı',
+                    Link TEXT,
+                    Vardi INTEGER DEFAULT 0,
+                    Notes TEXT,
                     FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
                 );
 
@@ -127,6 +135,10 @@ export const initializeDB = () => {
                 RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
                 SongID INTEGER NOT NULL,
                 RequestDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                Status TEXT DEFAULT 'Kayıtlı',
+                Link TEXT,
+                Vardi INTEGER DEFAULT 0,
+                Notes TEXT,
                 FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
             );
 
@@ -200,6 +212,18 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while adding Vardi column to Requests table:", e);
+    }
+
+    // Migration for adding Notes column to Requests table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Requests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('Notes')) {
+            console.log("Migrating database: Adding column Notes to Requests table...");
+            db.exec("ALTER TABLE Requests ADD COLUMN Notes TEXT;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding Notes column to Requests table:", e);
     }
 
     // Migration for updating Status 'Vardı' to 'Bakalım'

@@ -164,7 +164,8 @@ const store = {
         FullNames:   _resolveGuestNames(guestIds, _guests),
         Status:      r.Status || 'Kayıtlı',
         Link:        r.Link   || '',
-        Vardi:       r.Vardi  ? true : false
+        Vardi:       r.Vardi  ? true : false,
+        Notes:       r.Notes  || ''
       };
     });
     // Yeniden eskiye sırala

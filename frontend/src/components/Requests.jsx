@@ -17,15 +17,16 @@ export default function Requests() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
 
-  // Default sorting configuration: Sort by SongTitle Ascending
-  const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
+  // Default sorting configuration: Sort by RequestDate Descending
+  const [sortConfig, setSortConfig] = useState({ key: 'RequestDate', direction: 'desc' });
 
   const [formData, setFormData] = useState({
     SongID: '',
     GuestIDs: [],
     Status: 'Kayıtlı',
     Link: '',
-    Vardi: false
+    Vardi: false,
+    Notes: ''
   });
 
   const [guestSearch, setGuestSearch] = useState('');
@@ -62,11 +63,24 @@ export default function Requests() {
         GuestIDs: (req.GuestIDs || []).map(String),
         Status: req.Status || 'Kayıtlı',
         Link: req.Link || '',
-        Vardi: req.Vardi ? true : false
+        Vardi: req.Vardi ? true : false,
+        Notes: req.Notes || ''
       });
+      // Prepopulate search inputs so they are selected/visible
+      const selectedSong = songs.find(s => s.SongID === req.SongID);
+      if (selectedSong) {
+        setSongSearch(selectedSong.SongTitle);
+      }
+      const selectedGuestList = guests.filter(g => (req.GuestIDs || []).includes(g.GuestID));
+      if (selectedGuestList.length > 0) {
+        selectedGuestList.sort((a, b) => (a.FullName || '').toLocaleLowerCase('tr-TR').localeCompare((b.FullName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+        setGuestSearch(selectedGuestList[0].FullName);
+      }
     } else {
       setEditingRequest(null);
-      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '', Vardi: false });
+      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '', Vardi: false, Notes: '' });
+      setGuestSearch('');
+      setSongSearch('');
     }
     setIsModalOpen(true);
   };
@@ -219,7 +233,8 @@ export default function Requests() {
       GuestIDs: formData.GuestIDs.map(Number),
       Status: formData.Status,
       Link: formData.Link || '',
-      Vardi: formData.Vardi ? 1 : 0
+      Vardi: formData.Vardi ? 1 : 0,
+      Notes: formData.Notes || ''
     };
     try {
       if (editingRequest) {
@@ -233,7 +248,8 @@ export default function Requests() {
           FullNames: store.resolveGuestNames(dataToSend.GuestIDs),
           Status:    dataToSend.Status,
           Link:      dataToSend.Link || '',
-          Vardi:     formData.Vardi
+          Vardi:     formData.Vardi,
+          Notes:     dataToSend.Notes
         });
       } else {
         const result = await api.createRequest(dataToSend);
@@ -246,7 +262,8 @@ export default function Requests() {
           FullNames:   store.resolveGuestNames(dataToSend.GuestIDs),
           Status:      dataToSend.Status,
           Link:        dataToSend.Link || '',
-          Vardi:       formData.Vardi
+          Vardi:       formData.Vardi,
+          Notes:       dataToSend.Notes
         });
       }
       closeModal();
@@ -523,6 +540,14 @@ export default function Requests() {
                     </div>
                   </td>
                   <td data-label="İşlemler" className="action-btns">
+                    {req.Notes && req.Notes.trim() && (
+                      <span 
+                        style={{ cursor: 'help', marginRight: '0.2rem', fontSize: '1.15rem', display: 'inline-flex', alignItems: 'center' }} 
+                        title={req.Notes}
+                      >
+                        📝
+                      </span>
+                    )}
                     <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
                   </td>
@@ -674,6 +699,16 @@ export default function Requests() {
                   value={formData.Link} 
                   onChange={handleChange} 
                   placeholder="https://..." 
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '0.9rem' }}>Notlar</label>
+                <textarea 
+                  name="Notes" 
+                  value={formData.Notes || ''} 
+                  onChange={handleChange} 
+                  placeholder="İstekle ilgili notlar girin..." 
+                  style={{ fontSize: '0.85rem', resize: 'vertical', minHeight: '60px', padding: '0.5rem 0.75rem' }}
                 />
               </div>
               <div className="modal-actions">
