@@ -31,7 +31,7 @@ export default function Requests() {
 
   const [guestSearch, setGuestSearch] = useState('');
   const [songSearch, setSongSearch] = useState('');
-  
+
   const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
   const [isSongModalOpen, setIsSongModalOpen] = useState(false);
 
@@ -101,8 +101,8 @@ export default function Requests() {
       return;
     }
 
-    const isDuplicate = guests.some(g => 
-      g.FirstName.trim().toLowerCase() === fName.toLowerCase() && 
+    const isDuplicate = guests.some(g =>
+      g.FirstName.trim().toLowerCase() === fName.toLowerCase() &&
       g.LastName.trim().toLowerCase() === lName.toLowerCase()
     );
     if (isDuplicate) {
@@ -118,10 +118,10 @@ export default function Requests() {
       });
       // Firestore okuma YOK — store'a ekle, event ile lokal state güncellenir
       store.addGuest({
-        GuestID:     res.GuestID,
-        FirstName:   fName,
-        LastName:    lName,
-        FullName:    `${fName} ${lName}`.trim(),
+        GuestID: res.GuestID,
+        FirstName: fName,
+        LastName: lName,
+        FullName: `${fName} ${lName}`.trim(),
         PhoneNumber: newGuestData.PhoneNumber || ''
       });
 
@@ -168,10 +168,10 @@ export default function Requests() {
       // Firestore okuma YOK — store'a ekle, event ile lokal state güncellenir
       const artistNames = store.resolveArtistNames(newSongData.ArtistIDs.map(Number)) || '-';
       store.addSong({
-        SongID:      res.SongID,
-        SongTitle:   title,
-        Duration:    '',
-        ArtistIDs:   newSongData.ArtistIDs.map(Number),
+        SongID: res.SongID,
+        SongTitle: title,
+        Duration: '',
+        ArtistIDs: newSongData.ArtistIDs.map(Number),
         ArtistNames: artistNames
       });
 
@@ -242,28 +242,28 @@ export default function Requests() {
         // Store'u güncelle — Firestore okuma YOK
         store.updateRequest(editingRequest.RequestID, {
           ...editingRequest,
-          SongID:    songIdNum,
+          SongID: songIdNum,
           SongTitle: store.resolveSongDisplay(songIdNum),
-          GuestIDs:  dataToSend.GuestIDs,
+          GuestIDs: dataToSend.GuestIDs,
           FullNames: store.resolveGuestNames(dataToSend.GuestIDs),
-          Status:    dataToSend.Status,
-          Link:      dataToSend.Link || '',
-          Vardi:     formData.Vardi,
-          Notes:     dataToSend.Notes
+          Status: dataToSend.Status,
+          Link: dataToSend.Link || '',
+          Vardi: formData.Vardi,
+          Notes: dataToSend.Notes
         });
       } else {
         const result = await api.createRequest(dataToSend);
         store.addRequest({
-          RequestID:   result.RequestID,
+          RequestID: result.RequestID,
           RequestDate: new Date().toISOString(),
-          SongID:      songIdNum,
-          SongTitle:   store.resolveSongDisplay(songIdNum),
-          GuestIDs:    dataToSend.GuestIDs,
-          FullNames:   store.resolveGuestNames(dataToSend.GuestIDs),
-          Status:      dataToSend.Status,
-          Link:        dataToSend.Link || '',
-          Vardi:       formData.Vardi,
-          Notes:       dataToSend.Notes
+          SongID: songIdNum,
+          SongTitle: store.resolveSongDisplay(songIdNum),
+          GuestIDs: dataToSend.GuestIDs,
+          FullNames: store.resolveGuestNames(dataToSend.GuestIDs),
+          Status: dataToSend.Status,
+          Link: dataToSend.Link || '',
+          Vardi: formData.Vardi,
+          Notes: dataToSend.Notes
         });
       }
       closeModal();
@@ -315,40 +315,40 @@ export default function Requests() {
     if (filterGuest && !req.GuestIDs.includes(Number(filterGuest))) {
       return false;
     }
-    
+
     // Get the song details for this request to match Song/Artist
     const song = songs.find(s => s.SongID === req.SongID);
-    
+
     // 2. Song filter
     if (filterSong && req.SongID !== Number(filterSong)) {
       return false;
     }
-    
+
     // 3. Artist filter
     if (filterArtist) {
       if (!song || !song.ArtistIDs.includes(Number(filterArtist))) {
         return false;
       }
     }
-    
+
     // 4. Status filter
     const statusVal = req.Status || 'Kayıtlı';
     if (filterStatus && statusVal !== filterStatus) {
       return false;
     }
-    
+
     // 5. Search query (Free text)
     if (filterSearch) {
       const searchLower = filterSearch.toLocaleLowerCase('tr-TR');
       const guestMatch = (req.FullNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
       const songTitleMatch = song ? song.SongTitle.toLocaleLowerCase('tr-TR').includes(searchLower) : false;
       const artistMatch = song ? song.ArtistNames.toLocaleLowerCase('tr-TR').includes(searchLower) : false;
-      
+
       if (!guestMatch && !songTitleMatch && !artistMatch) {
         return false;
       }
     }
-    
+
     return true;
   });
 
@@ -397,17 +397,17 @@ export default function Requests() {
         <div className="filter-group-row">
           <div className="filter-item search-box">
             <label htmlFor="filterSearchReact">Serbest Arama</label>
-            <input 
-              type="text" 
-              id="filterSearchReact" 
-              placeholder="Misafir, şarkı veya sanatçı..." 
+            <input
+              type="text"
+              id="filterSearchReact"
+              placeholder="Misafir, şarkı veya sanatçı..."
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
             />
           </div>
           <div className="filter-item">
             <label htmlFor="filterGuestReact">Misafir</label>
-            <select 
+            <select
               id="filterGuestReact"
               value={filterGuest}
               onChange={(e) => setFilterGuest(e.target.value)}
@@ -420,7 +420,7 @@ export default function Requests() {
           </div>
           <div className="filter-item">
             <label htmlFor="filterSongReact">Şarkı</label>
-            <select 
+            <select
               id="filterSongReact"
               value={filterSong}
               onChange={(e) => setFilterSong(e.target.value)}
@@ -433,7 +433,7 @@ export default function Requests() {
           </div>
           <div className="filter-item">
             <label htmlFor="filterArtistReact">Sanatçı</label>
-            <select 
+            <select
               id="filterArtistReact"
               value={filterArtist}
               onChange={(e) => setFilterArtist(e.target.value)}
@@ -446,7 +446,7 @@ export default function Requests() {
           </div>
           <div className="filter-item">
             <label htmlFor="filterStatusReact">Durum</label>
-            <select 
+            <select
               id="filterStatusReact"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -521,11 +521,11 @@ export default function Requests() {
                     <span className="song-title-wrapper">
                       <span>{req.SongTitle}</span>
                       {req.Link && (
-                        <a 
-                          href={req.Link} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="song-link-icon" 
+                        <a
+                          href={req.Link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="song-link-icon"
                           title="Şarkı Bağlantısı"
                         >
                           🔗
@@ -542,8 +542,8 @@ export default function Requests() {
                   <td data-label="İşlemler" className="action-btns">
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
                       {req.Notes && req.Notes.trim() ? (
-                        <span 
-                          style={{ cursor: 'help', fontSize: '1.1rem', lineHeight: 1 }} 
+                        <span
+                          style={{ cursor: 'help', fontSize: '1.1rem', lineHeight: 1 }}
                           title={req.Notes}
                         >
                           📄
@@ -596,8 +596,8 @@ export default function Requests() {
                     .map(g => {
                       const isSelected = formData.GuestIDs.includes(String(g.GuestID));
                       return (
-                        <div 
-                          key={g.GuestID} 
+                        <div
+                          key={g.GuestID}
                           className={`listbox-item ${isSelected ? 'selected' : ''}`}
                           onClick={() => {
                             setFormData(prev => {
@@ -645,12 +645,12 @@ export default function Requests() {
                     .filter(s => {
                       const searchLower = (songSearch || '').toLocaleLowerCase('tr-TR');
                       return (s.SongTitle || '').toLocaleLowerCase('tr-TR').includes(searchLower) ||
-                             (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
+                        (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
                     })
                     .map(s => {
                       const isSelected = formData.SongID === String(s.SongID);
                       return (
-                        <div 
+                        <div
                           key={s.SongID}
                           className={`listbox-item ${isSelected ? 'selected' : ''}`}
                           onClick={() => {
@@ -666,10 +666,10 @@ export default function Requests() {
                   {sortedSongs.filter(s => {
                     const searchLower = (songSearch || '').toLocaleLowerCase('tr-TR');
                     return (s.SongTitle || '').toLocaleLowerCase('tr-TR').includes(searchLower) ||
-                           (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
+                      (s.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
                   }).length === 0 && (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem' }}>Şarkı bulunamadı.</div>
-                  )}
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem' }}>Şarkı bulunamadı.</div>
+                    )}
                 </div>
               </div>
               <div className="form-group">
@@ -683,11 +683,11 @@ export default function Requests() {
                 </select>
               </div>
               <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '-0.25rem', marginBottom: '1rem' }}>
-                <input 
-                  type="checkbox" 
-                  id="reqVardi" 
-                  name="Vardi" 
-                  checked={formData.Vardi} 
+                <input
+                  type="checkbox"
+                  id="reqVardi"
+                  name="Vardi"
+                  checked={formData.Vardi}
                   onChange={(e) => setFormData(prev => ({ ...prev, Vardi: e.target.checked }))}
                   style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
                 />
@@ -695,21 +695,21 @@ export default function Requests() {
               </div>
               <div className="form-group">
                 <label>Link (YouTube, Spotify vb. - Opsiyonel)</label>
-                <input 
-                  type="url" 
-                  name="Link" 
-                  value={formData.Link} 
-                  onChange={handleChange} 
-                  placeholder="https://..." 
+                <input
+                  type="url"
+                  name="Link"
+                  value={formData.Link}
+                  onChange={handleChange}
+                  placeholder="https://..."
                 />
               </div>
               <div className="form-group">
                 <label style={{ fontSize: '0.9rem' }}>Notlar</label>
-                <textarea 
-                  name="Notes" 
-                  value={formData.Notes || ''} 
-                  onChange={handleChange} 
-                  placeholder="İstekle ilgili notlar girin..." 
+                <textarea
+                  name="Notes"
+                  value={formData.Notes || ''}
+                  onChange={handleChange}
+                  placeholder="İstekle ilgili notlar girin..."
                   style={{ fontSize: '0.85rem', resize: 'vertical', minHeight: '60px', padding: '0.5rem 0.75rem' }}
                 />
               </div>
@@ -732,28 +732,28 @@ export default function Requests() {
             <form onSubmit={handleCreateGuestInline}>
               <div className="form-group">
                 <label>Ad</label>
-                <input 
-                  type="text" 
-                  value={newGuestData.FirstName} 
-                  onChange={e => setNewGuestData({ ...newGuestData, FirstName: e.target.value })} 
-                  required 
+                <input
+                  type="text"
+                  value={newGuestData.FirstName}
+                  onChange={e => setNewGuestData({ ...newGuestData, FirstName: e.target.value })}
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>Soyad</label>
-                <input 
-                  type="text" 
-                  value={newGuestData.LastName} 
-                  onChange={e => setNewGuestData({ ...newGuestData, LastName: e.target.value })} 
-                  required 
+                <input
+                  type="text"
+                  value={newGuestData.LastName}
+                  onChange={e => setNewGuestData({ ...newGuestData, LastName: e.target.value })}
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>Telefon</label>
-                <input 
-                  type="text" 
-                  value={newGuestData.PhoneNumber} 
-                  onChange={e => setNewGuestData({ ...newGuestData, PhoneNumber: e.target.value })} 
+                <input
+                  type="text"
+                  value={newGuestData.PhoneNumber}
+                  onChange={e => setNewGuestData({ ...newGuestData, PhoneNumber: e.target.value })}
                 />
               </div>
               <div className="modal-actions">
@@ -775,11 +775,11 @@ export default function Requests() {
             <form onSubmit={handleCreateSongInline}>
               <div className="form-group">
                 <label>Şarkı Adı</label>
-                <input 
-                  type="text" 
-                  value={newSongData.SongTitle} 
-                  onChange={e => setNewSongData({ ...newSongData, SongTitle: e.target.value })} 
-                  required 
+                <input
+                  type="text"
+                  value={newSongData.SongTitle}
+                  onChange={e => setNewSongData({ ...newSongData, SongTitle: e.target.value })}
+                  required
                 />
               </div>
               <div className="form-group">
@@ -793,20 +793,20 @@ export default function Requests() {
                     style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
                   />
                 </div>
-                <select 
-                  multiple 
-                  value={newSongData.ArtistIDs} 
+                <select
+                  multiple
+                  value={newSongData.ArtistIDs}
                   onChange={e => {
                     const selected = Array.from(e.target.selectedOptions, option => option.value);
                     setNewSongData({ ...newSongData, ArtistIDs: selected });
-                  }} 
+                  }}
                   style={{ height: '100px' }}
                 >
                   {artists.map(artist => {
                     const isVisible = (artist.ArtistName || '').toLocaleLowerCase('tr-TR').includes(songArtistSearch.toLocaleLowerCase('tr-TR'));
                     return (
-                      <option 
-                        key={artist.ArtistID} 
+                      <option
+                        key={artist.ArtistID}
                         value={String(artist.ArtistID)}
                         style={{ display: isVisible ? 'block' : 'none' }}
                       >
