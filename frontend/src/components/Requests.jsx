@@ -540,14 +540,16 @@ export default function Requests() {
                     </div>
                   </td>
                   <td data-label="İşlemler" className="action-btns">
-                    {req.Notes && req.Notes.trim() && (
-                      <span 
-                        style={{ cursor: 'help', marginRight: '0.2rem', fontSize: '1.15rem', display: 'inline-flex', alignItems: 'center' }} 
-                        title={req.Notes}
-                      >
-                        📝
-                      </span>
-                    )}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
+                      {req.Notes && req.Notes.trim() ? (
+                        <span 
+                          style={{ cursor: 'help', fontSize: '1.1rem', lineHeight: 1 }} 
+                          title={req.Notes}
+                        >
+                          📄
+                        </span>
+                      ) : null}
+                    </div>
                     <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
                   </td>
