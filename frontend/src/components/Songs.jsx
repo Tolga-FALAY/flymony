@@ -792,19 +792,19 @@ export default function Songs() {
                 </select>
               </div>
               <div className="form-group">
-                <label>Şarkı Sözleri</label>
+                <label>Akorlar, Sözler ve Sahne Notları</label>
                 <textarea
                   name="Lyrics"
                   value={formData.Lyrics}
                   onChange={handleChange}
-                  placeholder="Şarkı sözlerini buraya yazın..."
-                  rows={4}
+                  placeholder="Akorları, sözleri ve notları buraya yazın veya yapıştırın. Örn:&#10;[Giriş]&#10;Am   G   F   E&#10;&#10;Am             Dm&#10;Hani benim gençliğim anne..."
+                  rows={8}
                   style={{
                     padding: '0.75rem 1rem',
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
-                    fontFamily: 'inherit',
-                    fontSize: '1rem',
+                    fontFamily: 'monospace',
+                    fontSize: '0.95rem',
                     resize: 'vertical',
                     outline: 'none'
                   }}
