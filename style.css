@@ -1385,4 +1385,135 @@ tr:hover td {
 
 #globalAudioProgress::-webkit-slider-thumb {
   margin-top: -4px;
+}
+
+/* ==========================================================================
+   CHORD SHEET VIEWER & TRANSPOSITION STYLES
+   ========================================================================== */
+
+.chord-sheet-pre {
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 16px;
+  line-height: 1.65;
+  white-space: pre;
+  overflow-x: auto;
+  background: #0f172a; /* Slate 900 */
+  color: #e2e8f0; /* Slate 200 */
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #1e293b;
+  margin-top: 1rem;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.chord-sheet-pre.chord-sheet-light {
+  background: #f8fafc; /* Slate 50 */
+  color: #334155; /* Slate 700 */
+  border-color: #cbd5e1;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.chord-highlight {
+  color: #38bdf8; /* Bright sky-blue */
+  font-weight: bold;
+}
+
+.chord-sheet-pre.chord-sheet-light .chord-highlight {
+  color: #0284c7; /* Sky 700 */
+}
+
+.transpose-controls-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(123, 180, 245, 0.04);
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
+}
+
+.transpose-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.transpose-row label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 90px;
+}
+
+.transpose-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.transpose-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #334155;
+  cursor: pointer;
+  min-width: 38px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.transpose-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.transpose-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.transpose-info-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.chord-viewer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.chord-action-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.chord-action-btn:hover {
+  background: #f1f5f9;
 }

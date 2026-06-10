@@ -44,8 +44,8 @@ function _buildSongDisplay(song) {
 // ─── Yardımcı: store güncellendiğini bildiren event ve localStorage önbellekleme ──
 function _notify() {
   try {
-    const cacheKey = 'flymony_db_cache';
-    const cacheTimeKey = 'flymony_db_cache_time';
+    const cacheKey = 'flymony_db_cache_react';
+    const cacheTimeKey = 'flymony_db_cache_react_time';
     const dataToCache = {
       artists: _artists,
       songs: _songs,
@@ -79,8 +79,8 @@ const store = {
    * force=true ile zorla yeniden yükleme yapılabilir (örn: manuel "Yenile" butonu).
    */
   async load(force = false) {
-    const cacheKey = 'flymony_db_cache';
-    const cacheTimeKey = 'flymony_db_cache_time';
+    const cacheKey = 'flymony_db_cache_react';
+    const cacheTimeKey = 'flymony_db_cache_react_time';
     const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika önbellek süresi
 
     if (_loaded && !force) return;
@@ -128,6 +128,7 @@ const store = {
         SongYear: s.SongYear || '',
         Lyrics: s.Lyrics || '',
         AudioPath: s.AudioPath || '',
+        OriginalKey: s.OriginalKey || '',
         ArtistIDs: artistIds,
         ArtistNames: artistNames
       };

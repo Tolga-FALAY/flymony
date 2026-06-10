@@ -93,7 +93,7 @@ app.get('/api/songs', (req, res) => {
     try {
         // Fetch songs with their associated artists
         const songs = db.prepare(`
-            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath,
+            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey,
                    GROUP_CONCAT(a.ArtistID) as ArtistIDs,
                    GROUP_CONCAT(a.ArtistName, ', ') as ArtistNames
             FROM Songs s
@@ -108,7 +108,8 @@ app.get('/api/songs', (req, res) => {
             ArtistIDs: s.ArtistIDs ? s.ArtistIDs.split(',').map(Number) : [],
             SongYear: s.SongYear || '',
             Lyrics: s.Lyrics || '',
-            AudioPath: s.AudioPath || ''
+            AudioPath: s.AudioPath || '',
+            OriginalKey: s.OriginalKey || ''
         }));
 
         // Sort songs alphabetically ascending by title (Turkish locale aware)
@@ -154,7 +155,7 @@ function saveAudioFile(audioData) {
 }
 
 app.post('/api/songs', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData } = req.body; // ArtistIDs should be an array of IDs
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey } = req.body; // ArtistIDs should be an array of IDs
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
     }
@@ -187,11 +188,11 @@ app.post('/api/songs', (req, res) => {
             audioPathToSave = AudioPath;
         }
 
-        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath) VALUES (?, ?, ?, ?, ?)');
+        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey) VALUES (?, ?, ?, ?, ?, ?)');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
-        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, artistIds) => {
-            const info = insertSong.run(songTitle, duration, songYear || null, lyrics || null, audioPath || null);
+        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, artistIds) => {
+            const info = insertSong.run(songTitle, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null);
             const songId = info.lastInsertRowid;
             if (artistIds && artistIds.length > 0) {
                 for (const artistId of artistIds) {
@@ -201,7 +202,7 @@ app.post('/api/songs', (req, res) => {
             return songId;
         });
 
-        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, ArtistIDs || []);
+        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, ArtistIDs || []);
         res.status(201).json({ id: songId, message: 'Song created successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -209,7 +210,7 @@ app.post('/api/songs', (req, res) => {
 });
 
 app.put('/api/songs/:id', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey } = req.body;
     const songId = req.params.id;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
@@ -259,12 +260,12 @@ app.put('/api/songs/:id', (req, res) => {
             finalAudioPath = null;
         }
 
-        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ? WHERE SongID = ?');
+        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ? WHERE SongID = ?');
         const deleteSongArtists = db.prepare('DELETE FROM Song_Artists WHERE SongID = ?');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
-        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, artistIds) => {
-            updateSong.run(title, duration, songYear || null, lyrics || null, audioPath || null, id);
+        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, artistIds) => {
+            updateSong.run(title, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null, id);
             deleteSongArtists.run(id);
             if (artistIds && artistIds.length > 0) {
                 for (const artistId of artistIds) {
@@ -273,7 +274,7 @@ app.put('/api/songs/:id', (req, res) => {
             }
         });
 
-        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, ArtistIDs || []);
+        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, ArtistIDs || []);
         res.json({ message: 'Song updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });

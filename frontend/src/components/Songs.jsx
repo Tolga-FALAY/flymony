@@ -11,6 +11,137 @@ const getUploadsUrl = (path) => {
   return `${base}${path}`;
 };
 
+// ==========================================================================
+// CHORD SHEET TRANSPOSITION HELPER FUNCTIONS FOR REACT
+// ==========================================================================
+
+const noteToSemitone = {
+  'C': 0, 'C#': 1, 'Db': 1,
+  'D': 2, 'D#': 3, 'Eb': 3,
+  'E': 4, 'Fb': 4,
+  'F': 5, 'F#': 6, 'Gb': 6,
+  'G': 7, 'G#': 8, 'Ab': 8,
+  'A': 9, 'A#': 10, 'Bb': 10,
+  'B': 11, 'Cb': 11
+};
+
+const sharpScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const flatScale  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+function getScaleForTargetKey(targetKey) {
+  if (!targetKey) return sharpScale;
+  const keyUpper = targetKey.toUpperCase();
+  if (['F', 'BB', 'EB', 'AB', 'DB', 'GB', 'Fm', 'Bbm', 'Ebm', 'Abm', 'Dbm', 'Gbm'].some(k => keyUpper.startsWith(k))) {
+    return flatScale;
+  }
+  return sharpScale;
+}
+
+function isChord(token) {
+  const chordTokenRegex = /^[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*(?:\/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*)?$/;
+  return chordTokenRegex.test(token);
+}
+
+function isChordLine(line) {
+  const tokens = line.trim().split(/\s+/);
+  if (tokens.length === 0 || tokens[0] === "") return false;
+  
+  let chordCount = 0;
+  let ignoredCount = 0;
+  
+  const ignoredTokens = ['|', ':', '-', 'x', 'intro', 'solo', 'nakarat', 'köprü', 'bridge', 'outro', 'söz', 'sözler', 've', 'ritim', 'ritm', 'kapo', 'capo', 'arpaj', 'fill'];
+  
+  for (const token of tokens) {
+    const cleanToken = token.toLowerCase().replace(/[:|()]/g, '');
+    if (isChord(token)) {
+      chordCount++;
+    } else if (ignoredTokens.includes(cleanToken) || /^[0-9]+$/.test(cleanToken)) {
+      ignoredCount++;
+    }
+  }
+  
+  const totalMeaningfulTokens = tokens.length - ignoredCount;
+  if (totalMeaningfulTokens <= 0) return chordCount > 0;
+  
+  return (chordCount / totalMeaningfulTokens) >= 0.7;
+}
+
+function transposeNote(note, semitones, targetScale = sharpScale) {
+  const firstChar = note.charAt(0).toUpperCase();
+  const rest = note.slice(1);
+  const normalizedNote = firstChar + rest;
+  
+  const semitone = noteToSemitone[normalizedNote];
+  if (semitone === undefined) return note;
+  
+  let newSemitone = (semitone + semitones) % 12;
+  if (newSemitone < 0) newSemitone += 12;
+  
+  return targetScale[newSemitone];
+}
+
+function transposeChord(chord, semitones, targetScale = sharpScale) {
+  return chord.split('/').map(part => {
+    const match = part.match(/^([A-G][#b]?)(.*)$/i);
+    if (!match) return part;
+    
+    const root = match[1];
+    const suffix = match[2];
+    
+    const transposedRoot = transposeNote(root, semitones, targetScale);
+    return transposedRoot + suffix;
+  }).join('/');
+}
+
+function renderChordLineAsHTML(line, semitones, targetScale) {
+  const tokenRegex = /\S+/g;
+  let match;
+  let output = "";
+  let lastIndex = 0;
+  
+  while ((match = tokenRegex.exec(line)) !== null) {
+    const token = match[0];
+    const origStart = match.index;
+    
+    if (origStart > lastIndex) {
+      output += " ".repeat(origStart - lastIndex);
+    }
+    
+    let processedToken = token;
+    if (isChord(token)) {
+      processedToken = transposeChord(token, semitones, targetScale);
+      output += `<span class="chord-highlight">${escapeHTML(processedToken)}</span>`;
+    } else {
+      output += escapeHTML(processedToken);
+    }
+    
+    lastIndex = origStart + token.length;
+  }
+  
+  if (lastIndex < line.length) {
+    output += line.substring(lastIndex);
+  }
+  
+  return output;
+}
+
+function renderTransposedTextAsHTML(text, semitones, targetScale = sharpScale) {
+  if (!text) return '<div style="color:var(--text-muted); text-align:center; padding: 2rem;">Bu şarkı için akor veya söz eklenmemiş. Düzenle butonundan ekleyebilirsiniz.</div>';
+  const lines = text.split('\n');
+  const htmlLines = lines.map(line => {
+    if (isChordLine(line)) {
+      return renderChordLineAsHTML(line, semitones, targetScale);
+    } else {
+      return escapeHTML(line);
+    }
+  });
+  return htmlLines.join('\n');
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export default function Songs() {
   const [songs, setSongs] = useState([]);
   const [artists, setArtists] = useState([]);
@@ -41,6 +172,13 @@ export default function Songs() {
 
   const globalAudioRef = useRef(null);
 
+  // Chord Viewer Modal States
+  const [isChordViewerOpen, setIsChordViewerOpen] = useState(false);
+  const [viewerSong, setViewerSong] = useState(null);
+  const [transposeShift, setTransposeShift] = useState(0);
+  const [viewerFontSize, setViewerFontSize] = useState(16);
+  const [viewerTheme, setViewerTheme] = useState('dark');
+
   const clearAllFilters = () => {
     setFilterSong('');
     setFilterArtist('');
@@ -56,6 +194,7 @@ export default function Songs() {
     Lyrics: '',
     AudioPath: '',
     AudioData: '',
+    OriginalKey: '',
     ArtistIDs: []
   });
 
@@ -87,6 +226,7 @@ export default function Songs() {
         Lyrics: song.Lyrics || '',
         AudioPath: song.AudioPath || '',
         AudioData: '',
+        OriginalKey: song.OriginalKey || '',
         ArtistIDs: (song.ArtistIDs || []).map(String)
       });
       if (song.AudioPath) {
@@ -96,7 +236,7 @@ export default function Songs() {
       }
     } else {
       setEditingSong(null);
-      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', ArtistIDs: [] });
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ArtistIDs: [] });
       setAudioPreviewUrl('');
     }
     setIsModalOpen(true);
@@ -111,6 +251,17 @@ export default function Songs() {
       mediaRecorderInstance.stop();
     }
     setIsRecording(false);
+  };
+
+  const openChordViewer = (song) => {
+    setViewerSong(song);
+    setTransposeShift(0);
+    setIsChordViewerOpen(true);
+  };
+
+  const closeChordViewer = () => {
+    setIsChordViewerOpen(false);
+    setViewerSong(null);
   };
 
   // Recording timer effect
@@ -356,6 +507,7 @@ export default function Songs() {
       Lyrics: formData.Lyrics || '',
       AudioPath: formData.AudioPath || '',
       AudioData: formData.AudioData || '',
+      OriginalKey: formData.OriginalKey || '',
       ArtistIDs: formData.ArtistIDs.map(Number)
     };
 
@@ -568,6 +720,7 @@ export default function Songs() {
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
                 <td data-label="Yıl">{song.SongYear || '-'}</td>
                 <td data-label="İşlemler" className="action-btns">
+                  <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Akorlar</button>
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
                 </td>
@@ -595,6 +748,48 @@ export default function Songs() {
               <div className="form-group">
                 <label>Yılı</label>
                 <input type="number" name="SongYear" value={formData.SongYear} onChange={handleChange} placeholder="Örn: 2005" />
+              </div>
+              <div className="form-group">
+                <label>Orijinal Ton</label>
+                <select
+                  name="OriginalKey"
+                  value={formData.OriginalKey || ''}
+                  onChange={handleChange}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="">Orijinal Ton Yok (Sadece +/- ile transpoze edilebilir)</option>
+                  <option value="C">C</option>
+                  <option value="Cm">Cm</option>
+                  <option value="C#">C#</option>
+                  <option value="C#m">C#m</option>
+                  <option value="D">D</option>
+                  <option value="Dm">Dm</option>
+                  <option value="D#">D#</option>
+                  <option value="D#m">D#m</option>
+                  <option value="E">E</option>
+                  <option value="Em">Em</option>
+                  <option value="F">F</option>
+                  <option value="Fm">Fm</option>
+                  <option value="F#">F#</option>
+                  <option value="F#m">F#m</option>
+                  <option value="G">G</option>
+                  <option value="Gm">Gm</option>
+                  <option value="G#">G#</option>
+                  <option value="G#m">G#m</option>
+                  <option value="A">A</option>
+                  <option value="Am">Am</option>
+                  <option value="A#">A#</option>
+                  <option value="A#m">A#m</option>
+                  <option value="B">B</option>
+                  <option value="Bm">Bm</option>
+                </select>
               </div>
               <div className="form-group">
                 <label>Şarkı Sözleri</label>
@@ -765,6 +960,115 @@ export default function Songs() {
           </button>
         </div>
       )}
+
+      {/* Akor Görüntüleme Modalı */}
+      {isChordViewerOpen && viewerSong && (() => {
+        const origKey = viewerSong.OriginalKey || viewerSong.originalKey;
+        let origRoot = '';
+        let suffix = '';
+        let origSemitone = null;
+        
+        if (origKey) {
+          const match = origKey.match(/^([A-G][#b]?)(.*)$/i);
+          if (match) {
+            origRoot = match[1];
+            suffix = match[2];
+            const origRootUpper = origRoot.charAt(0).toUpperCase() + origRoot.slice(1).toLowerCase();
+            origSemitone = noteToSemitone[origRootUpper];
+          }
+        }
+        
+        let targetScale = sharpScale;
+        if (origSemitone !== null && origSemitone !== undefined) {
+          let targetSemitone = (origSemitone + transposeShift) % 12;
+          if (targetSemitone < 0) targetSemitone += 12;
+          const targetRoot = sharpScale[targetSemitone];
+          targetScale = getScaleForTargetKey(targetRoot);
+        }
+
+        const htmlContent = renderTransposedTextAsHTML(viewerSong.Lyrics || viewerSong.lyrics, transposeShift, targetScale);
+        const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1500 }}>
+            <div className="modal-content" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh' }}>
+              <div className="modal-header">
+                <h2>
+                  {viewerSong.SongTitle || viewerSong.title}
+                  {viewerSong.ArtistNames && viewerSong.ArtistNames !== '-' && ` - ${viewerSong.ArtistNames}`}
+                  {origKey && ` (${origKey} Tonu)`}
+                </h2>
+                <button className="close-btn" onClick={closeChordViewer}>&times;</button>
+              </div>
+
+              <div className="transpose-controls-container">
+                <div className="transpose-row">
+                  <label>Transpoze:</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setTransposeShift(prev => prev - 1)}>-1 Semiton</button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setTransposeShift(prev => prev + 1)}>+1 Semiton</button>
+                    <button 
+                      type="button" 
+                      className="btn btn-sm btn-outline btn-danger" 
+                      onClick={() => setTransposeShift(0)}
+                      style={{ padding: '0.35rem 0.5rem', color: '#dc2626', borderColor: '#fca5a5' }}
+                    >
+                      Sıfırla
+                    </button>
+                    <span className="transpose-info-badge">
+                      {transposeShift > 0 ? `+${transposeShift}` : transposeShift} Semiton
+                    </span>
+                  </div>
+                </div>
+
+                {origKey && origSemitone !== null && (
+                  <div className="transpose-row" style={{ marginTop: '0.5rem' }}>
+                    <label>Hedef Ton:</label>
+                    <div className="transpose-btn-group">
+                      {standardScale.map(targetRoot => {
+                        const targetSemitone = noteToSemitone[targetRoot];
+                        let diff = targetSemitone - origSemitone;
+                        if (diff < 0) diff += 12;
+                        
+                        const displayName = targetRoot + suffix;
+                        const isActive = (transposeShift % 12 + 12) % 12 === diff;
+
+                        return (
+                          <button
+                            key={targetRoot}
+                            type="button"
+                            className={`transpose-btn ${isActive ? 'active' : ''}`}
+                            onClick={() => setTransposeShift(diff)}
+                          >
+                            {displayName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <pre 
+                className={`chord-sheet-pre ${viewerTheme === 'light' ? 'chord-sheet-light' : ''}`}
+                style={{ fontSize: `${viewerFontSize}px` }}
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+
+              <div className="chord-viewer-actions">
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="chord-action-btn" onClick={() => setViewerFontSize(f => Math.max(10, f - 1))}>Yazı A-</button>
+                  <button type="button" className="chord-action-btn" onClick={() => setViewerFontSize(f => Math.min(32, f + 1))}>Yazı A+</button>
+                  <button type="button" className="chord-action-btn" onClick={() => setViewerTheme(t => t === 'dark' ? 'light' : 'dark')}>
+                    Görünüm: {viewerTheme === 'dark' ? 'Koyu' : 'Açık'}
+                  </button>
+                </div>
+                <button type="button" className="btn btn-outline" onClick={closeChordViewer}>Kapat</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

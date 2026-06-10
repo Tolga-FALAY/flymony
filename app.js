@@ -70,8 +70,8 @@ const DB = {
 
   // Load all tables and construct in-memory lists
   loadFromFirestore: async function(force = false) {
-    const cacheKey = 'flymony_db_cache';
-    const cacheTimeKey = 'flymony_db_cache_time';
+    const cacheKey = 'flymony_db_cache_vanilla';
+    const cacheTimeKey = 'flymony_db_cache_vanilla_time';
     const CACHE_DURATION = 5 * 60 * 1000; // 5 dakikalık önbellek süresi
 
     if (!force) {
@@ -135,7 +135,9 @@ const DB = {
           title: s.SongTitle,
           duration: s.Duration || "",
           year: s.SongYear || "",
-          lyrics: s.Lyrics || ""
+          lyrics: s.Lyrics || "",
+          audioPath: s.AudioPath || "",
+          originalKey: s.OriginalKey || ""
         });
         const artistIds = s.ArtistIDs || [];
         artistIds.forEach(aid => {
@@ -173,7 +175,6 @@ const DB = {
     } catch (err) {
       console.error("API loading error:", err);
     }
-  }
   }
 };
 
@@ -280,6 +281,8 @@ function closeModal(modalId) {
     if (songYear) songYear.value = '';
     const songLyrics = document.getElementById('songLyrics');
     if (songLyrics) songLyrics.value = '';
+    const songOriginalKey = document.getElementById('songOriginalKey');
+    if (songOriginalKey) songOriginalKey.value = '';
     
     // Clear audio inputs
     const songAudioPath = document.getElementById('songAudioPath');
@@ -1221,6 +1224,7 @@ function renderSongs() {
       <td data-label="Sanatçılar">${artistNames || '-'}</td>
       <td data-label="Yıl">${song.year || '-'}</td>
       <td data-label="İşlemler" class="action-btns">
+        <button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Akorlar</button>
         <button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSong(${song.id})">Sil</button>
       </td>
@@ -1236,6 +1240,10 @@ async function saveSong(e) {
   
   const checkboxes = document.querySelectorAll('input[name="songArtists"]:checked');
   const selectedArtistIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+  const yearVal = document.getElementById('songYear').value.trim();
+  const lyricsVal = document.getElementById('songLyrics').value.trim();
+  const originalKeyVal = document.getElementById('songOriginalKey').value;
 
   if (!title) {
     alert("Şarkı adı boş olamaz!");
@@ -1272,7 +1280,8 @@ async function saveSong(e) {
       Lyrics: lyricsVal || "",
       ArtistIDs: selectedArtistIds.map(Number),
       AudioPath: audioPathVal || "",
-      AudioData: audioDataVal || ""
+      AudioData: audioDataVal || "",
+      OriginalKey: originalKeyVal || ""
     };
 
     if (id) {
@@ -1311,6 +1320,7 @@ function editSong(id) {
   document.getElementById('songTitle').value = song.title;
   document.getElementById('songYear').value = song.year || '';
   document.getElementById('songLyrics').value = song.lyrics || '';
+  document.getElementById('songOriginalKey').value = song.originalKey || '';
   
   // Set audio fields
   const UPLOADS_BASE_URL = API_BASE_URL.replace('/api', '');
@@ -2536,5 +2546,287 @@ window.playVanillaSongAudio = playVanillaSongAudio;
 window.togglePlayGlobalAudio = togglePlayGlobalAudio;
 window.seekGlobalAudio = seekGlobalAudio;
 window.closeGlobalAudio = closeGlobalAudio;
+
+// ==========================================================================
+// CHORD SHEET VIEWER & DYNAMIC TRANSPOSER STATE & FUNCTIONS
+// ==========================================================================
+
+let chordViewerSong = null;
+let chordViewerShift = 0;
+let chordViewerFontSize = 16;
+let chordViewerTheme = 'dark';
+
+const noteToSemitone = {
+  'C': 0, 'C#': 1, 'Db': 1,
+  'D': 2, 'D#': 3, 'Eb': 3,
+  'E': 4, 'Fb': 4,
+  'F': 5, 'F#': 6, 'Gb': 6,
+  'G': 7, 'G#': 8, 'Ab': 8,
+  'A': 9, 'A#': 10, 'Bb': 10,
+  'B': 11, 'Cb': 11
+};
+
+const sharpScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const flatScale  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+function getScaleForTargetKey(targetKey) {
+  if (!targetKey) return sharpScale;
+  const keyUpper = targetKey.toUpperCase();
+  if (['F', 'BB', 'EB', 'AB', 'DB', 'GB', 'Fm', 'Bbm', 'Ebm', 'Abm', 'Dbm', 'Gbm'].some(k => keyUpper.startsWith(k))) {
+    return flatScale;
+  }
+  return sharpScale;
+}
+
+function isChord(token) {
+  const chordTokenRegex = /^[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*(?:\/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*)?$/;
+  return chordTokenRegex.test(token);
+}
+
+function isChordLine(line) {
+  const tokens = line.trim().split(/\s+/);
+  if (tokens.length === 0 || tokens[0] === "") return false;
+  
+  let chordCount = 0;
+  let ignoredCount = 0;
+  
+  const ignoredTokens = ['|', ':', '-', 'x', 'intro', 'solo', 'nakarat', 'köprü', 'bridge', 'outro', 'söz', 'sözler', 've', 'ritim', 'ritm', 'kapo', 'capo', 'arpaj', 'fill'];
+  
+  for (const token of tokens) {
+    const cleanToken = token.toLowerCase().replace(/[:|()]/g, '');
+    if (isChord(token)) {
+      chordCount++;
+    } else if (ignoredTokens.includes(cleanToken) || /^[0-9]+$/.test(cleanToken)) {
+      ignoredCount++;
+    }
+  }
+  
+  const totalMeaningfulTokens = tokens.length - ignoredCount;
+  if (totalMeaningfulTokens <= 0) return chordCount > 0;
+  
+  return (chordCount / totalMeaningfulTokens) >= 0.7;
+}
+
+function transposeNote(note, semitones, targetScale = sharpScale) {
+  const firstChar = note.charAt(0).toUpperCase();
+  const rest = note.slice(1);
+  const normalizedNote = firstChar + rest;
+  
+  const semitone = noteToSemitone[normalizedNote];
+  if (semitone === undefined) return note;
+  
+  let newSemitone = (semitone + semitones) % 12;
+  if (newSemitone < 0) newSemitone += 12;
+  
+  return targetScale[newSemitone];
+}
+
+function transposeChord(chord, semitones, targetScale = sharpScale) {
+  return chord.split('/').map(part => {
+    const match = part.match(/^([A-G][#b]?)(.*)$/i);
+    if (!match) return part;
+    
+    const root = match[1];
+    const suffix = match[2];
+    
+    const transposedRoot = transposeNote(root, semitones, targetScale);
+    return transposedRoot + suffix;
+  }).join('/');
+}
+
+function renderChordLineAsHTML(line, semitones, targetScale) {
+  const tokenRegex = /\S+/g;
+  let match;
+  let output = "";
+  let lastIndex = 0;
+  
+  while ((match = tokenRegex.exec(line)) !== null) {
+    const token = match[0];
+    const origStart = match.index;
+    
+    if (origStart > lastIndex) {
+      output += " ".repeat(origStart - lastIndex);
+    }
+    
+    let processedToken = token;
+    if (isChord(token)) {
+      processedToken = transposeChord(token, semitones, targetScale);
+      output += `<span class="chord-highlight">${escapeHTML(processedToken)}</span>`;
+    } else {
+      output += escapeHTML(processedToken);
+    }
+    
+    lastIndex = origStart + token.length;
+  }
+  
+  if (lastIndex < line.length) {
+    output += line.substring(lastIndex);
+  }
+  
+  return output;
+}
+
+function renderTransposedTextAsHTML(text, semitones, targetScale = sharpScale) {
+  if (!text) return '<div style="color:var(--text-muted); text-align:center; padding: 2rem;">Bu şarkı için akor veya söz eklenmemiş. Düzenle butonundan ekleyebilirsiniz.</div>';
+  const lines = text.split('\n');
+  const htmlLines = lines.map(line => {
+    if (isChordLine(line)) {
+      return renderChordLineAsHTML(line, semitones, targetScale);
+    } else {
+      return escapeHTML(line);
+    }
+  });
+  return htmlLines.join('\n');
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function openChordViewer(songId) {
+  const song = DB.songs.find(s => s.id == songId);
+  if (!song) return;
+
+  chordViewerSong = song;
+  chordViewerShift = 0;
+  
+  // Set title and details
+  const artistIds = DB.song_artists.filter(sa => sa.songId == song.id).map(sa => sa.artistId);
+  const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
+  const titleDisplay = song.title + (artistNames ? ` - ${artistNames}` : '') + (song.originalKey ? ` (${song.originalKey} Tonu)` : '');
+  
+  document.getElementById('chordViewerSongTitle').innerText = titleDisplay;
+  document.getElementById('transposeOffsetDisplay').innerText = '0 Semiton';
+  
+  // Initialize font size style
+  document.getElementById('chordViewerContent').style.fontSize = chordViewerFontSize + 'px';
+  
+  updateChordViewerContent();
+  document.getElementById('chordViewerModal').style.display = 'flex';
+}
+
+function closeChordViewer() {
+  document.getElementById('chordViewerModal').style.display = 'none';
+  chordViewerSong = null;
+}
+
+function updateChordViewerContent() {
+  if (!chordViewerSong) return;
+  
+  // Determine target scale
+  let targetScale = sharpScale;
+  if (chordViewerSong.originalKey) {
+    const origKey = chordViewerSong.originalKey;
+    const match = origKey.match(/^([A-G][#b]?)(.*)$/i);
+    if (match) {
+      const origRoot = match[1];
+      const origRootUpper = origRoot.charAt(0).toUpperCase() + origRoot.slice(1).toLowerCase();
+      const origSemitone = noteToSemitone[origRootUpper];
+      
+      let targetSemitone = (origSemitone + chordViewerShift) % 12;
+      if (targetSemitone < 0) targetSemitone += 12;
+      const targetRoot = sharpScale[targetSemitone];
+      targetScale = getScaleForTargetKey(targetRoot);
+    }
+  }
+
+  const htmlContent = renderTransposedTextAsHTML(chordViewerSong.lyrics, chordViewerShift, targetScale);
+  document.getElementById('chordViewerContent').innerHTML = htmlContent;
+  
+  drawTransposeKeyButtons();
+}
+
+function drawTransposeKeyButtons() {
+  const container = document.getElementById('transposeKeyButtons');
+  container.innerHTML = '';
+  
+  if (!chordViewerSong || !chordViewerSong.originalKey) {
+    document.getElementById('transposeKeyRow').style.display = 'none';
+    return;
+  }
+  
+  document.getElementById('transposeKeyRow').style.display = 'flex';
+  
+  const origKey = chordViewerSong.originalKey;
+  const match = origKey.match(/^([A-G][#b]?)(.*)$/i);
+  if (!match) return;
+  const origRoot = match[1];
+  const suffix = match[2];
+  
+  const origRootUpper = origRoot.charAt(0).toUpperCase() + origRoot.slice(1).toLowerCase();
+  const origSemitone = noteToSemitone[origRootUpper];
+  if (origSemitone === undefined) return;
+  
+  const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  
+  standardScale.forEach(targetRoot => {
+    const targetSemitone = noteToSemitone[targetRoot];
+    
+    let diff = targetSemitone - origSemitone;
+    if (diff < 0) diff += 12;
+    
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'transpose-btn';
+    
+    const displayName = targetRoot + suffix;
+    btn.innerText = displayName;
+    
+    let normalizedShift = chordViewerShift % 12;
+    if (normalizedShift < 0) normalizedShift += 12;
+    if (diff === normalizedShift) {
+      btn.classList.add('active');
+    }
+    
+    btn.onclick = () => {
+      chordViewerShift = diff;
+      document.getElementById('transposeOffsetDisplay').innerText = (chordViewerShift > 0 ? '+' : '') + chordViewerShift + ' Semiton';
+      updateChordViewerContent();
+    };
+    
+    container.appendChild(btn);
+  });
+}
+
+function changeTransposeSemitones(delta) {
+  chordViewerShift = chordViewerShift + delta;
+  // keep offset display pretty
+  document.getElementById('transposeOffsetDisplay').innerText = (chordViewerShift > 0 ? '+' : '') + chordViewerShift + ' Semiton';
+  updateChordViewerContent();
+}
+
+function resetTranspose() {
+  chordViewerShift = 0;
+  document.getElementById('transposeOffsetDisplay').innerText = '0 Semiton';
+  updateChordViewerContent();
+}
+
+function adjustFontSize(delta) {
+  chordViewerFontSize = Math.max(10, Math.min(32, chordViewerFontSize + delta));
+  document.getElementById('chordViewerContent').style.fontSize = chordViewerFontSize + 'px';
+}
+
+function toggleChordViewerTheme() {
+  const label = document.getElementById('chordViewerThemeLabel');
+  const pre = document.getElementById('chordViewerContent');
+  
+  if (chordViewerTheme === 'dark') {
+    chordViewerTheme = 'light';
+    label.innerText = 'Açık';
+    pre.classList.add('chord-sheet-light');
+  } else {
+    chordViewerTheme = 'dark';
+    label.innerText = 'Koyu';
+    pre.classList.remove('chord-sheet-light');
+  }
+}
+
+// Window Exports
+window.openChordViewer = openChordViewer;
+window.closeChordViewer = closeChordViewer;
+window.changeTransposeSemitones = changeTransposeSemitones;
+window.resetTranspose = resetTranspose;
+window.adjustFontSize = adjustFontSize;
+window.toggleChordViewerTheme = toggleChordViewerTheme;
 
 
