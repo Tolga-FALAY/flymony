@@ -20,7 +20,9 @@ export const initializeDB = () => {
         CREATE TABLE IF NOT EXISTS Songs (
             SongID INTEGER PRIMARY KEY AUTOINCREMENT,
             SongTitle TEXT NOT NULL,
-            Duration TEXT
+            Duration TEXT,
+            SongYear INTEGER,
+            Lyrics TEXT
         );
 
         CREATE TABLE IF NOT EXISTS Song_Artists (
@@ -239,6 +241,30 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while adding StatusChangeDate column to Requests table:", e);
+    }
+
+    // Migration for adding SongYear column to Songs table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Songs)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('SongYear')) {
+            console.log("Migrating database: Adding column SongYear to Songs table...");
+            db.exec("ALTER TABLE Songs ADD COLUMN SongYear INTEGER;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding SongYear column to Songs table:", e);
+    }
+
+    // Migration for adding Lyrics column to Songs table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Songs)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('Lyrics')) {
+            console.log("Migrating database: Adding column Lyrics to Songs table...");
+            db.exec("ALTER TABLE Songs ADD COLUMN Lyrics TEXT;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding Lyrics column to Songs table:", e);
     }
 
     // Migration for updating Status 'Vardı' to 'Bakalım'

@@ -387,8 +387,9 @@ export default function Requests() {
       const guestMatch = (req.FullNames || '').toLocaleLowerCase('tr-TR').includes(searchLower);
       const songTitleMatch = song ? song.SongTitle.toLocaleLowerCase('tr-TR').includes(searchLower) : false;
       const artistMatch = song ? song.ArtistNames.toLocaleLowerCase('tr-TR').includes(searchLower) : false;
+      const notesMatch = (req.Notes || '').toLocaleLowerCase('tr-TR').includes(searchLower);
 
-      if (!guestMatch && !songTitleMatch && !artistMatch) {
+      if (!guestMatch && !songTitleMatch && !artistMatch && !notesMatch) {
         return false;
       }
     }

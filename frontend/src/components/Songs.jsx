@@ -14,15 +14,23 @@ export default function Songs() {
   // Filter States
   const [filterSong, setFilterSong] = useState('');
   const [filterArtist, setFilterArtist] = useState('');
+  const [filterLyricsSearch, setFilterLyricsSearch] = useState('');
+  const [filterMinYear, setFilterMinYear] = useState('');
+  const [filterMaxYear, setFilterMaxYear] = useState('');
 
   const clearAllFilters = () => {
     setFilterSong('');
     setFilterArtist('');
+    setFilterLyricsSearch('');
+    setFilterMinYear('');
+    setFilterMaxYear('');
   };
 
   const [formData, setFormData] = useState({
     SongTitle: '',
     Duration: '',
+    SongYear: '',
+    Lyrics: '',
     ArtistIDs: []
   });
 
@@ -50,11 +58,13 @@ export default function Songs() {
       setFormData({
         SongTitle: song.SongTitle,
         Duration: song.Duration || '',
+        SongYear: song.SongYear || '',
+        Lyrics: song.Lyrics || '',
         ArtistIDs: (song.ArtistIDs || []).map(String)
       });
     } else {
       setEditingSong(null);
-      setFormData({ SongTitle: '', Duration: '', ArtistIDs: [] });
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', ArtistIDs: [] });
     }
     setIsModalOpen(true);
   };
@@ -129,6 +139,8 @@ export default function Songs() {
 
     const dataToSend = {
       ...formData,
+      SongYear: formData.SongYear ? Number(formData.SongYear) : null,
+      Lyrics: formData.Lyrics || '',
       ArtistIDs: formData.ArtistIDs.map(Number)
     };
     try {
@@ -138,6 +150,8 @@ export default function Songs() {
         store.updateSong(editingSong.SongID, {
           SongTitle: dataToSend.SongTitle,
           Duration:  dataToSend.Duration || '',
+          SongYear:  dataToSend.SongYear || '',
+          Lyrics:    dataToSend.Lyrics || '',
           ArtistIDs: dataToSend.ArtistIDs,
           ArtistNames: artistNames
         });
@@ -148,6 +162,8 @@ export default function Songs() {
           SongID:      result.SongID,
           SongTitle:   dataToSend.SongTitle,
           Duration:    dataToSend.Duration || '',
+          SongYear:    dataToSend.SongYear || '',
+          Lyrics:      dataToSend.Lyrics || '',
           ArtistIDs:   dataToSend.ArtistIDs,
           ArtistNames: artistNames
         });
@@ -193,11 +209,20 @@ export default function Songs() {
       const aVal = (a.ArtistNames || '').toLocaleLowerCase('tr-TR');
       const bVal = (b.ArtistNames || '').toLocaleLowerCase('tr-TR');
       res = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'SongYear') {
+      const aVal = Number(a.SongYear) || 0;
+      const bVal = Number(b.SongYear) || 0;
+      res = aVal - bVal;
     }
     return sortConfig.direction === 'asc' ? res : -res;
   });
 
   const filteredSongs = sortedSongs.filter(song => {
+    if (filterLyricsSearch) {
+      const searchLyrics = filterLyricsSearch.toLocaleLowerCase('tr-TR');
+      const lyricsVal = (song.Lyrics || '').toLocaleLowerCase('tr-TR');
+      if (!lyricsVal.includes(searchLyrics)) return false;
+    }
     if (filterSong) {
       const searchSong = filterSong.toLocaleLowerCase('tr-TR');
       const title = (song.SongTitle || '').toLocaleLowerCase('tr-TR');
@@ -207,6 +232,18 @@ export default function Songs() {
       const searchArtist = filterArtist.toLocaleLowerCase('tr-TR');
       const artistsVal = (song.ArtistNames || '').toLocaleLowerCase('tr-TR');
       if (!artistsVal.includes(searchArtist)) return false;
+    }
+    const songYearNum = song.SongYear ? parseInt(song.SongYear) : null;
+    if (filterMinYear || filterMaxYear) {
+      if (songYearNum === null || isNaN(songYearNum)) return false;
+      if (filterMinYear) {
+        const minVal = parseInt(filterMinYear);
+        if (!isNaN(minVal) && songYearNum <= minVal) return false;
+      }
+      if (filterMaxYear) {
+        const maxVal = parseInt(filterMaxYear);
+        if (!isNaN(maxVal) && songYearNum >= maxVal) return false;
+      }
     }
     return true;
   });
@@ -230,6 +267,16 @@ export default function Songs() {
       <div className="filters-panel">
         <div className="filter-group-row">
           <div className="filter-item">
+            <label htmlFor="filterSongLyricsReact">Serbest Arama (Şarkı Sözü)</label>
+            <input 
+              type="text" 
+              id="filterSongLyricsReact" 
+              placeholder="Şarkı sözlerinde ara..." 
+              value={filterLyricsSearch}
+              onChange={(e) => setFilterLyricsSearch(e.target.value)}
+            />
+          </div>
+          <div className="filter-item">
             <label htmlFor="filterSongTitleReact">Şarkı Adı</label>
             <input 
               type="text" 
@@ -247,6 +294,28 @@ export default function Songs() {
               placeholder="Sanatçı adı ara..." 
               value={filterArtist}
               onChange={(e) => setFilterArtist(e.target.value)}
+            />
+          </div>
+          <div className="filter-item" style={{ flex: '0 1 120px' }}>
+            <label htmlFor="filterSongMinYearReact">Min Yıl</label>
+            <input 
+              type="number" 
+              id="filterSongMinYearReact" 
+              placeholder="Min" 
+              value={filterMinYear}
+              onChange={(e) => setFilterMinYear(e.target.value)}
+              style={{ padding: '0.6rem 0.5rem' }}
+            />
+          </div>
+          <div className="filter-item" style={{ flex: '0 1 120px' }}>
+            <label htmlFor="filterSongMaxYearReact">Max Yıl</label>
+            <input 
+              type="number" 
+              id="filterSongMaxYearReact" 
+              placeholder="Max" 
+              value={filterMaxYear}
+              onChange={(e) => setFilterMaxYear(e.target.value)}
+              style={{ padding: '0.6rem 0.5rem' }}
             />
           </div>
           <div className="filter-item filter-actions">
@@ -271,7 +340,12 @@ export default function Songs() {
                   {renderSortArrow('ArtistNames')}
                 </span>
               </th>
-              <th>Süre</th>
+              <th onClick={() => handleSort('SongYear')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Yıl
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongYear' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('SongYear')}
+                </span>
+              </th>
               <th style={{ width: '150px' }}>İşlemler</th>
             </tr>
           </thead>
@@ -280,7 +354,7 @@ export default function Songs() {
               <tr key={song.SongID}>
                 <td data-label="Şarkı Adı">{song.SongTitle}</td>
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
-                <td data-label="Süre">{song.Duration || '-'}</td>
+                <td data-label="Yıl">{song.SongYear || '-'}</td>
                 <td data-label="İşlemler" className="action-btns">
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
@@ -305,6 +379,29 @@ export default function Songs() {
               <div className="form-group">
                 <label>Şarkı Adı</label>
                 <input type="text" name="SongTitle" value={formData.SongTitle} onChange={handleChange} required />
+              </div>
+              <div className="form-group">
+                <label>Yılı</label>
+                <input type="number" name="SongYear" value={formData.SongYear} onChange={handleChange} placeholder="Örn: 2005" />
+              </div>
+              <div className="form-group">
+                <label>Şarkı Sözleri</label>
+                <textarea
+                  name="Lyrics"
+                  value={formData.Lyrics}
+                  onChange={handleChange}
+                  placeholder="Şarkı sözlerini buraya yazın..."
+                  rows={6}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontFamily: 'inherit',
+                    fontSize: '1rem',
+                    resize: 'vertical',
+                    outline: 'none'
+                  }}
+                />
               </div>
               <div className="form-group">
                 <label>Süre (örn: 3:45)</label>

@@ -104,12 +104,24 @@
         <div class="filters-panel">
           <div class="filter-group-row">
             <div class="filter-item">
+              <label for="filterSongLyrics">Serbest Arama (Şarkı Sözü)</label>
+              <input type="text" id="filterSongLyrics" placeholder="Şarkı sözlerinde ara..." oninput="handleSongFilterChange()">
+            </div>
+            <div class="filter-item">
               <label for="filterSongTitle">Şarkı Adı</label>
               <input type="text" id="filterSongTitle" placeholder="Şarkı adı ara..." oninput="handleSongFilterChange()">
             </div>
             <div class="filter-item">
               <label for="filterSongArtist">Sanatçı</label>
               <input type="text" id="filterSongArtist" placeholder="Sanatçı adı ara..." oninput="handleSongFilterChange()">
+            </div>
+            <div class="filter-item" style="flex: 0 1 120px;">
+              <label for="filterSongMinYear">Min Yıl</label>
+              <input type="number" id="filterSongMinYear" placeholder="Min" oninput="handleSongFilterChange()" style="padding: 0.6rem 0.5rem;">
+            </div>
+            <div class="filter-item" style="flex: 0 1 120px;">
+              <label for="filterSongMaxYear">Max Yıl</label>
+              <input type="number" id="filterSongMaxYear" placeholder="Max" oninput="handleSongFilterChange()" style="padding: 0.6rem 0.5rem;">
             </div>
             <div class="filter-item filter-actions">
               <button class="btn btn-outline btn-sm" onclick="clearAllSongFilters()">Temizle</button>
@@ -122,6 +134,7 @@
                 <tr>
                   <th onclick="sortSongs('title')" style="cursor: pointer; user-select: none;">Şarkı Adı <span id="sortIconSongTitle" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
                   <th onclick="sortSongs('artists')" style="cursor: pointer; user-select: none;">Sanatçılar <span id="sortIconSongArtists" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortSongs('year')" style="cursor: pointer; user-select: none;">Yıl <span id="sortIconSongYear" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
                   <th style="width: 150px;">İşlemler</th>
                 </tr>
             </thead>
@@ -384,6 +397,14 @@
         <div class="form-group">
           <label>Şarkı Adı</label>
           <input type="text" id="songTitle" required>
+        </div>
+        <div class="form-group">
+          <label>Yılı</label>
+          <input type="number" id="songYear" placeholder="Örn: 2005">
+        </div>
+        <div class="form-group">
+          <label>Şarkı Sözleri</label>
+          <textarea id="songLyrics" rows="4" placeholder="Şarkının sözlerini buraya yazın..." style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 1rem; resize: vertical; outline: none;"></textarea>
         </div>
         <div class="form-group">
           <label>Sanatçılar</label>

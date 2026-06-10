@@ -55,6 +55,9 @@ let filterArtistName = '';
 // Song Filter variables
 let filterSongTitle = '';
 let filterSongArtist = '';
+let filterSongLyrics = '';
+let filterSongMinYear = '';
+let filterSongMaxYear = '';
 
 
 
@@ -130,7 +133,9 @@ const DB = {
         this.songs.push({
           id: songId,
           title: s.SongTitle,
-          duration: s.Duration || ""
+          duration: s.Duration || "",
+          year: s.SongYear || "",
+          lyrics: s.Lyrics || ""
         });
         const artistIds = s.ArtistIDs || [];
         artistIds.forEach(aid => {
@@ -151,7 +156,8 @@ const DB = {
         status: r.Status || 'Kayıtlı',
         link: r.Link || '',
         vardi: r.Vardi ? 1 : 0,
-        statusChangeDate: r.StatusChangeDate || ''
+        statusChangeDate: r.StatusChangeDate || '',
+        notes: r.Notes || ''
       }));
 
       // Önbelleğe kaydet
@@ -270,6 +276,10 @@ function closeModal(modalId) {
     if (searchInput) searchInput.value = '';
     const items = document.querySelectorAll('#songArtistContainer .checkbox-item');
     items.forEach(item => item.style.display = 'flex');
+    const songYear = document.getElementById('songYear');
+    if (songYear) songYear.value = '';
+    const songLyrics = document.getElementById('songLyrics');
+    if (songLyrics) songLyrics.value = '';
   }
 
   // İstek formu arama kutularını, gizli girdileri ve dropdown filtrelerini sıfırla
@@ -1084,6 +1094,14 @@ async function deleteGuest(id) {
 // ----------------- SONGS -----------------
 function renderSongs() {
   const filteredSongs = DB.songs.filter(song => {
+    // 0. Song Lyrics filter (Serbest Arama - Şarkı Sözleri)
+    if (filterSongLyrics) {
+      const searchLyrics = filterSongLyrics.toLocaleLowerCase('tr-TR');
+      if (!(song.lyrics || '').toLocaleLowerCase('tr-TR').includes(searchLyrics)) {
+        return false;
+      }
+    }
+
     // 1. Song Title filter
     if (filterSongTitle) {
       const searchTitle = filterSongTitle.toLocaleLowerCase('tr-TR');
@@ -1099,6 +1117,27 @@ function renderSongs() {
       const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ').toLocaleLowerCase('tr-TR');
       if (!artistNames.includes(searchArtist)) {
         return false;
+      }
+    }
+
+    // 3. Min/Max Year filters
+    const songYearNum = song.year ? parseInt(song.year) : null;
+    
+    if (filterSongMinYear || filterSongMaxYear) {
+      if (songYearNum === null || isNaN(songYearNum)) {
+        return false;
+      }
+      if (filterSongMinYear) {
+        const minVal = parseInt(filterSongMinYear);
+        if (!isNaN(minVal) && songYearNum <= minVal) {
+          return false;
+        }
+      }
+      if (filterSongMaxYear) {
+        const maxVal = parseInt(filterSongMaxYear);
+        if (!isNaN(maxVal) && songYearNum >= maxVal) {
+          return false;
+        }
       }
     }
 
@@ -1122,13 +1161,17 @@ function renderSongs() {
       const artistIdsB = DB.song_artists.filter(sa => sa.songId === b.id).map(sa => sa.artistId);
       const artistNamesB = DB.artists.filter(art => artistIdsB.includes(art.id)).map(art => art.name).join(', ');
       res = artistNamesA.toLocaleLowerCase('tr-TR').localeCompare(artistNamesB.toLocaleLowerCase('tr-TR'), 'tr');
+    } else if (songsSortKey === 'year') {
+      const yearA = a.year ? parseInt(a.year) : 0;
+      const yearB = b.year ? parseInt(b.year) : 0;
+      res = yearA - yearB;
     }
     return songsSortDirection === 'asc' ? res : -res;
   });
 
   // Render header sorting indicators dynamically
-  const keys = ['title', 'artists'];
-  const ids = { title: 'sortIconSongTitle', artists: 'sortIconSongArtists' };
+  const keys = ['title', 'artists', 'year'];
+  const ids = { title: 'sortIconSongTitle', artists: 'sortIconSongArtists', year: 'sortIconSongYear' };
   keys.forEach(k => {
     const iconEl = document.getElementById(ids[k]);
     if (iconEl) {
@@ -1150,6 +1193,7 @@ function renderSongs() {
     tr.innerHTML = `
       <td data-label="Şarkı Adı">${song.title}</td>
       <td data-label="Sanatçılar">${artistNames || '-'}</td>
+      <td data-label="Yıl">${song.year || '-'}</td>
       <td data-label="İşlemler" class="action-btns">
         <button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSong(${song.id})">Sil</button>
@@ -1193,9 +1237,13 @@ async function saveSong(e) {
 
   try {
     let songId = id;
+    const yearVal = document.getElementById('songYear').value;
+    const lyricsVal = document.getElementById('songLyrics').value.trim();
     const songData = {
       SongTitle: title,
       Duration: "",
+      SongYear: yearVal ? parseInt(yearVal) : null,
+      Lyrics: lyricsVal || "",
       ArtistIDs: selectedArtistIds.map(Number)
     };
 
@@ -1233,6 +1281,8 @@ function editSong(id) {
   
   document.getElementById('songID').value = song.id;
   document.getElementById('songTitle').value = song.title;
+  document.getElementById('songYear').value = song.year || '';
+  document.getElementById('songLyrics').value = song.lyrics || '';
   
   document.getElementById('songModalTitle').innerText = 'Şarkı Düzenle';
   openModal('songModal');
@@ -1341,11 +1391,13 @@ function renderRequests() {
       const artistIds = song ? DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId) : [];
       const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ').toLocaleLowerCase('tr-TR');
       
+      const notesTitle = (req.notes || '').toLocaleLowerCase('tr-TR');
       const guestMatch = guestNames.includes(searchLower);
       const songMatch = songTitle.includes(searchLower);
       const artistMatch = artistNames.includes(searchLower);
+      const notesMatch = notesTitle.includes(searchLower);
       
-      if (!guestMatch && !songMatch && !artistMatch) {
+      if (!guestMatch && !songMatch && !artistMatch && !notesMatch) {
         return false;
       }
     }
@@ -1746,25 +1798,40 @@ function clearAllArtistFilters() {
 
 // Şarkı Filtre Değişim Olayı
 function handleSongFilterChange() {
+  const lyricsInput = document.getElementById('filterSongLyrics');
   const titleInput = document.getElementById('filterSongTitle');
   const artistInput = document.getElementById('filterSongArtist');
+  const minYearInput = document.getElementById('filterSongMinYear');
+  const maxYearInput = document.getElementById('filterSongMaxYear');
 
+  filterSongLyrics = lyricsInput ? lyricsInput.value : '';
   filterSongTitle = titleInput ? titleInput.value : '';
   filterSongArtist = artistInput ? artistInput.value : '';
+  filterSongMinYear = minYearInput ? minYearInput.value : '';
+  filterSongMaxYear = maxYearInput ? maxYearInput.value : '';
 
   renderSongs();
 }
 
 // Şarkı Filtrelerini Temizle
 function clearAllSongFilters() {
+  const lyricsInput = document.getElementById('filterSongLyrics');
   const titleInput = document.getElementById('filterSongTitle');
   const artistInput = document.getElementById('filterSongArtist');
+  const minYearInput = document.getElementById('filterSongMinYear');
+  const maxYearInput = document.getElementById('filterSongMaxYear');
 
+  if (lyricsInput) lyricsInput.value = '';
   if (titleInput) titleInput.value = '';
   if (artistInput) artistInput.value = '';
+  if (minYearInput) minYearInput.value = '';
+  if (maxYearInput) maxYearInput.value = '';
 
+  filterSongLyrics = '';
   filterSongTitle = '';
   filterSongArtist = '';
+  filterSongMinYear = '';
+  filterSongMaxYear = '';
 
   renderSongs();
 }
@@ -2126,6 +2193,8 @@ window.removeVanillaProfilePicture = removeVanillaProfilePicture;
 window.removeVanillaGalleryPhoto = removeVanillaGalleryPhoto;
 window.populateBirthdateDropdowns = populateBirthdateDropdowns;
 window.sortRequests = sortRequests;
+window.clearAllSongFilters = clearAllSongFilters;
+window.handleSongFilterChange = handleSongFilterChange;
 window.sortSongs = sortSongs;
 window.sortArtists = sortArtists;
 window.sortGuests = sortGuests;
