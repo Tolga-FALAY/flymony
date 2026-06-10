@@ -279,8 +279,8 @@ function closeModal(modalId) {
     items.forEach(item => item.style.display = 'flex');
     const songYear = document.getElementById('songYear');
     if (songYear) songYear.value = '';
-    const songLyrics = document.getElementById('songLyrics');
-    if (songLyrics) songLyrics.value = '';
+    const songLyricsRich = document.getElementById('songLyricsRich');
+    if (songLyricsRich) songLyricsRich.innerHTML = '';
     const songOriginalKey = document.getElementById('songOriginalKey');
     if (songOriginalKey) songOriginalKey.value = '';
     
@@ -1242,7 +1242,7 @@ async function saveSong(e) {
   const selectedArtistIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
   const yearVal = document.getElementById('songYear').value.trim();
-  const lyricsVal = document.getElementById('songLyrics').value.trim();
+  const lyricsVal = document.getElementById('songLyricsRich').innerHTML.trim();
   const originalKeyVal = document.getElementById('songOriginalKey').value;
 
   if (!title) {
@@ -1319,7 +1319,7 @@ function editSong(id) {
   document.getElementById('songID').value = song.id;
   document.getElementById('songTitle').value = song.title;
   document.getElementById('songYear').value = song.year || '';
-  document.getElementById('songLyrics').value = song.lyrics || '';
+  document.getElementById('songLyricsRich').innerHTML = song.lyrics || '';
   document.getElementById('songOriginalKey').value = song.originalKey || '';
   
   // Set audio fields
@@ -2555,6 +2555,7 @@ let chordViewerSong = null;
 let chordViewerShift = 0;
 let chordViewerFontSize = 16;
 let chordViewerTheme = 'dark';
+let chordViewerSingleScreen = false;
 
 const noteToSemitone = {
   'C': 0, 'C#': 1, 'Db': 1,
@@ -2581,30 +2582,6 @@ function getScaleForTargetKey(targetKey) {
 function isChord(token) {
   const chordTokenRegex = /^[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*(?:\/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*)?$/;
   return chordTokenRegex.test(token);
-}
-
-function isChordLine(line) {
-  const tokens = line.trim().split(/\s+/);
-  if (tokens.length === 0 || tokens[0] === "") return false;
-  
-  let chordCount = 0;
-  let ignoredCount = 0;
-  
-  const ignoredTokens = ['|', ':', '-', 'x', 'intro', 'solo', 'nakarat', 'köprü', 'bridge', 'outro', 'söz', 'sözler', 've', 'ritim', 'ritm', 'kapo', 'capo', 'arpaj', 'fill'];
-  
-  for (const token of tokens) {
-    const cleanToken = token.toLowerCase().replace(/[:|()]/g, '');
-    if (isChord(token)) {
-      chordCount++;
-    } else if (ignoredTokens.includes(cleanToken) || /^[0-9]+$/.test(cleanToken)) {
-      ignoredCount++;
-    }
-  }
-  
-  const totalMeaningfulTokens = tokens.length - ignoredCount;
-  if (totalMeaningfulTokens <= 0) return chordCount > 0;
-  
-  return (chordCount / totalMeaningfulTokens) >= 0.7;
 }
 
 function transposeNote(note, semitones, targetScale = sharpScale) {
@@ -2634,53 +2611,73 @@ function transposeChord(chord, semitones, targetScale = sharpScale) {
   }).join('/');
 }
 
-function renderChordLineAsHTML(line, semitones, targetScale) {
-  const tokenRegex = /\S+/g;
-  let match;
-  let output = "";
-  let lastIndex = 0;
+// Check if DOM element is colored red (designates a chord)
+function isElementRed(el) {
+  if (!el || el.nodeType !== 1) return false;
   
-  while ((match = tokenRegex.exec(line)) !== null) {
-    const token = match[0];
-    const origStart = match.index;
-    
-    if (origStart > lastIndex) {
-      output += " ".repeat(origStart - lastIndex);
+  const styleColor = el.style.color;
+  if (styleColor) {
+    const cleanColor = styleColor.replace(/\s+/g, '').toLowerCase();
+    if (cleanColor === 'red' || cleanColor === '#ff0000' || cleanColor === '#f00' || cleanColor.includes('rgb(255,0,0)')) {
+      return true;
     }
-    
-    let processedToken = token;
-    if (isChord(token)) {
-      processedToken = transposeChord(token, semitones, targetScale);
-      output += `<span class="chord-highlight">${escapeHTML(processedToken)}</span>`;
-    } else {
-      output += escapeHTML(processedToken);
-    }
-    
-    lastIndex = origStart + token.length;
   }
   
-  if (lastIndex < line.length) {
-    output += line.substring(lastIndex);
+  if (el.tagName.toLowerCase() === 'font') {
+    const fontColor = el.getAttribute('color');
+    if (fontColor) {
+      const cleanFontColor = fontColor.replace(/\s+/g, '').toLowerCase();
+      if (cleanFontColor === 'red' || cleanFontColor === '#ff0000' || cleanFontColor === '#f00' || cleanFontColor.includes('rgb(255,0,0)')) {
+        return true;
+      }
+    }
   }
   
-  return output;
+  return false;
 }
 
-function renderTransposedTextAsHTML(text, semitones, targetScale = sharpScale) {
-  if (!text) return '<div style="color:var(--text-muted); text-align:center; padding: 2rem;">Bu şarkı için akor veya söz eklenmemiş. Düzenle butonundan ekleyebilirsiniz.</div>';
-  const lines = text.split('\n');
-  const htmlLines = lines.map(line => {
-    if (isChordLine(line)) {
-      return renderChordLineAsHTML(line, semitones, targetScale);
-    } else {
-      return escapeHTML(line);
+// Recursively traverse leaf text nodes and transpose chords inside them
+function transposeLeafTextNodes(node, semitones, targetScale) {
+  if (node.nodeType === 3) { // Node.TEXT_NODE
+    const text = node.nodeValue;
+    const transposed = text.replace(/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*(?:\/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*)?/g, (match) => {
+      if (isChord(match)) {
+        return transposeChord(match, semitones, targetScale);
+      }
+      return match;
+    });
+    node.nodeValue = transposed;
+  } else {
+    node.childNodes.forEach(child => transposeLeafTextNodes(child, semitones, targetScale));
+  }
+}
+
+// Find red elements and transpose them
+function traverseAndTranspose(node, semitones, targetScale) {
+  if (node.nodeType === 1) { // Node.ELEMENT_NODE
+    if (isElementRed(node)) {
+      transposeLeafTextNodes(node, semitones, targetScale);
+      return;
     }
-  });
-  return htmlLines.join('\n');
+  }
+  node.childNodes.forEach(child => traverseAndTranspose(child, semitones, targetScale));
 }
 
-function escapeHTML(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function renderTransposedTextAsHTML(htmlText, semitones, targetScale = sharpScale) {
+  if (!htmlText) return '<div style="color:var(--text-muted); text-align:center; padding: 2rem;">Bu şarkı için henüz akor/not girilmemiş. Düzenle butonundan ekleyebilirsiniz.</div>';
+  
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, 'text/html');
+  
+  if (semitones !== 0) {
+    traverseAndTranspose(doc.body, semitones, targetScale);
+  }
+  
+  return doc.body.innerHTML;
+}
+
+function execEditorCommand(command, value = null) {
+  document.execCommand(command, false, value);
 }
 
 function openChordViewer(songId) {
@@ -2698,8 +2695,20 @@ function openChordViewer(songId) {
   document.getElementById('chordViewerSongTitle').innerText = titleDisplay;
   document.getElementById('transposeOffsetDisplay').innerText = '0 Semiton';
   
+  // Reset single screen mode
+  chordViewerSingleScreen = false;
+  const singleScreenCheckbox = document.getElementById('chordViewerSingleScreen');
+  if (singleScreenCheckbox) singleScreenCheckbox.checked = false;
+  
+  const container = document.getElementById('chordViewerContainer');
+  const pre = document.getElementById('chordViewerContent');
+  const autoFitBtn = document.getElementById('chordViewerAutoFitBtn');
+  if (container) container.classList.remove('chord-sheet-container-single');
+  if (pre) pre.classList.remove('chord-sheet-pre-single');
+  if (autoFitBtn) autoFitBtn.style.display = 'none';
+
   // Initialize font size style
-  document.getElementById('chordViewerContent').style.fontSize = chordViewerFontSize + 'px';
+  pre.style.fontSize = chordViewerFontSize + 'px';
   
   updateChordViewerContent();
   document.getElementById('chordViewerModal').style.display = 'flex';
@@ -2734,6 +2743,11 @@ function updateChordViewerContent() {
   document.getElementById('chordViewerContent').innerHTML = htmlContent;
   
   drawTransposeKeyButtons();
+  
+  // If single screen mode is active, trigger auto fit after layout reflow
+  if (chordViewerSingleScreen) {
+    setTimeout(triggerAutoFit, 50);
+  }
 }
 
 function drawTransposeKeyButtons() {
@@ -2790,9 +2804,50 @@ function drawTransposeKeyButtons() {
 
 function changeTransposeSemitones(delta) {
   chordViewerShift = chordViewerShift + delta;
-  // keep offset display pretty
   document.getElementById('transposeOffsetDisplay').innerText = (chordViewerShift > 0 ? '+' : '') + chordViewerShift + ' Semiton';
   updateChordViewerContent();
+}
+
+// Single screen layout triggers
+function toggleSingleScreenMode(checked) {
+  chordViewerSingleScreen = checked;
+  const container = document.getElementById('chordViewerContainer');
+  const pre = document.getElementById('chordViewerContent');
+  const autoFitBtn = document.getElementById('chordViewerAutoFitBtn');
+  
+  if (checked) {
+    container.classList.add('chord-sheet-container-single');
+    pre.classList.add('chord-sheet-pre-single');
+    if (autoFitBtn) autoFitBtn.style.display = 'inline-block';
+    
+    // Automatically trigger fit to screen when entering this mode
+    setTimeout(triggerAutoFit, 100);
+  } else {
+    container.classList.remove('chord-sheet-container-single');
+    pre.classList.remove('chord-sheet-pre-single');
+    if (autoFitBtn) autoFitBtn.style.display = 'none';
+    
+    // Reset font size to standard chordViewerFontSize
+    pre.style.fontSize = chordViewerFontSize + 'px';
+  }
+}
+
+function triggerAutoFit() {
+  const pre = document.getElementById('chordViewerContent');
+  if (!pre) return;
+  
+  let fontSize = 24; // Start normal
+  pre.style.fontSize = fontSize + 'px';
+  
+  const maxIterations = 50;
+  let iterations = 0;
+  
+  // Decrease font size until there is no vertical/horizontal scrollbar, or font size is too small
+  while ((pre.scrollWidth > pre.clientWidth || pre.scrollHeight > pre.clientHeight) && fontSize > 8 && iterations < maxIterations) {
+    fontSize--;
+    pre.style.fontSize = fontSize + 'px';
+    iterations++;
+  }
 }
 
 function resetTranspose() {
@@ -2803,21 +2858,23 @@ function resetTranspose() {
 
 function adjustFontSize(delta) {
   chordViewerFontSize = Math.max(10, Math.min(32, chordViewerFontSize + delta));
-  document.getElementById('chordViewerContent').style.fontSize = chordViewerFontSize + 'px';
+  if (!chordViewerSingleScreen) {
+    document.getElementById('chordViewerContent').style.fontSize = chordViewerFontSize + 'px';
+  }
 }
 
 function toggleChordViewerTheme() {
   const label = document.getElementById('chordViewerThemeLabel');
-  const pre = document.getElementById('chordViewerContent');
+  const container = document.getElementById('chordViewerContainer');
   
   if (chordViewerTheme === 'dark') {
     chordViewerTheme = 'light';
     label.innerText = 'Açık';
-    pre.classList.add('chord-sheet-light');
+    container.classList.add('chord-sheet-light');
   } else {
     chordViewerTheme = 'dark';
     label.innerText = 'Koyu';
-    pre.classList.remove('chord-sheet-light');
+    container.classList.remove('chord-sheet-light');
   }
 }
 
@@ -2828,5 +2885,8 @@ window.changeTransposeSemitones = changeTransposeSemitones;
 window.resetTranspose = resetTranspose;
 window.adjustFontSize = adjustFontSize;
 window.toggleChordViewerTheme = toggleChordViewerTheme;
+window.execEditorCommand = execEditorCommand;
+window.toggleSingleScreenMode = toggleSingleScreenMode;
+window.triggerAutoFit = triggerAutoFit;
 
 

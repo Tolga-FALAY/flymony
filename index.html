@@ -436,7 +436,42 @@
         </div>
         <div class="form-group">
           <label>Akorlar, Sözler ve Sahne Notları</label>
-          <textarea id="songLyrics" rows="8" placeholder="Akorları, sözleri ve notları buraya yazın veya yapıştırın. Örn:&#10;[Giriş]&#10;Am   G   F   E&#10;&#10;Am             Dm&#10;Hani benim gençliğim anne..." style="padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 0.95rem; resize: vertical; outline: none;"></textarea>
+          <div class="rich-editor-container">
+            <div class="rich-editor-toolbar">
+              <button type="button" class="editor-btn" onclick="execEditorCommand('bold')" title="Kalın"><b>B</b></button>
+              <button type="button" class="editor-btn" onclick="execEditorCommand('italic')" title="İtalik"><i>I</i></button>
+              <button type="button" class="editor-btn" onclick="execEditorCommand('underline')" title="Altı Çizili"><u>U</u></button>
+              
+              <div class="editor-separator"></div>
+              
+              <button type="button" class="editor-btn btn-chord-red" onclick="execEditorCommand('foreColor', '#ff0000')" title="Seçileni Akor Yap (Kırmızı)">Akor (Kırmızı)</button>
+              <button type="button" class="editor-btn btn-color-black" onclick="execEditorCommand('foreColor', '#000000')" title="Seçileni Normal Yazı Yap (Siyah)">Yazı (Siyah)</button>
+              
+              <div class="editor-separator"></div>
+              
+              <select class="editor-select" onchange="execEditorCommand('fontName', this.value); this.selectedIndex=0;" title="Yazı Tipi">
+                <option value="" disabled selected>Yazı Tipi</option>
+                <option value="monospace">Sabit Genişlik (Akor İçin)</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Verdana">Verdana</option>
+              </select>
+              
+              <select class="editor-select" onchange="execEditorCommand('fontSize', this.value); this.selectedIndex=0;" title="Yazı Boyutu">
+                <option value="" disabled selected>Boyut</option>
+                <option value="2">Küçük</option>
+                <option value="3">Normal</option>
+                <option value="4">Orta</option>
+                <option value="5">Büyük</option>
+                <option value="6">Çok Büyük</option>
+              </select>
+              
+              <div class="editor-separator"></div>
+              <button type="button" class="editor-btn" onclick="execEditorCommand('removeFormat')" title="Biçimlendirmeyi Temizle">🧹 Temizle</button>
+            </div>
+            <div id="songLyricsRich" contenteditable="true" class="rich-editor-content" placeholder="Akorları, sözleri ve notları buraya yazın veya yapıştırın. Akor olmasını istediğiniz kelimeleri seçip yukarıdan 'Akor (Kırmızı)' butonuna basın. Yazı tipi sabit genişlikli (monospace) olduğunda akorlar düzgün hizalanır."></div>
+          </div>
         </div>
         <div class="form-group">
           <label>Sanatçılar</label>
@@ -665,10 +700,20 @@
           <div class="transpose-btn-group" id="transposeKeyButtons">
             <!-- Dinamik olarak doldurulacak -->
           </div>
+        <!-- Tek Ekran Modu Sırası -->
+        <div class="transpose-row" style="margin-top: 0.5rem; justify-content: space-between; width: 100%;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label style="min-width: auto; margin-right: 0.5rem;">Tek Ekran Modu:</label>
+            <input type="checkbox" id="chordViewerSingleScreen" onchange="toggleSingleScreenMode(this.checked)" style="width: 18px; height: 18px; cursor: pointer; margin: 0;">
+            <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;">(Sahnede kaydırma yapmadan sığdırır)</span>
+          </div>
+          <button type="button" id="chordViewerAutoFitBtn" class="btn btn-sm btn-outline" onclick="triggerAutoFit()" style="display: none; padding: 0.35rem 0.5rem; font-weight: 600;">Ekrana Sığdır</button>
         </div>
       </div>
 
-      <pre id="chordViewerContent" class="chord-sheet-pre"></pre>
+      <div id="chordViewerContainer" class="chord-sheet-container">
+        <pre id="chordViewerContent" class="chord-sheet-pre"></pre>
+      </div>
 
       <div class="chord-viewer-actions">
         <div style="display: flex; gap: 0.5rem;">

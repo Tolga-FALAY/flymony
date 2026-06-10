@@ -93,49 +93,69 @@ function transposeChord(chord, semitones, targetScale = sharpScale) {
   }).join('/');
 }
 
-function renderChordLineAsHTML(line, semitones, targetScale) {
-  const tokenRegex = /\S+/g;
-  let match;
-  let output = "";
-  let lastIndex = 0;
+// Check if DOM element is colored red (designates a chord)
+function isElementRed(el) {
+  if (!el || el.nodeType !== 1) return false;
   
-  while ((match = tokenRegex.exec(line)) !== null) {
-    const token = match[0];
-    const origStart = match.index;
-    
-    if (origStart > lastIndex) {
-      output += " ".repeat(origStart - lastIndex);
+  const styleColor = el.style.color;
+  if (styleColor) {
+    const cleanColor = styleColor.replace(/\s+/g, '').toLowerCase();
+    if (cleanColor === 'red' || cleanColor === '#ff0000' || cleanColor === '#f00' || cleanColor.includes('rgb(255,0,0)')) {
+      return true;
     }
-    
-    let processedToken = token;
-    if (isChord(token)) {
-      processedToken = transposeChord(token, semitones, targetScale);
-      output += `<span class="chord-highlight">${escapeHTML(processedToken)}</span>`;
-    } else {
-      output += escapeHTML(processedToken);
-    }
-    
-    lastIndex = origStart + token.length;
   }
   
-  if (lastIndex < line.length) {
-    output += line.substring(lastIndex);
+  if (el.tagName.toLowerCase() === 'font') {
+    const fontColor = el.getAttribute('color');
+    if (fontColor) {
+      const cleanFontColor = fontColor.replace(/\s+/g, '').toLowerCase();
+      if (cleanFontColor === 'red' || cleanFontColor === '#ff0000' || cleanFontColor === '#f00' || cleanFontColor.includes('rgb(255,0,0)')) {
+        return true;
+      }
+    }
   }
   
-  return output;
+  return false;
 }
 
-function renderTransposedTextAsHTML(text, semitones, targetScale = sharpScale) {
-  if (!text) return '<div style="color:var(--text-muted); text-align:center; padding: 2rem;">Bu şarkı için akor veya söz eklenmemiş. Düzenle butonundan ekleyebilirsiniz.</div>';
-  const lines = text.split('\n');
-  const htmlLines = lines.map(line => {
-    if (isChordLine(line)) {
-      return renderChordLineAsHTML(line, semitones, targetScale);
-    } else {
-      return escapeHTML(line);
+// Recursively traverse leaf text nodes and transpose chords inside them
+function transposeLeafTextNodes(node, semitones, targetScale) {
+  if (node.nodeType === 3) { // Node.TEXT_NODE
+    const text = node.nodeValue;
+    const transposed = text.replace(/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*(?:\/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*)?/g, (match) => {
+      if (isChord(match)) {
+        return transposeChord(match, semitones, targetScale);
+      }
+      return match;
+    });
+    node.nodeValue = transposed;
+  } else {
+    node.childNodes.forEach(child => transposeLeafTextNodes(child, semitones, targetScale));
+  }
+}
+
+// Find red elements and transpose them
+function traverseAndTranspose(node, semitones, targetScale) {
+  if (node.nodeType === 1) { // Node.ELEMENT_NODE
+    if (isElementRed(node)) {
+      transposeLeafTextNodes(node, semitones, targetScale);
+      return;
     }
-  });
-  return htmlLines.join('\n');
+  }
+  node.childNodes.forEach(child => traverseAndTranspose(child, semitones, targetScale));
+}
+
+function renderTransposedTextAsHTML(htmlText, semitones, targetScale = sharpScale) {
+  if (!htmlText) return '<div style="color:var(--text-muted); text-align:center; padding: 2rem;">Bu şarkı için henüz akor/not girilmemiş. Düzenle butonundan ekleyebilirsiniz.</div>';
+  
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, 'text/html');
+  
+  if (semitones !== 0) {
+    traverseAndTranspose(doc.body, semitones, targetScale);
+  }
+  
+  return doc.body.innerHTML;
 }
 
 function escapeHTML(str) {
@@ -171,6 +191,8 @@ export default function Songs() {
   const [playTimeStr, setPlayTimeStr] = useState('0:00 / 0:00');
 
   const globalAudioRef = useRef(null);
+  const editorRef = useRef(null);
+  const chordViewerContentRef = useRef(null);
 
   // Chord Viewer Modal States
   const [isChordViewerOpen, setIsChordViewerOpen] = useState(false);
@@ -178,6 +200,28 @@ export default function Songs() {
   const [transposeShift, setTransposeShift] = useState(0);
   const [viewerFontSize, setViewerFontSize] = useState(16);
   const [viewerTheme, setViewerTheme] = useState('dark');
+  const [isSingleScreen, setIsSingleScreen] = useState(false);
+
+  const triggerReactAutoFit = () => {
+    const pre = chordViewerContentRef.current;
+    if (!pre) return;
+    let fontSize = 24;
+    pre.style.fontSize = fontSize + 'px';
+    const maxIterations = 50;
+    let iterations = 0;
+    while ((pre.scrollWidth > pre.clientWidth || pre.scrollHeight > pre.clientHeight) && fontSize > 8 && iterations < maxIterations) {
+      fontSize--;
+      pre.style.fontSize = fontSize + 'px';
+      iterations++;
+    }
+  };
+
+  useEffect(() => {
+    if (isChordViewerOpen && isSingleScreen) {
+      const timer = setTimeout(triggerReactAutoFit, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isChordViewerOpen, isSingleScreen, transposeShift, viewerSong, viewerFontSize]);
 
   const clearAllFilters = () => {
     setFilterSong('');
@@ -216,6 +260,23 @@ export default function Songs() {
     return () => window.removeEventListener('store-updated', syncFromStore);
   }, []);
 
+  const handleExecCommand = (command, value = null) => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      setFormData(prev => ({
+        ...prev,
+        Lyrics: editorRef.current.innerHTML
+      }));
+    }
+  };
+
+  const handleEditorInput = (e) => {
+    setFormData(prev => ({
+      ...prev,
+      Lyrics: e.target.innerHTML
+    }));
+  };
+
   const openModal = (song = null) => {
     if (song) {
       setEditingSong(song);
@@ -234,10 +295,20 @@ export default function Songs() {
       } else {
         setAudioPreviewUrl('');
       }
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.innerHTML = song.Lyrics || '';
+        }
+      }, 50);
     } else {
       setEditingSong(null);
       setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ArtistIDs: [] });
       setAudioPreviewUrl('');
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.innerHTML = '';
+        }
+      }, 50);
     }
     setIsModalOpen(true);
   };
@@ -246,6 +317,9 @@ export default function Songs() {
     setIsModalOpen(false);
     setEditingSong(null);
     setArtistSearch('');
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+    }
     setAudioPreviewUrl('');
     if (mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') {
       mediaRecorderInstance.stop();
@@ -256,6 +330,7 @@ export default function Songs() {
   const openChordViewer = (song) => {
     setViewerSong(song);
     setTransposeShift(0);
+    setIsSingleScreen(false);
     setIsChordViewerOpen(true);
   };
 
@@ -793,22 +868,48 @@ export default function Songs() {
               </div>
               <div className="form-group">
                 <label>Akorlar, Sözler ve Sahne Notları</label>
-                <textarea
-                  name="Lyrics"
-                  value={formData.Lyrics}
-                  onChange={handleChange}
-                  placeholder="Akorları, sözleri ve notları buraya yazın veya yapıştırın. Örn:&#10;[Giriş]&#10;Am   G   F   E&#10;&#10;Am             Dm&#10;Hani benim gençliğim anne..."
-                  rows={8}
-                  style={{
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontFamily: 'monospace',
-                    fontSize: '0.95rem',
-                    resize: 'vertical',
-                    outline: 'none'
-                  }}
-                />
+                <div className="rich-editor-container">
+                  <div className="rich-editor-toolbar">
+                    <button type="button" className="editor-btn" onClick={() => handleExecCommand('bold')} title="Kalın"><b>B</b></button>
+                    <button type="button" className="editor-btn" onClick={() => handleExecCommand('italic')} title="İtalik"><i>I</i></button>
+                    <button type="button" className="editor-btn" onClick={() => handleExecCommand('underline')} title="Altı Çizili"><u>U</u></button>
+                    
+                    <div className="editor-separator"></div>
+                    
+                    <button type="button" className="editor-btn btn-chord-red" onClick={() => handleExecCommand('foreColor', '#ff0000')} title="Seçileni Akor Yap (Kırmızı)">Akor (Kırmızı)</button>
+                    <button type="button" className="editor-btn btn-color-black" onClick={() => handleExecCommand('foreColor', '#000000')} title="Seçileni Normal Yazı Yap (Siyah)">Yazı (Siyah)</button>
+                    
+                    <div className="editor-separator"></div>
+                    
+                    <select className="editor-select" onChange={(e) => { handleExecCommand('fontName', e.target.value); e.target.selectedIndex = 0; }} title="Yazı Tipi">
+                      <option value="" disabled selected>Yazı Tipi</option>
+                      <option value="monospace">Sabit Genişlik (Akor İçin)</option>
+                      <option value="Arial">Arial</option>
+                      <option value="Georgia">Georgia</option>
+                      <option value="Times New Roman">Times New Roman</option>
+                      <option value="Verdana">Verdana</option>
+                    </select>
+                    
+                    <select className="editor-select" onChange={(e) => { handleExecCommand('fontSize', e.target.value); e.target.selectedIndex = 0; }} title="Yazı Boyutu">
+                      <option value="" disabled selected>Boyut</option>
+                      <option value="2">Küçük</option>
+                      <option value="3">Normal</option>
+                      <option value="4">Orta</option>
+                      <option value="5">Büyük</option>
+                      <option value="6">Çok Büyük</option>
+                    </select>
+                    
+                    <div className="editor-separator"></div>
+                    <button type="button" className="editor-btn" onClick={() => handleExecCommand('removeFormat')} title="Biçimlendirmeyi Temizle">🧹 Temizle</button>
+                  </div>
+                  <div 
+                    ref={editorRef}
+                    contentEditable="true" 
+                    className="rich-editor-content"
+                    onInput={handleEditorInput}
+                    placeholder="Akorları, sözleri ve notları buraya yazın veya yapıştırın. Akor olmasını istediğiniz kelimeleri seçip yukarıdan 'Akor (Kırmızı)' butonuna basın. Yazı tipi sabit genişlikli (monospace) olduğunda akorlar düzgün hizalanır."
+                  ></div>
+                </div>
               </div>
               <div className="form-group">
                 <label>Ses Kaydı</label>
@@ -1047,13 +1148,40 @@ export default function Songs() {
                     </div>
                   </div>
                 )}
+
+                {/* Tek Ekran Modu Sırası */}
+                <div className="transpose-row" style={{ marginTop: '0.5rem', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <label style={{ minWidth: 'auto', marginRight: '0.5rem' }}>Tek Ekran Modu:</label>
+                    <input 
+                      type="checkbox" 
+                      checked={isSingleScreen} 
+                      onChange={(e) => setIsSingleScreen(e.target.checked)} 
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0 }}
+                    />
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>(Sahnede kaydırma yapmadan sığdırır)</span>
+                  </div>
+                  {isSingleScreen && (
+                    <button 
+                      type="button" 
+                      className="btn btn-sm btn-outline" 
+                      onClick={triggerReactAutoFit}
+                      style={{ padding: '0.35rem 0.5rem', fontWeight: 600 }}
+                    >
+                      Ekrana Sığdır
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <pre 
-                className={`chord-sheet-pre ${viewerTheme === 'light' ? 'chord-sheet-light' : ''}`}
-                style={{ fontSize: `${viewerFontSize}px` }}
-                dangerouslySetInnerHTML={{ __html: htmlContent }}
-              />
+              <div className={`chord-sheet-container ${isSingleScreen ? 'chord-sheet-container-single' : ''} ${viewerTheme === 'light' ? 'chord-sheet-light' : ''}`}>
+                <pre 
+                  ref={chordViewerContentRef}
+                  className={isSingleScreen ? 'chord-sheet-pre-single' : `chord-sheet-pre ${viewerTheme === 'light' ? 'chord-sheet-light' : ''}`}
+                  style={isSingleScreen ? {} : { fontSize: `${viewerFontSize}px` }}
+                  dangerouslySetInnerHTML={{ __html: htmlContent }}
+                />
+              </div>
 
               <div className="chord-viewer-actions">
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
