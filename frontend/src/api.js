@@ -57,6 +57,7 @@ export const api = {
       Duration: s.Duration || '',
       SongYear: s.SongYear || '',
       Lyrics: s.Lyrics || '',
+      AudioPath: s.AudioPath || '',
       ArtistIDs: (s.ArtistIDs || []).map(Number),
       ArtistNames: s.ArtistNames || '-'
     }));

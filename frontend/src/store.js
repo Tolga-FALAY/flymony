@@ -127,6 +127,7 @@ const store = {
         Duration: s.Duration || '',
         SongYear: s.SongYear || '',
         Lyrics: s.Lyrics || '',
+        AudioPath: s.AudioPath || '',
         ArtistIDs: artistIds,
         ArtistNames: artistNames
       };

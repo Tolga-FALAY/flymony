@@ -280,6 +280,23 @@ function closeModal(modalId) {
     if (songYear) songYear.value = '';
     const songLyrics = document.getElementById('songLyrics');
     if (songLyrics) songLyrics.value = '';
+    
+    // Clear audio inputs
+    const songAudioPath = document.getElementById('songAudioPath');
+    if (songAudioPath) songAudioPath.value = '';
+    const songAudioData = document.getElementById('songAudioData');
+    if (songAudioData) songAudioData.value = '';
+    const songAudioFile = document.getElementById('songAudioFile');
+    if (songAudioFile) songAudioFile.value = '';
+    const songAudioPreview = document.getElementById('songAudioPreview');
+    if (songAudioPreview) songAudioPreview.src = '';
+    const songAudioPreviewContainer = document.getElementById('songAudioPreviewContainer');
+    if (songAudioPreviewContainer) songAudioPreviewContainer.style.display = 'none';
+    
+    // Stop recording if active
+    if (typeof mediaRecorder !== 'undefined' && mediaRecorder && mediaRecorder.state !== 'inactive') {
+      stopVanillaAudioRecording();
+    }
   }
 
   // İstek formu arama kutularını, gizli girdileri ve dropdown filtrelerini sıfırla
@@ -1189,9 +1206,18 @@ function renderSongs() {
     const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
     const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
 
+    const playBtnHtml = song.audioPath 
+      ? `<button type="button" class="audio-play-btn" onclick="playVanillaSongAudio(event, '${song.audioPath}', '${song.title.replace(/'/g, "\\'")}')" title="Ses Kaydını Oynat" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: 0.5rem; font-size: 1.1rem; line-height: 1;">▶️</button>`
+      : '';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="Şarkı Adı">${song.title}</td>
+      <td data-label="Şarkı Adı">
+        <div class="song-title-wrapper">
+          <span>${song.title}</span>
+          ${playBtnHtml}
+        </div>
+      </td>
       <td data-label="Sanatçılar">${artistNames || '-'}</td>
       <td data-label="Yıl">${song.year || '-'}</td>
       <td data-label="İşlemler" class="action-btns">
@@ -1237,14 +1263,16 @@ async function saveSong(e) {
 
   try {
     let songId = id;
-    const yearVal = document.getElementById('songYear').value;
-    const lyricsVal = document.getElementById('songLyrics').value.trim();
+    const audioPathVal = document.getElementById('songAudioPath').value;
+    const audioDataVal = document.getElementById('songAudioData').value;
     const songData = {
       SongTitle: title,
       Duration: "",
       SongYear: yearVal ? parseInt(yearVal) : null,
       Lyrics: lyricsVal || "",
-      ArtistIDs: selectedArtistIds.map(Number)
+      ArtistIDs: selectedArtistIds.map(Number),
+      AudioPath: audioPathVal || "",
+      AudioData: audioDataVal || ""
     };
 
     if (id) {
@@ -1283,6 +1311,23 @@ function editSong(id) {
   document.getElementById('songTitle').value = song.title;
   document.getElementById('songYear').value = song.year || '';
   document.getElementById('songLyrics').value = song.lyrics || '';
+  
+  // Set audio fields
+  const UPLOADS_BASE_URL = API_BASE_URL.replace('/api', '');
+  document.getElementById('songAudioPath').value = song.audioPath || '';
+  document.getElementById('songAudioData').value = '';
+  document.getElementById('songAudioFile').value = '';
+  
+  const audioPreview = document.getElementById('songAudioPreview');
+  const previewContainer = document.getElementById('songAudioPreviewContainer');
+  
+  if (song.audioPath) {
+    audioPreview.src = `${UPLOADS_BASE_URL}${song.audioPath}`;
+    previewContainer.style.display = 'flex';
+  } else {
+    audioPreview.src = '';
+    previewContainer.style.display = 'none';
+  }
   
   document.getElementById('songModalTitle').innerText = 'Şarkı Düzenle';
   openModal('songModal');
@@ -2278,5 +2323,218 @@ window.getLocalDatetimeString = getLocalDatetimeString;
 window.setReqStatusDateToNow = setReqStatusDateToNow;
 window.openStatusDateModal = openStatusDateModal;
 window.saveStatusDateFromModal = saveStatusDateFromModal;
+
+// ========================
+// AUDIO ATTACHMENT & RECORDING
+// ========================
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingInterval = null;
+let recordingSeconds = 0;
+
+async function startVanillaAudioRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("Tarayıcınız ses kaydını desteklemiyor!");
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    
+    let options = { mimeType: 'audio/webm' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: 'audio/ogg' };
+    }
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: 'audio/mp4' };
+    }
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: '' };
+    }
+    
+    mediaRecorder = new MediaRecorder(stream, options);
+    mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) {
+        audioChunks.push(e.data);
+      }
+    };
+    mediaRecorder.onstop = () => {
+      const mime = mediaRecorder.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunks, { type: mime });
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      reader.onloadend = () => {
+        document.getElementById('songAudioData').value = reader.result;
+        document.getElementById('songAudioPath').value = '';
+        
+        const preview = document.getElementById('songAudioPreview');
+        preview.src = URL.createObjectURL(audioBlob);
+        document.getElementById('songAudioPreviewContainer').style.display = 'flex';
+      };
+      
+      stream.getTracks().forEach(track => track.stop());
+    };
+    
+    mediaRecorder.start();
+    
+    document.getElementById('songAudioControls').style.display = 'none';
+    document.getElementById('songRecordingStatus').style.display = 'flex';
+    
+    recordingSeconds = 0;
+    document.getElementById('songRecordingTime').innerText = '00:00';
+    recordingInterval = setInterval(() => {
+      recordingSeconds++;
+      const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+      const secs = String(recordingSeconds % 60).padStart(2, '0');
+      document.getElementById('songRecordingTime').innerText = `${mins}:${secs}`;
+    }, 1000);
+  } catch (err) {
+    alert("Mikrofon izni alınamadı veya ses kaydı başlatılamadı: " + err.message);
+  }
+}
+
+function stopVanillaAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  if (recordingInterval) {
+    clearInterval(recordingInterval);
+    recordingInterval = null;
+  }
+  document.getElementById('songRecordingStatus').style.display = 'none';
+  document.getElementById('songAudioControls').style.display = 'flex';
+}
+
+function toggleVanillaAudioRecording() {
+  startVanillaAudioRecording();
+}
+
+function handleVanillaAudioUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  if (file.size > 15 * 1024 * 1024) {
+    alert("Ses dosyası 15MB'tan büyük olamaz!");
+    event.target.value = '';
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => {
+    document.getElementById('songAudioData').value = reader.result;
+    document.getElementById('songAudioPath').value = ''; // clear path
+    
+    const preview = document.getElementById('songAudioPreview');
+    preview.src = URL.createObjectURL(file);
+    document.getElementById('songAudioPreviewContainer').style.display = 'flex';
+  };
+}
+
+function clearVanillaSongAudio() {
+  document.getElementById('songAudioData').value = '';
+  document.getElementById('songAudioPath').value = '';
+  document.getElementById('songAudioFile').value = '';
+  document.getElementById('songAudioPreview').src = '';
+  document.getElementById('songAudioPreviewContainer').style.display = 'none';
+}
+
+// Global player functions
+function playVanillaSongAudio(event, audioPath, songTitle) {
+  if (event) event.stopPropagation();
+  
+  const UPLOADS_BASE_URL = API_BASE_URL.replace('/api', '');
+  const player = document.getElementById('globalAudioPlayer');
+  const audioElement = document.getElementById('globalAudioElement');
+  const titleSpan = document.getElementById('globalAudioTitle');
+  const toggleBtn = document.getElementById('globalAudioPlayToggleBtn');
+  
+  titleSpan.innerText = songTitle;
+  titleSpan.title = songTitle;
+  
+  // Set source
+  audioElement.src = `${UPLOADS_BASE_URL}${audioPath}`;
+  player.style.display = 'flex';
+  
+  // Setup audio events
+  audioElement.onloadedmetadata = () => {
+    updateGlobalAudioTimer();
+  };
+  audioElement.ontimeupdate = () => {
+    updateGlobalAudioTimer();
+  };
+  audioElement.onended = () => {
+    toggleBtn.innerText = '▶';
+    document.getElementById('globalAudioProgress').value = 0;
+  };
+  
+  audioElement.play().then(() => {
+    toggleBtn.innerText = '⏸';
+  }).catch(err => {
+    console.error("Audio playback error:", err);
+  });
+}
+
+function togglePlayGlobalAudio() {
+  const audioElement = document.getElementById('globalAudioElement');
+  const toggleBtn = document.getElementById('globalAudioPlayToggleBtn');
+  if (!audioElement) return;
+  
+  if (audioElement.paused) {
+    audioElement.play();
+    toggleBtn.innerText = '⏸';
+  } else {
+    audioElement.pause();
+    toggleBtn.innerText = '▶';
+  }
+}
+
+function seekGlobalAudio(event) {
+  const audioElement = document.getElementById('globalAudioElement');
+  if (audioElement && audioElement.duration) {
+    const percent = event.target.value;
+    audioElement.currentTime = (percent / 100) * audioElement.duration;
+  }
+}
+
+function closeGlobalAudio() {
+  const player = document.getElementById('globalAudioPlayer');
+  const audioElement = document.getElementById('globalAudioElement');
+  if (audioElement) {
+    audioElement.pause();
+    audioElement.src = '';
+  }
+  if (player) {
+    player.style.display = 'none';
+  }
+}
+
+function updateGlobalAudioTimer() {
+  const audioElement = document.getElementById('globalAudioElement');
+  const progressBar = document.getElementById('globalAudioProgress');
+  const timeSpan = document.getElementById('globalAudioTime');
+  
+  if (!audioElement || isNaN(audioElement.duration)) return;
+  
+  const current = audioElement.currentTime;
+  const total = audioElement.duration;
+  
+  const currentMins = Math.floor(current / 60);
+  const currentSecs = String(Math.floor(current % 60)).padStart(2, '0');
+  const totalMins = Math.floor(total / 60);
+  const totalSecs = String(Math.floor(total % 60)).padStart(2, '0');
+  
+  timeSpan.innerText = `${currentMins}:${currentSecs} / ${totalMins}:${totalSecs}`;
+  progressBar.value = (current / total) * 100;
+}
+
+window.handleVanillaAudioUpload = handleVanillaAudioUpload;
+window.toggleVanillaAudioRecording = toggleVanillaAudioRecording;
+window.stopVanillaAudioRecording = stopVanillaAudioRecording;
+window.clearVanillaSongAudio = clearVanillaSongAudio;
+window.playVanillaSongAudio = playVanillaSongAudio;
+window.togglePlayGlobalAudio = togglePlayGlobalAudio;
+window.seekGlobalAudio = seekGlobalAudio;
+window.closeGlobalAudio = closeGlobalAudio;
 
 

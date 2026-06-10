@@ -22,7 +22,8 @@ export const initializeDB = () => {
             SongTitle TEXT NOT NULL,
             Duration TEXT,
             SongYear INTEGER,
-            Lyrics TEXT
+            Lyrics TEXT,
+            AudioPath TEXT
         );
 
         CREATE TABLE IF NOT EXISTS Song_Artists (
@@ -265,6 +266,18 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while adding Lyrics column to Songs table:", e);
+    }
+
+    // Migration for adding AudioPath column to Songs table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Songs)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('AudioPath')) {
+            console.log("Migrating database: Adding column AudioPath to Songs table...");
+            db.exec("ALTER TABLE Songs ADD COLUMN AudioPath TEXT;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding AudioPath column to Songs table:", e);
     }
 
     // Migration for updating Status 'Vardı' to 'Bakalım'

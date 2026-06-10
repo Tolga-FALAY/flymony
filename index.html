@@ -394,6 +394,8 @@
       </div>
       <form id="songForm" onsubmit="saveSong(event)">
         <input type="hidden" id="songID">
+        <input type="hidden" id="songAudioPath">
+        <input type="hidden" id="songAudioData">
         <div class="form-group">
           <label>Şarkı Adı</label>
           <input type="text" id="songTitle" required>
@@ -413,6 +415,33 @@
             <button type="button" class="btn btn-outline" onclick="openArtistModalFromSongModal()" style="padding: 0.5rem 1rem; font-weight: bold; font-size: 1.1rem; line-height: 1;">+</button>
           </div>
           <div id="songArtistContainer" class="checkbox-list-container"></div>
+        </div>
+        <div class="form-group">
+          <label>Ses Kaydı</label>
+          <div id="songAudioSection" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div id="songAudioPreviewContainer" style="display: none; align-items: center; gap: 0.5rem; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); padding: 0.5rem; border-radius: 8px;">
+              <audio id="songAudioPreview" controls style="flex: 1; height: 36px;"></audio>
+              <button type="button" class="btn btn-sm btn-danger" onclick="clearVanillaSongAudio()" style="padding: 0.25rem 0.5rem; min-height: auto; font-size: 1.1rem; line-height: 1; border-radius: 6px;" title="Ses Kaydını Sil">&times;</button>
+            </div>
+            
+            <div id="songAudioControls" style="display: flex; gap: 0.5rem;">
+              <label class="btn btn-outline" style="flex: 1; text-align: center; cursor: pointer; margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.9rem; border-radius: 8px;">
+                📁 Dosya Seç
+                <input type="file" id="songAudioFile" accept="audio/*" onchange="handleVanillaAudioUpload(event)" style="display: none;">
+              </label>
+              <button type="button" id="songRecordBtn" class="btn btn-outline" onclick="toggleVanillaAudioRecording()" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.9rem; border-radius: 8px;">
+                🎤 Canlı Kaydet
+              </button>
+            </div>
+            
+            <div id="songRecordingStatus" style="display: none; align-items: center; justify-content: space-between; background: #fee2e2; border: 1px solid #fca5a5; padding: 0.5rem; border-radius: 8px; color: #dc2626; font-size: 0.9rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="recording-pulsate" style="width: 10px; height: 10px; background: #dc2626; border-radius: 50%; display: inline-block;"></span>
+                <span id="songRecordingTime">00:00</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-danger" onclick="stopVanillaAudioRecording()" style="padding: 0.25rem 0.5rem; min-height: auto; font-weight: 600; border-radius: 6px;">Durdur</button>
+            </div>
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-outline" onclick="closeModal('songModal')">İptal</button>
@@ -578,6 +607,20 @@
         <button type="button" class="btn btn-primary btn-sm" style="flex: 1;" onclick="saveStatusDateFromModal()">Kaydet</button>
       </div>
     </div>
+  </div>
+
+  <!-- Global Floating Audio Player -->
+  <div id="globalAudioPlayer" style="display: none; position: fixed; bottom: 20px; right: 20px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid #cbd5e1; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); padding: 0.75rem 1rem; border-radius: 12px; z-index: 2000; align-items: center; gap: 0.75rem; width: 320px; transition: all 0.3s ease;">
+    <button type="button" id="globalAudioPlayToggleBtn" onclick="togglePlayGlobalAudio()" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; padding: 0; line-height: 1; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-color); color: white; border: none;">▶</button>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem; overflow: hidden;">
+      <span id="globalAudioTitle" style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main);">Şarkı Oynatılıyor</span>
+      <audio id="globalAudioElement" style="display: none;"></audio>
+      <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%;">
+        <input type="range" id="globalAudioProgress" min="0" max="100" value="0" style="flex: 1; height: 4px; cursor: pointer; margin: 0; padding: 0;" oninput="seekGlobalAudio(event)">
+        <span id="globalAudioTime" style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; flex-shrink: 0;">0:00 / 0:00</span>
+      </div>
+    </div>
+    <button type="button" onclick="closeGlobalAudio()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; display: flex; align-items: center; justify-content: center;">&times;</button>
   </div>
 
   <script src="app.js?v=4"></script>
