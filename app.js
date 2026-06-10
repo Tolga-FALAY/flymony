@@ -150,7 +150,8 @@ const DB = {
         date: r.RequestDate ? new Date(r.RequestDate).getTime() : Date.now(),
         status: r.Status || 'Kayıtlı',
         link: r.Link || '',
-        vardi: r.Vardi ? 1 : 0
+        vardi: r.Vardi ? 1 : 0,
+        statusChangeDate: r.StatusChangeDate || ''
       }));
 
       // Önbelleğe kaydet
@@ -283,6 +284,9 @@ function closeModal(modalId) {
     if (reqLink) reqLink.value = '';
     const reqVardi = document.getElementById('reqVardi');
     if (reqVardi) reqVardi.checked = false;
+    document.getElementById('reqStatusChangeDate').value = '';
+    const displaySpan = document.getElementById('reqStatusChangeDateDisplay');
+    if (displaySpan) displaySpan.innerText = '';
     populateDropdowns(); // listenin tamamını geri getir
   }
 
@@ -1502,7 +1506,8 @@ async function saveRequest(e) {
       GuestIDs: guestIds.map(Number),
       Status: status || 'Kayıtlı',
       Link: link || '',
-      Vardi: document.getElementById('reqVardi').checked ? 1 : 0
+      Vardi: document.getElementById('reqVardi').checked ? 1 : 0,
+      StatusChangeDate: document.getElementById('reqStatusChangeDate').value || null
     };
 
     if (id) {
@@ -1542,7 +1547,18 @@ function editRequest(id) {
   document.getElementById('reqStatus').value = req.status || 'Kayıtlı';
   document.getElementById('reqLink').value = req.link || '';
   document.getElementById('reqVardi').checked = req.vardi ? true : false;
-
+  document.getElementById('reqStatusChangeDate').value = req.statusChangeDate || '';
+  
+  const displaySpan = document.getElementById('reqStatusChangeDateDisplay');
+  if (displaySpan) {
+    if (req.statusChangeDate) {
+      const d = new Date(req.statusChangeDate);
+      displaySpan.innerText = d.toLocaleString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } else {
+      displaySpan.innerText = '';
+    }
+  }
+ 
   document.getElementById('requestModalTitle').innerText = 'İstek Düzenle';
   openModal('requestModal');
 
@@ -2135,5 +2151,63 @@ window.pasteVanillaBulkPhoto = pasteVanillaBulkPhoto;
 window.removeVanillaBulkPhoto = removeVanillaBulkPhoto;
 window.cancelBulkPhotoProcessing = cancelBulkPhotoProcessing;
 window.saveBulkPhotos = saveBulkPhotos;
+
+// Durum Değişiklik Tarihi İşlemleri
+function getLocalDatetimeString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function setReqStatusDateToNow() {
+  const input = document.getElementById('statusChangeDateInput');
+  if (input) {
+    input.value = getLocalDatetimeString();
+  }
+}
+
+function openStatusDateModal() {
+  const currentVal = document.getElementById('reqStatusChangeDate').value;
+  const input = document.getElementById('statusChangeDateInput');
+  if (input) {
+    if (currentVal) {
+      const d = new Date(currentVal);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    } else {
+      input.value = '';
+    }
+  }
+  openModal('statusDateModal');
+}
+
+function saveStatusDateFromModal() {
+  const input = document.getElementById('statusChangeDateInput').value;
+  const hiddenInput = document.getElementById('reqStatusChangeDate');
+  const displaySpan = document.getElementById('reqStatusChangeDateDisplay');
+  
+  if (input) {
+    const d = new Date(input);
+    hiddenInput.value = d.toISOString();
+    displaySpan.innerText = d.toLocaleString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } else {
+    hiddenInput.value = '';
+    displaySpan.innerText = '';
+  }
+  closeModal('statusDateModal');
+}
+
+window.getLocalDatetimeString = getLocalDatetimeString;
+window.setReqStatusDateToNow = setReqStatusDateToNow;
+window.openStatusDateModal = openStatusDateModal;
+window.saveStatusDateFromModal = saveStatusDateFromModal;
 
 

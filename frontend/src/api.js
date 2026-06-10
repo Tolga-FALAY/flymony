@@ -122,7 +122,8 @@ export const api = {
       Status:      r.Status || 'Kayıtlı',
       Link:        r.Link || '',
       Vardi:       r.Vardi ? true : false,
-      Notes:       r.Notes || ''
+      Notes:       r.Notes || '',
+      StatusChangeDate: r.StatusChangeDate || ''
     }));
   },
 

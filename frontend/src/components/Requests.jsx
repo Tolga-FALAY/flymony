@@ -26,8 +26,12 @@ export default function Requests() {
     Status: 'Kayıtlı',
     Link: '',
     Vardi: false,
-    Notes: ''
+    Notes: '',
+    StatusChangeDate: ''
   });
+
+  const [isStatusDateModalOpen, setIsStatusDateModalOpen] = useState(false);
+  const [tempStatusDate, setTempStatusDate] = useState('');
 
   const [guestSearch, setGuestSearch] = useState('');
   const [songSearch, setSongSearch] = useState('');
@@ -64,7 +68,8 @@ export default function Requests() {
         Status: req.Status || 'Kayıtlı',
         Link: req.Link || '',
         Vardi: req.Vardi ? true : false,
-        Notes: req.Notes || ''
+        Notes: req.Notes || '',
+        StatusChangeDate: req.StatusChangeDate || ''
       });
       // Prepopulate search inputs so they are selected/visible
       const selectedSong = songs.find(s => s.SongID === req.SongID);
@@ -79,7 +84,7 @@ export default function Requests() {
       }
     } else {
       setEditingRequest(null);
-      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '', Vardi: false, Notes: '' });
+      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '', Vardi: false, Notes: '', StatusChangeDate: '' });
       setGuestSearch('');
       setSongSearch('');
     }
@@ -194,6 +199,41 @@ export default function Requests() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleOpenStatusDateModal = () => {
+    if (formData.StatusChangeDate) {
+      const d = new Date(formData.StatusChangeDate);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      setTempStatusDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+    } else {
+      setTempStatusDate('');
+    }
+    setIsStatusDateModalOpen(true);
+  };
+
+  const handleSaveStatusDate = () => {
+    if (tempStatusDate) {
+      const d = new Date(tempStatusDate);
+      setFormData(prev => ({ ...prev, StatusChangeDate: d.toISOString() }));
+    } else {
+      setFormData(prev => ({ ...prev, StatusChangeDate: '' }));
+    }
+    setIsStatusDateModalOpen(false);
+  };
+
+  const handleSetStatusDateToNow = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    setTempStatusDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+  };
+
   const handleGuestChange = (e) => {
     const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
     setFormData({ ...formData, GuestIDs: selectedOptions });
@@ -235,7 +275,8 @@ export default function Requests() {
       Status: formData.Status,
       Link: formData.Link || '',
       Vardi: formData.Vardi ? 1 : 0,
-      Notes: formData.Notes || ''
+      Notes: formData.Notes || '',
+      StatusChangeDate: formData.StatusChangeDate || null
     };
     try {
       if (editingRequest) {
@@ -250,7 +291,8 @@ export default function Requests() {
           Status: dataToSend.Status,
           Link: dataToSend.Link || '',
           Vardi: formData.Vardi,
-          Notes: dataToSend.Notes
+          Notes: dataToSend.Notes,
+          StatusChangeDate: dataToSend.StatusChangeDate
         });
       } else {
         const result = await api.createRequest(dataToSend);
@@ -264,7 +306,8 @@ export default function Requests() {
           Status: dataToSend.Status,
           Link: dataToSend.Link || '',
           Vardi: formData.Vardi,
-          Notes: dataToSend.Notes
+          Notes: dataToSend.Notes,
+          StatusChangeDate: dataToSend.StatusChangeDate
         });
       }
       closeModal();
@@ -699,16 +742,32 @@ export default function Requests() {
                   <option value="İptal">İptal</option>
                 </select>
               </div>
-              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '-0.25rem', marginBottom: '1rem' }}>
-                <input
-                  type="checkbox"
-                  id="reqVardi"
-                  name="Vardi"
-                  checked={formData.Vardi}
-                  onChange={(e) => setFormData(prev => ({ ...prev, Vardi: e.target.checked }))}
-                  style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
-                />
-                <label htmlFor="reqVardi" style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}>Vardı</label>
+              <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: '-0.25rem', marginBottom: '1rem', width: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    id="reqVardi"
+                    name="Vardi"
+                    checked={formData.Vardi}
+                    onChange={(e) => setFormData(prev => ({ ...prev, Vardi: e.target.checked }))}
+                    style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
+                  />
+                  <label htmlFor="reqVardi" style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}>Vardı</label>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                    {formData.StatusChangeDate ? new Date(formData.StatusChangeDate).toLocaleString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handleOpenStatusDateModal}
+                    style={{ padding: '0.35rem 0.5rem', fontSize: '1rem', lineHeight: 1, borderRadius: '6px', minHeight: 'auto' }}
+                    title="Durum Değişiklik Tarihini Güncelle"
+                  >
+                    📅
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label>Link (YouTube, Spotify vb. - Opsiyonel)</label>
@@ -838,6 +897,52 @@ export default function Requests() {
                 <button type="submit" className="btn btn-primary">Kaydet</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {isStatusDateModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '380px', padding: '1.5rem' }}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.25rem' }}>Durum Değişiklik Tarihi</h2>
+              <button className="close-btn" onClick={() => setIsStatusDateModalOpen(false)}>&times;</button>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label htmlFor="reactStatusChangeDateInput">Tarih ve Saat</label>
+              <input
+                type="datetime-local"
+                id="reactStatusChangeDateInput"
+                value={tempStatusDate}
+                onChange={(e) => setTempStatusDate(e.target.value)}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={handleSetStatusDateToNow}
+              style={{ width: '100%', marginBottom: '1rem', padding: '0.6rem' }}
+            >
+              Tarihi ŞİMDİ ile güncelle
+            </button>
+            <div className="modal-actions" style={{ marginTop: '1rem', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setIsStatusDateModalOpen(false)}
+                style={{ flex: 1 }}
+              >
+                İptal
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveStatusDate}
+                style={{ flex: 1 }}
+              >
+                Kaydet
+              </button>
+            </div>
           </div>
         </div>
       )}

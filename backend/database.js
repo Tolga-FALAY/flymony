@@ -93,6 +93,7 @@ export const initializeDB = () => {
                         Link TEXT,
                         Vardi INTEGER DEFAULT 0,
                         Notes TEXT,
+                        StatusChangeDate TEXT,
                         FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
                     );
 
@@ -116,6 +117,7 @@ export const initializeDB = () => {
                     Link TEXT,
                     Vardi INTEGER DEFAULT 0,
                     Notes TEXT,
+                    StatusChangeDate TEXT,
                     FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
                 );
 
@@ -139,6 +141,7 @@ export const initializeDB = () => {
                 Link TEXT,
                 Vardi INTEGER DEFAULT 0,
                 Notes TEXT,
+                StatusChangeDate TEXT,
                 FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
             );
 
@@ -224,6 +227,18 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while adding Notes column to Requests table:", e);
+    }
+
+    // Migration for adding StatusChangeDate column to Requests table dynamically if it does not exist
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Requests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('StatusChangeDate')) {
+            console.log("Migrating database: Adding column StatusChangeDate to Requests table...");
+            db.exec("ALTER TABLE Requests ADD COLUMN StatusChangeDate TEXT;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding StatusChangeDate column to Requests table:", e);
     }
 
     // Migration for updating Status 'Vardı' to 'Bakalım'

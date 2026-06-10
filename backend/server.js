@@ -329,7 +329,7 @@ app.delete('/api/guests/:id', (req, res) => {
 app.get('/api/requests', (req, res) => {
     try {
         const requests = db.prepare(`
-            SELECT r.RequestID, r.RequestDate, r.Status, r.Link, r.Vardi, r.Notes, s.SongID, s.SongTitle,
+            SELECT r.RequestID, r.RequestDate, r.Status, r.Link, r.Vardi, r.Notes, r.StatusChangeDate, s.SongID, s.SongTitle,
                    GROUP_CONCAT(DISTINCT g.GuestID) as GuestIDs,
                    GROUP_CONCAT(DISTINCT g.FullName) as FullNames,
                    (
@@ -353,7 +353,8 @@ app.get('/api/requests', (req, res) => {
             Status: r.Status || 'Kayıtlı',
             Link: r.Link || '',
             Vardi: r.Vardi || 0,
-            Notes: r.Notes || ''
+            Notes: r.Notes || '',
+            StatusChangeDate: r.StatusChangeDate || ''
         }));
         res.json(formattedRequests);
     } catch (err) {
@@ -362,7 +363,7 @@ app.get('/api/requests', (req, res) => {
 });
 
 app.post('/api/requests', (req, res) => {
-    const { SongID, GuestIDs, Status, Link, Vardi, Notes } = req.body; // GuestIDs should be an array of IDs
+    const { SongID, GuestIDs, Status, Link, Vardi, Notes, StatusChangeDate } = req.body; // GuestIDs should be an array of IDs
     if (!SongID || !GuestIDs || !Array.isArray(GuestIDs) || GuestIDs.length === 0) {
         return res.status(400).json({ error: 'Geçersiz istek verisi. Şarkı ve en az bir misafir seçilmelidir.' });
     }
@@ -374,11 +375,11 @@ app.post('/api/requests', (req, res) => {
             return res.status(400).json({ error: 'Bu istek zaten kayıtlı' });
         }
 
-        const insertRequest = db.prepare('INSERT INTO Requests (SongID, Status, Link, Vardi, Notes) VALUES (?, ?, ?, ?, ?)');
+        const insertRequest = db.prepare('INSERT INTO Requests (SongID, Status, Link, Vardi, Notes, StatusChangeDate) VALUES (?, ?, ?, ?, ?, ?)');
         const insertRequestGuest = db.prepare('INSERT INTO Request_Guests (RequestID, GuestID) VALUES (?, ?)');
 
-        const transaction = db.transaction((songId, guestIds, status, link, vardi, notes) => {
-            const info = insertRequest.run(songId, status || 'Kayıtlı', link || '', vardi || 0, notes || '');
+        const transaction = db.transaction((songId, guestIds, status, link, vardi, notes, statusChangeDate) => {
+            const info = insertRequest.run(songId, status || 'Kayıtlı', link || '', vardi || 0, notes || '', statusChangeDate || null);
             const requestId = info.lastInsertRowid;
             for (const guestId of guestIds) {
                 insertRequestGuest.run(requestId, guestId);
@@ -386,7 +387,7 @@ app.post('/api/requests', (req, res) => {
             return requestId;
         });
 
-        const requestId = transaction(SongID, GuestIDs, Status, Link, Vardi, Notes);
+        const requestId = transaction(SongID, GuestIDs, Status, Link, Vardi, Notes, StatusChangeDate);
         res.status(201).json({ id: requestId, message: 'İstek başarıyla oluşturuldu' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -394,7 +395,7 @@ app.post('/api/requests', (req, res) => {
 });
 
 app.put('/api/requests/:id', (req, res) => {
-    const { SongID, GuestIDs, Status, Link, Vardi, Notes } = req.body;
+    const { SongID, GuestIDs, Status, Link, Vardi, Notes, StatusChangeDate } = req.body;
     const requestId = req.params.id;
     if (!SongID || !GuestIDs || !Array.isArray(GuestIDs) || GuestIDs.length === 0) {
         return res.status(400).json({ error: 'Geçersiz istek verisi. Şarkı ve en az bir misafir seçilmelidir.' });
@@ -407,19 +408,19 @@ app.put('/api/requests/:id', (req, res) => {
             return res.status(400).json({ error: 'Bu istek zaten kayıtlı' });
         }
 
-        const updateRequest = db.prepare('UPDATE Requests SET SongID = ?, Status = ?, Link = ?, Vardi = ?, Notes = ? WHERE RequestID = ?');
+        const updateRequest = db.prepare('UPDATE Requests SET SongID = ?, Status = ?, Link = ?, Vardi = ?, Notes = ?, StatusChangeDate = ? WHERE RequestID = ?');
         const deleteRequestGuests = db.prepare('DELETE FROM Request_Guests WHERE RequestID = ?');
         const insertRequestGuest = db.prepare('INSERT INTO Request_Guests (RequestID, GuestID) VALUES (?, ?)');
 
-        const transaction = db.transaction((reqId, songId, guestIds, status, link, vardi, notes) => {
-            updateRequest.run(songId, status || 'Kayıtlı', link || '', vardi || 0, notes || '', reqId);
+        const transaction = db.transaction((reqId, songId, guestIds, status, link, vardi, notes, statusChangeDate) => {
+            updateRequest.run(songId, status || 'Kayıtlı', link || '', vardi || 0, notes || '', statusChangeDate || null, reqId);
             deleteRequestGuests.run(reqId);
             for (const guestId of guestIds) {
                 insertRequestGuest.run(reqId, guestId);
             }
         });
 
-        transaction(requestId, SongID, GuestIDs, Status, Link, Vardi, Notes);
+        transaction(requestId, SongID, GuestIDs, Status, Link, Vardi, Notes, StatusChangeDate);
         res.json({ message: 'İstek başarıyla güncellendi' });
     } catch (err) {
         res.status(500).json({ error: err.message });
