@@ -620,6 +620,21 @@
           </div>
         </div>
 
+        <!-- İlişkili Misafirler -->
+        <div class="form-group">
+          <label>İlişkili Misafirler (Aynı Masada Sahnede Bulunanlar)</label>
+          <div id="guestRelationsContainer" class="listbox-container" style="min-height: 60px; max-height: 120px; overflow-y: auto; margin-bottom: 0.5rem;">
+            <!-- Dinamik doldurulacak -->
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" id="guestRelationSearch" placeholder="İlişkili misafir ara..." oninput="filterVanillaGuestRelations()" style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+            <select id="guestRelationSelect" style="flex: 1.5; margin: 0; padding: 0.5rem; font-size: 0.9rem; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; background: white;">
+              <option value="">Misafir Seçin...</option>
+            </select>
+            <button type="button" class="btn btn-primary" onclick="addVanillaGuestRelation()" style="padding: 0.5rem 1rem; font-weight: bold; height: 38px; display: flex; align-items: center; justify-content: center;">+</button>
+          </div>
+        </div>
+
         <!-- Notlar -->
         <div class="form-group">
           <label>Notlar</label>

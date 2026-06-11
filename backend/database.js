@@ -51,6 +51,14 @@ export const initializeDB = () => {
             CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
             UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS Guest_Relationships (
+            GuestID INTEGER,
+            RelatedGuestID INTEGER,
+            PRIMARY KEY (GuestID, RelatedGuestID),
+            FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE,
+            FOREIGN KEY (RelatedGuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
+        );
     `);
 
     // Check if Requests table exists and has GuestID column

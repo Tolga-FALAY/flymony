@@ -23,6 +23,8 @@ export default function Guests() {
 
   // Paste section target configuration
   const [activePasteSection, setActivePasteSection] = useState('profile');
+  const [relationSearch, setRelationSearch] = useState('');
+  const [selectedRelationId, setSelectedRelationId] = useState('');
   
   const [formData, setFormData] = useState({
     FirstName: '',
@@ -34,7 +36,8 @@ export default function Guests() {
     BirthDateDay: '',
     BirthDateMonth: '',
     BirthDateYear: '',
-    Photos: []
+    Photos: [],
+    RelatedGuestIDs: []
   });
 
   const profileCameraInputRef = useRef(null);
@@ -96,6 +99,8 @@ export default function Guests() {
 
 
   const openModal = (guest = null) => {
+    setRelationSearch('');
+    setSelectedRelationId('');
     if (guest) {
       setEditingGuest(guest);
       setFormData({
@@ -108,7 +113,8 @@ export default function Guests() {
         BirthDateDay: guest.BirthDateDay || '',
         BirthDateMonth: guest.BirthDateMonth || '',
         BirthDateYear: guest.BirthDateYear || '',
-        Photos: guest.Photos || []
+        Photos: guest.Photos || [],
+        RelatedGuestIDs: (guest.RelatedGuestIDs || []).map(String)
       });
     } else {
       setEditingGuest(null);
@@ -122,7 +128,8 @@ export default function Guests() {
         BirthDateDay: '',
         BirthDateMonth: '',
         BirthDateYear: '',
-        Photos: []
+        Photos: [],
+        RelatedGuestIDs: []
       });
     }
     setIsModalOpen(true);
@@ -131,6 +138,8 @@ export default function Guests() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingGuest(null);
+    setRelationSearch('');
+    setSelectedRelationId('');
   };
 
   const handleChange = (e) => {
@@ -308,20 +317,24 @@ export default function Guests() {
     }
 
     try {
+      const payload = {
+        ...formData,
+        RelatedGuestIDs: (formData.RelatedGuestIDs || []).map(Number)
+      };
       if (editingGuest) {
-        await api.updateGuest(editingGuest.GuestID, formData);
+        await api.updateGuest(editingGuest.GuestID, payload);
         // Store'u güncelle — Firestore okuma YOK
         store.updateGuest(editingGuest.GuestID, {
-          ...formData,
+          ...payload,
           GuestID:  editingGuest.GuestID,
-          FullName: `${formData.FirstName} ${formData.LastName}`.trim()
+          FullName: `${payload.FirstName} ${payload.LastName}`.trim()
         });
       } else {
-        const result = await api.createGuest(formData);
+        const result = await api.createGuest(payload);
         store.addGuest({
-          ...formData,
+          ...payload,
           GuestID:  result.GuestID,
-          FullName: `${formData.FirstName} ${formData.LastName}`.trim(),
+          FullName: `${payload.FirstName} ${payload.LastName}`.trim(),
           CreatedAt: new Date().toISOString(),
           UpdatedAt: new Date().toISOString()
         });
@@ -674,6 +687,89 @@ export default function Guests() {
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* İlişkili Misafirler Field */}
+              <div className="form-group">
+                <label>İlişkili Misafirler (Aynı Masada Sahnede Bulunanlar)</label>
+                <div className="listbox-container" style={{ minHeight: '60px', maxHeight: '120px', overflowY: 'auto', marginBottom: '0.5rem' }}>
+                  {formData.RelatedGuestIDs && formData.RelatedGuestIDs.length > 0 ? (
+                    formData.RelatedGuestIDs.map(id => {
+                      const g = guests.find(guestItem => guestItem.GuestID === Number(id));
+                      if (!g) return null;
+                      return (
+                        <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.95rem' }}>
+                          <span>{g.FullName}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px' }}
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                RelatedGuestIDs: prev.RelatedGuestIDs.filter(rId => String(rId) !== String(id))
+                              }));
+                            }}
+                          >
+                            Sil
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem', textAlign: 'center' }}>
+                      Henüz ilişkili misafir eklenmemiş.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder="İlişkili misafir ara..."
+                    value={relationSearch}
+                    onChange={(e) => setRelationSearch(e.target.value)}
+                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                  />
+                  <select
+                    value={selectedRelationId}
+                    onChange={(e) => setSelectedRelationId(e.target.value)}
+                    style={{ flex: 1.5, margin: 0, padding: '0.5rem', fontSize: '0.9rem', height: '38px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  >
+                    <option value="">Misafir Seçin...</option>
+                    {guests
+                      .filter(g => {
+                        if (editingGuest && g.GuestID === editingGuest.GuestID) return false;
+                        if (formData.RelatedGuestIDs && formData.RelatedGuestIDs.includes(String(g.GuestID))) return false;
+                        return (g.FullName || '').toLocaleLowerCase('tr-TR').includes(relationSearch.toLocaleLowerCase('tr-TR'));
+                      })
+                      .map(g => (
+                        <option key={g.GuestID} value={String(g.GuestID)}>
+                          {g.FullName}
+                        </option>
+                      ))
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => {
+                      if (!selectedRelationId) {
+                        alert("Lütfen listeden bir misafir seçin.");
+                        return;
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        RelatedGuestIDs: [...(prev.RelatedGuestIDs || []), String(selectedRelationId)]
+                      }));
+                      setSelectedRelationId('');
+                      setRelationSearch('');
+                    }}
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 

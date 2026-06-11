@@ -310,9 +310,18 @@ app.delete('/api/songs/:id', (req, res) => {
 app.get('/api/guests', (req, res) => {
     try {
         const guests = db.prepare('SELECT * FROM Guests').all();
+        const relationships = db.prepare('SELECT * FROM Guest_Relationships').all();
+        
+        const relMap = {};
+        relationships.forEach(r => {
+            if (!relMap[r.GuestID]) relMap[r.GuestID] = [];
+            relMap[r.GuestID].push(r.RelatedGuestID);
+        });
+
         const parsedGuests = guests.map(g => ({
             ...g,
-            Photos: g.Photos ? JSON.parse(g.Photos) : []
+            Photos: g.Photos ? JSON.parse(g.Photos) : [],
+            RelatedGuestIDs: relMap[g.GuestID] || []
         }));
         // Sort by FirstName and LastName (Turkish locale aware)
         parsedGuests.sort((a, b) => {
@@ -328,7 +337,7 @@ app.get('/api/guests', (req, res) => {
 
 app.post('/api/guests', (req, res) => {
     try {
-        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos } = req.body;
+        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, RelatedGuestIDs } = req.body;
         if (!FirstName || !FirstName.trim() || !LastName || !LastName.trim()) {
             return res.status(400).json({ error: 'Ad ve soyad alanları boş bırakılamaz!' });
         }
@@ -336,22 +345,37 @@ app.post('/api/guests', (req, res) => {
         if (existing) {
             return res.status(400).json({ error: 'Bu misafir zaten kayıtlı!' });
         }
-        const info = db.prepare(`
-            INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-            FirstName, 
-            LastName, 
-            PhoneNumber || "", 
-            InstagramLink || "", 
-            Notes || "", 
-            ProfilePicture || "", 
-            BirthDateDay ? Number(BirthDateDay) : null, 
-            BirthDateMonth ? Number(BirthDateMonth) : null, 
-            BirthDateYear ? Number(BirthDateYear) : null, 
-            Photos ? JSON.stringify(Photos) : '[]'
-        );
-        res.status(201).json({ id: info.lastInsertRowid });
+
+        const insertGuestTransaction = db.transaction(() => {
+            const info = db.prepare(`
+                INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                FirstName, 
+                LastName, 
+                PhoneNumber || "", 
+                InstagramLink || "", 
+                Notes || "", 
+                ProfilePicture || "", 
+                BirthDateDay ? Number(BirthDateDay) : null, 
+                BirthDateMonth ? Number(BirthDateMonth) : null, 
+                BirthDateYear ? Number(BirthDateYear) : null, 
+                Photos ? JSON.stringify(Photos) : '[]'
+            );
+            const guestId = info.lastInsertRowid;
+            
+            if (RelatedGuestIDs && Array.isArray(RelatedGuestIDs)) {
+                const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
+                for (const rId of RelatedGuestIDs) {
+                    insertRel.run(guestId, Number(rId));
+                    insertRel.run(Number(rId), guestId); // bidirectional
+                }
+            }
+            return guestId;
+        });
+
+        const guestId = insertGuestTransaction();
+        res.status(201).json({ id: guestId });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -359,31 +383,49 @@ app.post('/api/guests', (req, res) => {
 
 app.put('/api/guests/:id', (req, res) => {
     try {
-        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos } = req.body;
+        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, RelatedGuestIDs } = req.body;
+        const guestId = req.params.id;
         if (!FirstName || !FirstName.trim() || !LastName || !LastName.trim()) {
             return res.status(400).json({ error: 'Ad ve soyad alanları boş bırakılamaz!' });
         }
-        const existing = db.prepare('SELECT * FROM Guests WHERE TRIM(LOWER(FirstName)) = TRIM(LOWER(?)) AND TRIM(LOWER(LastName)) = TRIM(LOWER(?)) AND GuestID != ?').get(FirstName, LastName, req.params.id);
+        const existing = db.prepare('SELECT * FROM Guests WHERE TRIM(LOWER(FirstName)) = TRIM(LOWER(?)) AND TRIM(LOWER(LastName)) = TRIM(LOWER(?)) AND GuestID != ?').get(FirstName, LastName, guestId);
         if (existing) {
             return res.status(400).json({ error: 'Bu isimde başka bir misafir zaten kayıtlı!' });
         }
-        db.prepare(`
-            UPDATE Guests 
-            SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ?, UpdatedAt = CURRENT_TIMESTAMP 
-            WHERE GuestID = ?
-        `).run(
-            FirstName, 
-            LastName, 
-            PhoneNumber || "", 
-            InstagramLink || "", 
-            Notes || "", 
-            ProfilePicture || "", 
-            BirthDateDay ? Number(BirthDateDay) : null, 
-            BirthDateMonth ? Number(BirthDateMonth) : null, 
-            BirthDateYear ? Number(BirthDateYear) : null, 
-            Photos ? JSON.stringify(Photos) : '[]',
-            req.params.id
-        );
+
+        const updateGuestTransaction = db.transaction(() => {
+            db.prepare(`
+                UPDATE Guests 
+                SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ?, UpdatedAt = CURRENT_TIMESTAMP 
+                WHERE GuestID = ?
+            `).run(
+                FirstName, 
+                LastName, 
+                PhoneNumber || "", 
+                InstagramLink || "", 
+                Notes || "", 
+                ProfilePicture || "", 
+                BirthDateDay ? Number(BirthDateDay) : null, 
+                BirthDateMonth ? Number(BirthDateMonth) : null, 
+                BirthDateYear ? Number(BirthDateYear) : null, 
+                Photos ? JSON.stringify(Photos) : '[]',
+                guestId
+            );
+
+            // Clean old relationships
+            db.prepare('DELETE FROM Guest_Relationships WHERE GuestID = ? OR RelatedGuestID = ?').run(guestId, guestId);
+
+            // Insert new ones
+            if (RelatedGuestIDs && Array.isArray(RelatedGuestIDs)) {
+                const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
+                for (const rId of RelatedGuestIDs) {
+                    insertRel.run(Number(guestId), Number(rId));
+                    insertRel.run(Number(rId), Number(guestId)); // bidirectional
+                }
+            }
+        });
+
+        updateGuestTransaction();
         res.json({ message: 'Guest updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -396,7 +438,14 @@ app.delete('/api/guests/:id', (req, res) => {
         if (isLinked) {
             return res.status(400).json({ error: 'Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz' });
         }
-        db.prepare('DELETE FROM Guests WHERE GuestID = ?').run(req.params.id);
+
+        const deleteGuestTransaction = db.transaction(() => {
+            // Clean relationships manually first (though foreign key delete cascade should work, manual is safe)
+            db.prepare('DELETE FROM Guest_Relationships WHERE GuestID = ? OR RelatedGuestID = ?').run(req.params.id, req.params.id);
+            db.prepare('DELETE FROM Guests WHERE GuestID = ?').run(req.params.id);
+        });
+
+        deleteGuestTransaction();
         res.json({ message: 'Guest deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });

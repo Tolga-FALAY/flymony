@@ -148,6 +148,7 @@ const store = {
       BirthDateMonth: g.BirthDateMonth || '',
       BirthDateYear:  g.BirthDateYear  || '',
       Photos:         g.Photos         || [],
+      RelatedGuestIDs: (g.RelatedGuestIDs || []).map(Number),
       CreatedAt:      g.CreatedAt      || new Date().toISOString(),
       UpdatedAt:      g.UpdatedAt      || new Date().toISOString()
     }));
@@ -241,7 +242,19 @@ const store = {
 
   // ── Misafir mutasyonları ─────────────────────────────────────────────────
   addGuest(guest) {
-    _guests.push(guest);
+    const id = Number(guest.GuestID);
+    const rels = (guest.RelatedGuestIDs || []).map(Number);
+    _guests.push({ ...guest, RelatedGuestIDs: rels });
+    // Add this guest ID to all related guests' lists
+    _guests = _guests.map(g => {
+      if (rels.includes(g.GuestID)) {
+        const arr = g.RelatedGuestIDs || [];
+        if (!arr.includes(id)) {
+          return { ...g, RelatedGuestIDs: [...arr, id] };
+        }
+      }
+      return g;
+    });
     _sortGuests();
     _notify();
   },
@@ -249,7 +262,31 @@ const store = {
   updateGuest(id, data) {
     const idx = _guests.findIndex(g => g.GuestID === id);
     if (idx !== -1) {
-      _guests[idx] = { ..._guests[idx], ...data };
+      const oldData = _guests[idx];
+      _guests[idx] = { ...oldData, ...data };
+      
+      if (data.RelatedGuestIDs !== undefined) {
+        const newRels = (data.RelatedGuestIDs || []).map(Number);
+        // Remove this guest (id) from all other guests' RelatedGuestIDs
+        _guests = _guests.map(g => {
+          if (g.GuestID !== id && g.RelatedGuestIDs) {
+            return { ...g, RelatedGuestIDs: g.RelatedGuestIDs.filter(rId => rId !== id) };
+          }
+          return g;
+        });
+        // Add this guest (id) to the new associated guests' RelatedGuestIDs
+        _guests = _guests.map(g => {
+          if (newRels.includes(g.GuestID)) {
+            const arr = g.RelatedGuestIDs || [];
+            if (!arr.includes(id)) {
+              return { ...g, RelatedGuestIDs: [...arr, id] };
+            }
+          }
+          return g;
+        });
+        _guests[idx].RelatedGuestIDs = newRels;
+      }
+      
       _sortGuests();
       // Bu misafiri kullanan isteklerin FullNames alanını güncelle
       _requests = _requests.map(r => {
@@ -263,7 +300,12 @@ const store = {
   },
 
   removeGuest(id) {
-    _guests = _guests.filter(g => g.GuestID !== id);
+    _guests = _guests.filter(g => g.GuestID !== id).map(g => {
+      if (g.RelatedGuestIDs) {
+        return { ...g, RelatedGuestIDs: g.RelatedGuestIDs.filter(rId => rId !== id) };
+      }
+      return g;
+    });
     _notify();
   },
 

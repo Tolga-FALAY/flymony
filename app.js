@@ -31,6 +31,7 @@ let artistsSortDirection = 'asc';
 let guestsSortKey = 'name';
 let guestsSortDirection = 'asc';
 let vanillaActivePasteSection = 'profile';
+let vanillaRelatedGuestIDs = [];
 
 // Bulk Photo Processing state
 let bulkSelectedPhotos = [];
@@ -116,6 +117,7 @@ const DB = {
         birthDateMonth: g.BirthDateMonth || "",
         birthDateYear: g.BirthDateYear || "",
         photos: g.Photos || [],
+        relatedGuestIDs: (g.RelatedGuestIDs || []).map(Number),
         createdAt: g.CreatedAt || "",
         updatedAt: g.UpdatedAt || ""
       }));
@@ -170,8 +172,12 @@ const DB = {
         song_artists: this.song_artists,
         requests: this.requests
       };
-      localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
-      localStorage.setItem(cacheTimeKey, Date.now().toString());
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
+        localStorage.setItem(cacheTimeKey, Date.now().toString());
+      } catch (e) {
+        console.warn("LocalStorage önbelleğe kaydetme hatası:", e);
+      }
     } catch (err) {
       console.error("API loading error:", err);
     }
@@ -255,6 +261,9 @@ function openModal(modalId) {
   }
   if(modalId === 'guestModal') {
     populateBirthdateDropdowns();
+    vanillaRelatedGuestIDs = [];
+    populateVanillaGuestRelationDropdown();
+    renderVanillaGuestRelationsList();
   }
 }
 
@@ -339,6 +348,11 @@ function closeModal(modalId) {
         </div>
       `;
     }
+    vanillaRelatedGuestIDs = [];
+    const relationSearch = document.getElementById('guestRelationSearch');
+    if (relationSearch) relationSearch.value = '';
+    const relationSelect = document.getElementById('guestRelationSelect');
+    if (relationSelect) relationSelect.value = '';
   }
   
   // Başlıkları sıfırla
@@ -958,6 +972,95 @@ function renderVanillaGalleryPreviews() {
   }
 }
 
+function populateVanillaGuestRelationDropdown() {
+  const select = document.getElementById('guestRelationSelect');
+  if (!select) return;
+
+  const currentGuestId = document.getElementById('guestID').value;
+  const searchQuery = (document.getElementById('guestRelationSearch')?.value || '').toLowerCase().trim();
+
+  // Get all guests except current guest and already linked guests
+  let options = DB.guests.filter(g => {
+    // Exclude self
+    if (currentGuestId && String(g.id) === String(currentGuestId)) return false;
+    // Exclude already added relations
+    if (vanillaRelatedGuestIDs.includes(Number(g.id))) return false;
+    
+    // Filter by search query if present
+    if (searchQuery) {
+      const fullName = `${g.firstName} ${g.lastName}`.toLowerCase();
+      return fullName.includes(searchQuery);
+    }
+    return true;
+  });
+
+  // Sort options alphabetically by name
+  options.sort((a, b) => {
+    const nameA = `${a.firstName} ${a.lastName}`.toLocaleLowerCase('tr-TR');
+    const nameB = `${b.firstName} ${b.lastName}`.toLocaleLowerCase('tr-TR');
+    return nameA.localeCompare(nameB, 'tr-TR');
+  });
+
+  // Re-fill select
+  select.innerHTML = '<option value="">Misafir Seçin...</option>';
+  options.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id;
+    opt.textContent = `${g.firstName} ${g.lastName}`;
+    select.appendChild(opt);
+  });
+}
+
+function filterVanillaGuestRelations() {
+  populateVanillaGuestRelationDropdown();
+}
+
+function addVanillaGuestRelation() {
+  const select = document.getElementById('guestRelationSelect');
+  if (!select) return;
+  const guestIdVal = select.value;
+  if (!guestIdVal) return;
+
+  const guestId = Number(guestIdVal);
+  if (!vanillaRelatedGuestIDs.includes(guestId)) {
+    vanillaRelatedGuestIDs.push(guestId);
+    // Clear search
+    const searchInput = document.getElementById('guestRelationSearch');
+    if (searchInput) searchInput.value = '';
+    
+    // Refresh UI
+    renderVanillaGuestRelationsList();
+    populateVanillaGuestRelationDropdown();
+  }
+}
+
+function removeVanillaGuestRelation(id) {
+  vanillaRelatedGuestIDs = vanillaRelatedGuestIDs.filter(gid => gid !== Number(id));
+  renderVanillaGuestRelationsList();
+  populateVanillaGuestRelationDropdown();
+}
+
+function renderVanillaGuestRelationsList() {
+  const container = document.getElementById('guestRelationsContainer');
+  if (!container) return;
+
+  if (vanillaRelatedGuestIDs.length === 0) {
+    container.innerHTML = `<div style="color: #64748b; padding: 0.5rem; text-align: center; font-size: 0.9rem;">Henüz ilişkili misafir eklenmemiş.</div>`;
+    return;
+  }
+
+  // Find the guest objects for each ID
+  const relatedGuests = vanillaRelatedGuestIDs.map(id => DB.guests.find(g => Number(g.id) === Number(id))).filter(Boolean);
+
+  // Render them as visual items with a remove badge
+  container.innerHTML = relatedGuests.map(g => `
+    <div style="display: inline-flex; align-items: center; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 6px; margin: 0.25rem; font-size: 0.9rem; border: 1px solid #e2e8f0;">
+      <span>${g.firstName} ${g.lastName}</span>
+      <button type="button" onclick="removeVanillaGuestRelation(${g.id})" style="border: none; background: transparent; color: #ef4444; font-size: 1.1rem; cursor: pointer; margin-left: 0.5rem; padding: 0; line-height: 1; display: flex; align-items: center;">&times;</button>
+    </div>
+  `).join('');
+}
+
 async function saveGuest(e) {
   e.preventDefault();
   const id = document.getElementById('guestID').value;
@@ -1029,7 +1132,8 @@ async function saveGuest(e) {
       BirthDateDay: birthDay ? Number(birthDay) : null,
       BirthDateMonth: birthMonth ? Number(birthMonth) : null,
       BirthDateYear: birthYear ? Number(birthYear) : null,
-      Photos: photos
+      Photos: photos,
+      RelatedGuestIDs: vanillaRelatedGuestIDs
     };
 
     if (id) {
@@ -1086,9 +1190,14 @@ function editGuest(id) {
   document.getElementById('guestBirthMonth').value = guest.birthDateMonth || '';
   document.getElementById('guestBirthYear').value = guest.birthDateYear || '';
 
+  // Fill in related guest IDs
+  vanillaRelatedGuestIDs = (guest.relatedGuestIDs || []).map(Number);
+
   // Render previews
   renderVanillaProfilePreview();
   renderVanillaGalleryPreviews();
+  populateVanillaGuestRelationDropdown();
+  renderVanillaGuestRelationsList();
 
   document.getElementById('guestModalTitle').innerText = 'Misafir Düzenle';
   openModal('guestModal');
@@ -2260,6 +2369,9 @@ window.handleVanillaGalleryUpload = handleVanillaGalleryUpload;
 window.removeVanillaProfilePicture = removeVanillaProfilePicture;
 window.removeVanillaGalleryPhoto = removeVanillaGalleryPhoto;
 window.populateBirthdateDropdowns = populateBirthdateDropdowns;
+window.filterVanillaGuestRelations = filterVanillaGuestRelations;
+window.addVanillaGuestRelation = addVanillaGuestRelation;
+window.removeVanillaGuestRelation = removeVanillaGuestRelation;
 window.sortRequests = sortRequests;
 window.clearAllSongFilters = clearAllSongFilters;
 window.handleSongFilterChange = handleSongFilterChange;
