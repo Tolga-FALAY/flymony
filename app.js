@@ -670,7 +670,9 @@ function renderGuests() {
           <span class="guest-name-text">${guest.firstName} ${guest.lastName}</span>
         </div>
       </td>
-      <td data-label="Telefon">${guest.phone || '-'}</td>
+      <td data-label="Telefon">
+        ${guest.phone ? `<span style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="openGuestContactModal(${guest.id})">${guest.phone}</span>` : '-'}
+      </td>
       <td data-label="Instagram">
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
@@ -1090,14 +1092,89 @@ function renderVanillaGuestRelationsList() {
     if (indirectGuests.length > 0) {
       indirectGroup.style.display = 'block';
       indirectContainer.innerHTML = indirectGuests.map(g => `
-        <div style="display: inline-flex; align-items: center; background: #f1f5f9; color: #64748b; padding: 0.2rem 0.5rem; border-radius: 6px; margin: 0.25rem; font-size: 0.85rem; border: 1px solid #e2e8f0;">
+        <div style="display: inline-flex; align-items: center; background: #f1f5f9; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 6px; margin: 0.25rem; font-size: 0.85rem; border: 1px solid #e2e8f0; gap: 0.4rem;">
           <span>${g.firstName} ${g.lastName}</span>
+          <button type="button" class="btn btn-sm btn-primary" onclick="addVanillaGuestRelationById(${g.id})" style="padding: 0 0.25rem; font-size: 0.75rem; min-height: auto; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 18px; line-height: 1;">İlişki Ekle</button>
         </div>
       `).join('');
     } else {
       indirectGroup.style.display = 'none';
     }
   }
+}
+
+function cleanPhoneNumberForWhatsapp(phone) {
+  if (!phone) return '';
+  let cleaned = phone.replace(/\D/g, ''); // strip non-numeric
+  if (cleaned.length === 10 && cleaned.startsWith('5')) {
+    cleaned = '90' + cleaned;
+  } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+    cleaned = '90' + cleaned.substring(1);
+  }
+  return cleaned;
+}
+
+function getInstagramUsername(url) {
+  if (!url) return '';
+  const match = url.match(/(?:instagram\.com\/|instagr\.am\/)([a-zA-Z0-9_\.]+)/i);
+  return match ? match[1] : '';
+}
+
+function addVanillaGuestRelationById(guestId) {
+  const id = Number(guestId);
+  if (!vanillaRelatedGuestIDs.includes(id)) {
+    vanillaRelatedGuestIDs.push(id);
+    renderVanillaGuestRelationsList();
+    populateVanillaGuestRelationDropdown();
+  }
+}
+
+function openGuestContactModal(guestId) {
+  const guest = DB.guests.find(g => Number(g.id) === Number(guestId));
+  if (!guest || !guest.phone) return;
+
+  const phoneClean = cleanPhoneNumberForWhatsapp(guest.phone);
+  const igUsername = getInstagramUsername(guest.instagram);
+
+  const container = document.getElementById('guestContactOptionsBody');
+  if (!container) return;
+
+  let html = `
+    <div style="font-weight: bold; font-size: 1.05rem; color: #1e293b; margin-bottom: 0.75rem; text-align: center;">
+      ${guest.firstName} ${guest.lastName}
+    </div>
+    
+    <!-- Mobil Arama -->
+    <a href="tel:${guest.phone}" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px; color: #3b82f6;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+      Mobil Arama
+    </a>
+    
+    <!-- WhatsApp Arama -->
+    <a href="whatsapp://call?phone=${phoneClean}" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 10px; color: #22c55e;"><path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/></svg>
+      WhatsApp Arama
+    </a>
+    
+    <!-- WhatsApp Mesaj -->
+    <a href="https://wa.me/${phoneClean}" target="_blank" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 10px; color: #22c55e;"><path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/></svg>
+      WhatsApp Mesaj
+    </a>
+  `;
+
+  if (guest.instagram && igUsername) {
+    html += `
+      <!-- Instagram DM Mesaj -->
+      <a href="https://instagram.com/direct/t/${igUsername}" target="_blank" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px; color: #ec4899;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+        Instagram DM Mesaj
+      </a>
+    `;
+  }
+
+  container.innerHTML = html;
+  openModal('guestContactModal');
 }
 
 async function saveGuest(e) {
@@ -2405,9 +2482,10 @@ window.toggleListboxItem = toggleListboxItem;
 window.selectListboxItem = selectListboxItem;
 window.handleVanillaProfileUpload = handleVanillaProfileUpload;
 window.handleVanillaGalleryUpload = handleVanillaGalleryUpload;
-window.removeVanillaProfilePicture = removeVanillaProfilePicture;
 window.removeVanillaGalleryPhoto = removeVanillaGalleryPhoto;
 window.populateBirthdateDropdowns = populateBirthdateDropdowns;
+window.addVanillaGuestRelationById = addVanillaGuestRelationById;
+window.openGuestContactModal = openGuestContactModal;
 window.filterVanillaGuestRelations = filterVanillaGuestRelations;
 window.addVanillaGuestRelation = addVanillaGuestRelation;
 window.removeVanillaGuestRelation = removeVanillaGuestRelation;

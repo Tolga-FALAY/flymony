@@ -2,10 +2,28 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import store from '../store';
 
+const cleanPhoneNumberForWhatsapp = (phone) => {
+  if (!phone) return '';
+  let cleaned = phone.replace(/\D/g, ''); // strip non-numeric
+  if (cleaned.length === 10 && cleaned.startsWith('5')) {
+    cleaned = '90' + cleaned;
+  } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+    cleaned = '90' + cleaned.substring(1);
+  }
+  return cleaned;
+};
+
+const getInstagramUsername = (url) => {
+  if (!url) return '';
+  const match = url.match(/(?:instagram\.com\/|instagr\.am\/)([a-zA-Z0-9_\.]+)/i);
+  return match ? match[1] : '';
+};
+
 export default function Guests() {
   const [guests, setGuests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState(null);
+  const [contactGuest, setContactGuest] = useState(null);
 
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
@@ -573,7 +591,18 @@ export default function Guests() {
                     <span className="guest-name-text">{guest.FullName}</span>
                   </div>
                 </td>
-                <td data-label="Telefon">{guest.PhoneNumber || '-'}</td>
+                <td data-label="Telefon">
+                  {guest.PhoneNumber ? (
+                    <span
+                      style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={() => setContactGuest(guest)}
+                    >
+                      {guest.PhoneNumber}
+                    </span>
+                  ) : (
+                    '-'
+                  )}
+                </td>
                 <td data-label="Instagram">
                   {guest.InstagramLink ? (
                     <a href={guest.InstagramLink} target="_blank" rel="noreferrer" className="instagram-link-badge">Profil</a>
@@ -830,10 +859,34 @@ export default function Guests() {
                             borderRadius: '6px',
                             margin: '0.2rem',
                             fontSize: '0.85rem',
-                            border: '1px solid #e2e8f0'
+                            border: '1px solid #e2e8f0',
+                            gap: '0.4rem'
                           }}
                         >
-                          {g.FullName}
+                          <span>{g.FullName}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            style={{
+                              padding: '0 0.25rem',
+                              fontSize: '0.75rem',
+                              minHeight: 'auto',
+                              borderRadius: '4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              height: '18px',
+                              lineHeight: 1
+                            }}
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                RelatedGuestIDs: [...(prev.RelatedGuestIDs || []), String(g.GuestID)]
+                              }));
+                            }}
+                          >
+                            İlişki Ekle
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -897,6 +950,87 @@ export default function Guests() {
           </div>
         </div>
       )}
+
+      {contactGuest && (() => {
+        const phoneClean = cleanPhoneNumberForWhatsapp(contactGuest.PhoneNumber);
+        const igUsername = getInstagramUsername(contactGuest.InstagramLink);
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1300 }}>
+            <div className="modal-content" style={{ maxWidth: '350px', padding: '1.5rem', borderRadius: '12px' }}>
+              <div className="modal-header" style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.2rem', margin: 0 }}>İletişim Seçenekleri</h2>
+                <button type="button" className="close-btn" onClick={() => setContactGuest(null)}>&times;</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#1e293b', marginBottom: '0.75rem', textAlign: 'center' }}>
+                  {contactGuest.FullName}
+                </div>
+                
+                {/* Mobil Arama */}
+                <a
+                  href={`tel:${contactGuest.PhoneNumber}`}
+                  className="btn btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                  onClick={() => setContactGuest(null)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{ marginRight: '10px', color: '#3b82f6' }}>
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  </svg>
+                  Mobil Arama
+                </a>
+                
+                {/* WhatsApp Arama */}
+                <a
+                  href={`whatsapp://call?phone=${phoneClean}`}
+                  className="btn btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                  onClick={() => setContactGuest(null)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '10px', color: '#22c55e' }}>
+                    <path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/>
+                  </svg>
+                  WhatsApp Arama
+                </a>
+                
+                {/* WhatsApp Mesaj */}
+                <a
+                  href={`https://wa.me/${phoneClean}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                  onClick={() => setContactGuest(null)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '10px', color: '#22c55e' }}>
+                    <path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/>
+                  </svg>
+                  WhatsApp Mesaj
+                </a>
+                
+                {/* Instagram DM Mesaj */}
+                {contactGuest.InstagramLink && igUsername && (
+                  <a
+                    href={`https://instagram.com/direct/t/${igUsername}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-outline"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                    onClick={() => setContactGuest(null)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{ marginRight: '10px', color: '#ec4899' }}>
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                    Instagram DM Mesaj
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
