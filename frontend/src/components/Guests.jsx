@@ -40,6 +40,29 @@ export default function Guests() {
     RelatedGuestIDs: []
   });
 
+  const getIndirectRelations = () => {
+    if (!formData.RelatedGuestIDs || formData.RelatedGuestIDs.length === 0) return [];
+    
+    const indirectIds = new Set();
+    
+    formData.RelatedGuestIDs.forEach(directId => {
+      const directGuest = guests.find(g => Number(g.GuestID) === Number(directId));
+      if (directGuest && directGuest.RelatedGuestIDs) {
+        directGuest.RelatedGuestIDs.forEach(indirectId => {
+          const indirectIdStr = String(indirectId);
+          // Exclude self (the editing guest)
+          if (editingGuest && String(editingGuest.GuestID) === indirectIdStr) return;
+          // Exclude direct relations of the editing guest
+          if (formData.RelatedGuestIDs.includes(indirectIdStr)) return;
+          
+          indirectIds.add(Number(indirectId));
+        });
+      }
+    });
+    
+    return Array.from(indirectIds).map(id => guests.find(g => g.GuestID === id)).filter(Boolean);
+  };
+
   const profileCameraInputRef = useRef(null);
   const profileBrowseInputRef = useRef(null);
   const galleryCameraInputRef = useRef(null);
@@ -723,6 +746,35 @@ export default function Guests() {
                     </div>
                   )}
                 </div>
+
+                {/* Dolaylı İlişkili Misafirler */}
+                {getIndirectRelations().length > 0 && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.25rem', fontWeight: '500' }}>
+                      Dolaylı İlişkiler (Aynı Masada Bulunanlar):
+                    </div>
+                    <div className="listbox-container" style={{ minHeight: '40px', maxHeight: '100px', overflowY: 'auto', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.25rem' }}>
+                      {getIndirectRelations().map(g => (
+                        <div
+                          key={g.GuestID}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            background: '#f1f5f9',
+                            color: '#64748b', // sönük gri renk
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '6px',
+                            margin: '0.2rem',
+                            fontSize: '0.85rem',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          {g.FullName}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input

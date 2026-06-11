@@ -1046,6 +1046,8 @@ function renderVanillaGuestRelationsList() {
 
   if (vanillaRelatedGuestIDs.length === 0) {
     container.innerHTML = `<div style="color: #64748b; padding: 0.5rem; text-align: center; font-size: 0.9rem;">Henüz ilişkili misafir eklenmemiş.</div>`;
+    const indirectGroup = document.getElementById('guestIndirectRelationsGroup');
+    if (indirectGroup) indirectGroup.style.display = 'none';
     return;
   }
 
@@ -1059,6 +1061,43 @@ function renderVanillaGuestRelationsList() {
       <button type="button" onclick="removeVanillaGuestRelation(${g.id})" style="border: none; background: transparent; color: #ef4444; font-size: 1.1rem; cursor: pointer; margin-left: 0.5rem; padding: 0; line-height: 1; display: flex; align-items: center;">&times;</button>
     </div>
   `).join('');
+
+  // Calculate indirect relations
+  const currentGuestId = document.getElementById('guestID').value;
+  const indirectIds = new Set();
+  
+  vanillaRelatedGuestIDs.forEach(directId => {
+    const directGuest = DB.guests.find(g => Number(g.id) === Number(directId));
+    if (directGuest && directGuest.relatedGuestIDs) {
+      directGuest.relatedGuestIDs.forEach(indirectId => {
+        const idNum = Number(indirectId);
+        // Exclude self
+        if (currentGuestId && Number(currentGuestId) === idNum) return;
+        // Exclude direct relations of the current guest
+        if (vanillaRelatedGuestIDs.includes(idNum)) return;
+        
+        indirectIds.add(idNum);
+      });
+    }
+  });
+
+  const indirectGuests = Array.from(indirectIds).map(id => DB.guests.find(g => Number(g.id) === Number(id))).filter(Boolean);
+  
+  const indirectGroup = document.getElementById('guestIndirectRelationsGroup');
+  const indirectContainer = document.getElementById('guestIndirectRelationsContainer');
+  
+  if (indirectGroup && indirectContainer) {
+    if (indirectGuests.length > 0) {
+      indirectGroup.style.display = 'block';
+      indirectContainer.innerHTML = indirectGuests.map(g => `
+        <div style="display: inline-flex; align-items: center; background: #f1f5f9; color: #64748b; padding: 0.2rem 0.5rem; border-radius: 6px; margin: 0.25rem; font-size: 0.85rem; border: 1px solid #e2e8f0;">
+          <span>${g.firstName} ${g.lastName}</span>
+        </div>
+      `).join('');
+    } else {
+      indirectGroup.style.display = 'none';
+    }
+  }
 }
 
 async function saveGuest(e) {

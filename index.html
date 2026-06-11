@@ -626,6 +626,13 @@
           <div id="guestRelationsContainer" class="listbox-container" style="min-height: 60px; max-height: 120px; overflow-y: auto; margin-bottom: 0.5rem;">
             <!-- Dinamik doldurulacak -->
           </div>
+          <!-- Dolaylı ilişkiler için yeni bir alan -->
+          <div id="guestIndirectRelationsGroup" style="margin-bottom: 0.5rem; display: none;">
+            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem; font-weight: 500;">Dolaylı İlişkiler (Aynı Masada Bulunanlar):</div>
+            <div id="guestIndirectRelationsContainer" class="listbox-container" style="min-height: 40px; max-height: 100px; overflow-y: auto; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 0.25rem;">
+              <!-- Dinamik doldurulacak -->
+            </div>
+          </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <input type="text" id="guestRelationSearch" placeholder="İlişkili misafir ara..." oninput="filterVanillaGuestRelations()" style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
             <select id="guestRelationSelect" style="flex: 1.5; margin: 0; padding: 0.5rem; font-size: 0.9rem; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; background: white;">
