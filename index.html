@@ -401,6 +401,14 @@
           <input type="text" id="songTitle" required>
         </div>
         <div class="form-group">
+          <label>Sanatçılar</label>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <input type="text" id="artistSearchInput" placeholder="Sanatçı ara..." style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+            <button type="button" class="btn btn-outline" onclick="openArtistModalFromSongModal()" style="padding: 0.5rem 1rem; font-weight: bold; font-size: 1.1rem; line-height: 1;">+</button>
+          </div>
+          <div id="songArtistContainer" class="checkbox-list-container"></div>
+        </div>
+        <div class="form-group">
           <label>Yılı</label>
           <input type="number" id="songYear" placeholder="Örn: 2005">
         </div>
@@ -472,14 +480,6 @@
             </div>
             <div id="songLyricsRich" contenteditable="true" class="rich-editor-content" placeholder="Akorları, sözleri ve notları buraya yazın veya yapıştırın. Akor olmasını istediğiniz kelimeleri seçip yukarıdan 'Akor (Kırmızı)' butonuna basın. Yazı tipi sabit genişlikli (monospace) olduğunda akorlar düzgün hizalanır."></div>
           </div>
-        </div>
-        <div class="form-group">
-          <label>Sanatçılar</label>
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-            <input type="text" id="artistSearchInput" placeholder="Sanatçı ara..." style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
-            <button type="button" class="btn btn-outline" onclick="openArtistModalFromSongModal()" style="padding: 0.5rem 1rem; font-weight: bold; font-size: 1.1rem; line-height: 1;">+</button>
-          </div>
-          <div id="songArtistContainer" class="checkbox-list-container"></div>
         </div>
         <div class="form-group">
           <label>Ses Kaydı</label>

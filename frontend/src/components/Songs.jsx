@@ -832,6 +832,40 @@ export default function Songs() {
                 <input type="text" name="SongTitle" value={formData.SongTitle} onChange={handleChange} required />
               </div>
               <div className="form-group">
+                <label>Sanatçılar (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Sanatçı ara..."
+                    value={artistSearch}
+                    onChange={(e) => setArtistSearch(e.target.value)}
+                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setIsArtistModalOpen(true)}
+                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
+                  >
+                    +
+                  </button>
+                </div>
+                <select multiple name="ArtistIDs" value={formData.ArtistIDs} onChange={handleArtistChange} style={{ height: '100px' }}>
+                  {artists.map(artist => {
+                    const isVisible = (artist.ArtistName || '').toLocaleLowerCase('tr-TR').includes(artistSearch.toLocaleLowerCase('tr-TR'));
+                    return (
+                      <option 
+                        key={artist.ArtistID} 
+                        value={String(artist.ArtistID)}
+                        style={{ display: isVisible ? 'block' : 'none' }}
+                      >
+                        {artist.ArtistName}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Yılı</label>
                 <input type="number" name="SongYear" value={formData.SongYear} onChange={handleChange} placeholder="Örn: 2005" />
               </div>
@@ -959,40 +993,6 @@ export default function Songs() {
               <div className="form-group">
                 <label>Süre (örn: 3:45)</label>
                 <input type="text" name="Duration" value={formData.Duration} onChange={handleChange} />
-              </div>
-              <div className="form-group">
-                <label>Sanatçılar (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <input
-                    type="text"
-                    placeholder="Sanatçı ara..."
-                    value={artistSearch}
-                    onChange={(e) => setArtistSearch(e.target.value)}
-                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={() => setIsArtistModalOpen(true)}
-                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
-                  >
-                    +
-                  </button>
-                </div>
-                <select multiple name="ArtistIDs" value={formData.ArtistIDs} onChange={handleArtistChange} style={{ height: '100px' }}>
-                  {artists.map(artist => {
-                    const isVisible = (artist.ArtistName || '').toLocaleLowerCase('tr-TR').includes(artistSearch.toLocaleLowerCase('tr-TR'));
-                    return (
-                      <option 
-                        key={artist.ArtistID} 
-                        value={String(artist.ArtistID)}
-                        style={{ display: isVisible ? 'block' : 'none' }}
-                      >
-                        {artist.ArtistName}
-                      </option>
-                    );
-                  })}
-                </select>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
