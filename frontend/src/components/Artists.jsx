@@ -145,7 +145,7 @@ export default function Artists() {
                   {renderSortArrow('ArtistName')}
                 </span>
               </th>
-              <th style={{width: '150px'}}>İşlemler</th>
+              <th style={{width: '150px', textAlign: 'right'}}>İşlemler</th>
             </tr>
           </thead>
           <tbody>

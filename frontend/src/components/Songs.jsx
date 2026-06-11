@@ -162,6 +162,15 @@ function escapeHTML(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function hasLyricsContent(html) {
+  if (!html) return false;
+  const clean = html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, '')
+    .replace(/[\s\uFEFF\xA0]+/g, '');
+  return clean.length > 0;
+}
+
 export default function Songs() {
   const [songs, setSongs] = useState([]);
   const [artists, setArtists] = useState([]);
@@ -770,7 +779,7 @@ export default function Songs() {
                   {renderSortArrow('SongYear')}
                 </span>
               </th>
-              <th style={{ width: '150px' }}>İşlemler</th>
+              <th style={{ width: '220px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -795,7 +804,9 @@ export default function Songs() {
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
                 <td data-label="Yıl">{song.SongYear || '-'}</td>
                 <td data-label="İşlemler" className="action-btns">
-                  <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Akorlar</button>
+                  {hasLyricsContent(song.Lyrics) && (
+                    <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Akorlar</button>
+                  )}
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
                 </td>

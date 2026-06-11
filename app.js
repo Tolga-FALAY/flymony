@@ -1111,6 +1111,15 @@ async function deleteGuest(id) {
   }
 }
 
+function hasLyricsContent(html) {
+  if (!html) return false;
+  const clean = html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, '')
+    .replace(/[\s\uFEFF\xA0]+/g, '');
+  return clean.length > 0;
+}
+
 // ----------------- SONGS -----------------
 function renderSongs() {
   const filteredSongs = DB.songs.filter(song => {
@@ -1213,6 +1222,10 @@ function renderSongs() {
       ? `<button type="button" class="audio-play-btn" onclick="playVanillaSongAudio(event, '${song.audioPath}', '${song.title.replace(/'/g, "\\'")}')" title="Ses Kaydını Oynat" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: 0.5rem; font-size: 1.1rem; line-height: 1;">▶️</button>`
       : '';
 
+    const chordsBtnHtml = hasLyricsContent(song.lyrics)
+      ? `<button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Akorlar</button>`
+      : '';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="Şarkı Adı">
@@ -1224,7 +1237,7 @@ function renderSongs() {
       <td data-label="Sanatçılar">${artistNames || '-'}</td>
       <td data-label="Yıl">${song.year || '-'}</td>
       <td data-label="İşlemler" class="action-btns">
-        <button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Akorlar</button>
+        ${chordsBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSong(${song.id})">Sil</button>
       </td>
