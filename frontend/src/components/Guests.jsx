@@ -713,9 +713,73 @@ export default function Guests() {
                 </div>
               </div>
 
+              {/* Notes Field */}
+              <div className="form-group">
+                <label>Notlar</label>
+                <textarea
+                  name="Notes"
+                  value={formData.Notes}
+                  onChange={handleChange}
+                  rows="4"
+                  placeholder="Misafir hakkında özel notlar, tercihler..."
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              {/* Photos Gallery Section */}
+              <div className="form-group gallery-photos-section" style={{marginTop: '1.5rem'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem'}}>
+                  <label style={{margin: 0}}>Misafir ile Çekilmiş Fotoğraflar</label>
+                  <div style={{display: 'flex', gap: '0.5rem'}}>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => galleryCameraInputRef.current?.click()}>
+                      📷 Fotoğraf Çek
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => galleryBrowseInputRef.current?.click()}>
+                      📂 Görsel Ekle
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={pasteGalleryPhoto}>
+                      📋 Yapıştır
+                    </button>
+                  </div>
+                </div>
+
+                <input 
+                  type="file" 
+                  ref={galleryCameraInputRef} 
+                  accept="image/*" 
+                  capture="environment" 
+                  multiple 
+                  style={{display: 'none'}} 
+                  onChange={handleGalleryPhotosUpload} 
+                />
+                <input 
+                  type="file" 
+                  ref={galleryBrowseInputRef} 
+                  accept="image/*" 
+                  multiple 
+                  style={{display: 'none'}} 
+                  onChange={handleGalleryPhotosUpload} 
+                />
+
+                {/* Previews Grid */}
+                <div className="gallery-previews-grid">
+                  {formData.Photos && formData.Photos.map((photo, index) => (
+                    <div key={index} className="gallery-preview-item">
+                      <img src={photo} alt={`Galeri Önizleme ${index + 1}`} />
+                      <button type="button" className="gallery-preview-delete-badge" onClick={() => removeGalleryPhoto(index)} title="Fotoğrafı Sil">&times;</button>
+                    </div>
+                  ))}
+                  {(!formData.Photos || formData.Photos.length === 0) && (
+                    <div className="gallery-empty-placeholder">
+                      <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* İlişkili Misafirler Field */}
               <div className="form-group">
-                <label>İlişkili Misafirler (Aynı Masada Sahnede Bulunanlar)</label>
+                <label>İlişkili Misafirler</label>
                 <div className="listbox-container" style={{ minHeight: '60px', maxHeight: '120px', overflowY: 'auto', marginBottom: '0.5rem' }}>
                   {formData.RelatedGuestIDs && formData.RelatedGuestIDs.length > 0 ? (
                     formData.RelatedGuestIDs.map(id => {
@@ -751,7 +815,7 @@ export default function Guests() {
                 {getIndirectRelations().length > 0 && (
                   <div style={{ marginBottom: '0.75rem' }}>
                     <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Dolaylı İlişkiler (Aynı Masada Bulunanlar):
+                      Dolaylı İlişkiler
                     </div>
                     <div className="listbox-container" style={{ minHeight: '40px', maxHeight: '100px', overflowY: 'auto', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.25rem' }}>
                       {getIndirectRelations().map(g => (
@@ -822,70 +886,6 @@ export default function Guests() {
                   >
                     +
                   </button>
-                </div>
-              </div>
-
-              {/* Notes Field */}
-              <div className="form-group">
-                <label>Notlar</label>
-                <textarea
-                  name="Notes"
-                  value={formData.Notes}
-                  onChange={handleChange}
-                  rows="4"
-                  placeholder="Misafir hakkında özel notlar, tercihler..."
-                  style={{ resize: 'vertical' }}
-                />
-              </div>
-
-              {/* Photos Gallery Section */}
-              <div className="form-group gallery-photos-section" style={{marginTop: '1.5rem'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem'}}>
-                  <label style={{margin: 0}}>Misafir ile Çekilmiş Fotoğraflar</label>
-                  <div style={{display: 'flex', gap: '0.5rem'}}>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => galleryCameraInputRef.current?.click()}>
-                      📷 Fotoğraf Çek
-                    </button>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => galleryBrowseInputRef.current?.click()}>
-                      📂 Görsel Ekle
-                    </button>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={pasteGalleryPhoto}>
-                      📋 Yapıştır
-                    </button>
-                  </div>
-                </div>
-
-                <input 
-                  type="file" 
-                  ref={galleryCameraInputRef} 
-                  accept="image/*" 
-                  capture="environment" 
-                  multiple 
-                  style={{display: 'none'}} 
-                  onChange={handleGalleryPhotosUpload} 
-                />
-                <input 
-                  type="file" 
-                  ref={galleryBrowseInputRef} 
-                  accept="image/*" 
-                  multiple 
-                  style={{display: 'none'}} 
-                  onChange={handleGalleryPhotosUpload} 
-                />
-
-                {/* Previews Grid */}
-                <div className="gallery-previews-grid">
-                  {formData.Photos && formData.Photos.map((photo, index) => (
-                    <div key={index} className="gallery-preview-item">
-                      <img src={photo} alt={`Galeri Önizleme ${index + 1}`} />
-                      <button type="button" className="gallery-preview-delete-badge" onClick={() => removeGalleryPhoto(index)} title="Fotoğrafı Sil">&times;</button>
-                    </div>
-                  ))}
-                  {(!formData.Photos || formData.Photos.length === 0) && (
-                    <div className="gallery-empty-placeholder">
-                      <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
