@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
 
@@ -138,6 +139,13 @@ export default function Guests() {
     };
   }, [isModalOpen, activePasteSection]);
 
+  useEffect(() => {
+    const handleOpenExternal = () => {
+      openModal();
+    };
+    window.addEventListener('open-guest-modal-from-external', handleOpenExternal);
+    return () => window.removeEventListener('open-guest-modal-from-external', handleOpenExternal);
+  }, []);
 
   const openModal = (guest = null) => {
     setRelationSearch('');
@@ -181,6 +189,9 @@ export default function Guests() {
     setEditingGuest(null);
     setRelationSearch('');
     setSelectedRelationId('');
+    if (typeof window.onGuestCreated === 'function') {
+      window.onGuestCreated = null;
+    }
   };
 
   const handleChange = (e) => {
@@ -379,6 +390,10 @@ export default function Guests() {
           CreatedAt: new Date().toISOString(),
           UpdatedAt: new Date().toISOString()
         });
+        if (typeof window.onGuestCreated === 'function') {
+          window.onGuestCreated(result.GuestID);
+          window.onGuestCreated = null;
+        }
       }
       closeModal();
     } catch (err) {
@@ -629,7 +644,7 @@ export default function Guests() {
         </table>
       </div>
 
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="modal-overlay">
           <div className="modal-content" style={{maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto'}}>
             <div className="modal-header">
@@ -948,7 +963,8 @@ export default function Guests() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {contactGuest && (() => {

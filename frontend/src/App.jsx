@@ -135,11 +135,11 @@ function App() {
           </span>
         </button>
         <div className="content-panel">
-          {activeTab === 'requests'         && <Requests />}
-          {activeTab === 'songs'            && <Songs />}
-          {activeTab === 'artists'          && <Artists />}
-          {activeTab === 'guests'           && <Guests />}
-          {activeTab === 'otherOperations'  && <OtherOperations />}
+          <div style={{ display: activeTab === 'requests' ? 'block' : 'none' }}><Requests /></div>
+          <div style={{ display: activeTab === 'songs' ? 'block' : 'none' }}><Songs /></div>
+          <div style={{ display: activeTab === 'artists' ? 'block' : 'none' }}><Artists /></div>
+          <div style={{ display: activeTab === 'guests' ? 'block' : 'none' }}><Guests /></div>
+          <div style={{ display: activeTab === 'otherOperations' ? 'block' : 'none' }}><OtherOperations /></div>
         </div>
       </main>
     </div>

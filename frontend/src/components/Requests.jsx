@@ -37,10 +37,7 @@ export default function Requests() {
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [songSearch, setSongSearch] = useState('');
 
-  const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
   const [isSongModalOpen, setIsSongModalOpen] = useState(false);
-
-  const [newGuestData, setNewGuestData] = useState({ FirstName: '', LastName: '', PhoneNumber: '' });
   const [newSongData, setNewSongData] = useState({ SongTitle: '', ArtistIDs: [] });
   const [songArtistSearch, setSongArtistSearch] = useState('');
 
@@ -98,52 +95,6 @@ export default function Requests() {
     setGuestSearch('');
     setSongSearch('');
     setSelectedGuestId('');
-  };
-
-  const handleCreateGuestInline = async (e) => {
-    e.preventDefault();
-    const fName = newGuestData.FirstName.trim();
-    const lName = newGuestData.LastName.trim();
-    if (!fName || !lName) {
-      alert("Ad ve Soyad alanları boş bırakılamaz!");
-      return;
-    }
-
-    const isDuplicate = guests.some(g =>
-      g.FirstName.trim().toLowerCase() === fName.toLowerCase() &&
-      g.LastName.trim().toLowerCase() === lName.toLowerCase()
-    );
-    if (isDuplicate) {
-      alert("Bu isimde bir misafir zaten kayıtlı!");
-      return;
-    }
-
-    try {
-      const res = await api.createGuest({
-        FirstName: fName,
-        LastName: lName,
-        PhoneNumber: newGuestData.PhoneNumber
-      });
-      // Firestore okuma YOK — store'a ekle, event ile lokal state güncellenir
-      store.addGuest({
-        GuestID: res.GuestID,
-        FirstName: fName,
-        LastName: lName,
-        FullName: `${fName} ${lName}`.trim(),
-        PhoneNumber: newGuestData.PhoneNumber || ''
-      });
-
-      setFormData(prev => ({
-        ...prev,
-        GuestIDs: [...prev.GuestIDs, String(res.GuestID)]
-      }));
-
-      setNewGuestData({ FirstName: '', LastName: '', PhoneNumber: '' });
-      setGuestSearch('');
-      setIsGuestModalOpen(false);
-    } catch (err) {
-      alert("Misafir ekleme hatası: " + err.message);
-    }
   };
 
   const handleCreateSongInline = async (e) => {
@@ -696,7 +647,15 @@ export default function Requests() {
                   <button
                     type="button"
                     className="btn btn-outline"
-                    onClick={() => setIsGuestModalOpen(true)}
+                    onClick={() => {
+                      window.onGuestCreated = (guestId) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          GuestIDs: [...(prev.GuestIDs || []), String(guestId)]
+                        }));
+                      };
+                      window.dispatchEvent(new CustomEvent('open-guest-modal-from-external'));
+                    }}
                     style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     title="Yeni Misafir Ekle"
                   >
@@ -814,49 +773,6 @@ export default function Requests() {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
-                <button type="submit" className="btn btn-primary">Kaydet</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isGuestModalOpen && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Yeni Misafir Ekle</h2>
-              <button className="close-btn" onClick={() => setIsGuestModalOpen(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleCreateGuestInline}>
-              <div className="form-group">
-                <label>Ad</label>
-                <input
-                  type="text"
-                  value={newGuestData.FirstName}
-                  onChange={e => setNewGuestData({ ...newGuestData, FirstName: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Soyad</label>
-                <input
-                  type="text"
-                  value={newGuestData.LastName}
-                  onChange={e => setNewGuestData({ ...newGuestData, LastName: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Telefon</label>
-                <input
-                  type="text"
-                  value={newGuestData.PhoneNumber}
-                  onChange={e => setNewGuestData({ ...newGuestData, PhoneNumber: e.target.value })}
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setIsGuestModalOpen(false)}>İptal</button>
                 <button type="submit" className="btn btn-primary">Kaydet</button>
               </div>
             </form>
