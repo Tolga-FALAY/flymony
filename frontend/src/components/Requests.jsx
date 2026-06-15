@@ -34,6 +34,7 @@ export default function Requests() {
   const [tempStatusDate, setTempStatusDate] = useState('');
 
   const [guestSearch, setGuestSearch] = useState('');
+  const [selectedGuestId, setSelectedGuestId] = useState('');
   const [songSearch, setSongSearch] = useState('');
 
   const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
@@ -96,6 +97,7 @@ export default function Requests() {
     setEditingRequest(null);
     setGuestSearch('');
     setSongSearch('');
+    setSelectedGuestId('');
   };
 
   const handleCreateGuestInline = async (e) => {
@@ -232,11 +234,6 @@ export default function Requests() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     setTempStatusDate(`${year}-${month}-${day}T${hours}:${minutes}`);
-  };
-
-  const handleGuestChange = (e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-    setFormData({ ...formData, GuestIDs: selectedOptions });
   };
 
   const handleSubmit = async (e) => {
@@ -619,67 +616,92 @@ export default function Requests() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Misafirler (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <label>Misafirler</label>
+                <div className="listbox-container" style={{ minHeight: '60px', maxHeight: '120px', overflowY: 'auto', marginBottom: '0.5rem' }}>
+                  {formData.GuestIDs && formData.GuestIDs.length > 0 ? (
+                    formData.GuestIDs.map(id => {
+                      const g = guests.find(guestItem => guestItem.GuestID === Number(id));
+                      if (!g) return null;
+                      return (
+                        <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.95rem' }}>
+                          <span>{g.FullName}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px' }}
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                GuestIDs: prev.GuestIDs.filter(gId => String(gId) !== String(id))
+                              }));
+                            }}
+                          >
+                            Sil
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem', textAlign: 'center' }}>
+                      Henüz misafir eklenmemiş.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
                   <input
                     type="text"
                     placeholder="Misafir ara..."
                     value={guestSearch}
                     onChange={(e) => setGuestSearch(e.target.value)}
-                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                    style={{ flex: '0 1 30%', minWidth: '0', margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
                   />
+                  <select
+                    value={selectedGuestId}
+                    onChange={(e) => setSelectedGuestId(e.target.value)}
+                    style={{ flex: '0 1 45%', minWidth: '0', margin: 0, padding: '0.5rem', fontSize: '0.9rem', height: '38px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: 'white' }}
+                  >
+                    <option value="">Misafir Seçin...</option>
+                    {guests
+                      .filter(g => {
+                        if (formData.GuestIDs && formData.GuestIDs.includes(String(g.GuestID))) return false;
+                        return (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'));
+                      })
+                      .map(g => (
+                        <option key={g.GuestID} value={String(g.GuestID)}>
+                          {g.FullName}
+                        </option>
+                      ))
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => {
+                      if (!selectedGuestId) {
+                        alert("Lütfen listeden bir misafir seçin.");
+                        return;
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        GuestIDs: [...(prev.GuestIDs || []), String(selectedGuestId)]
+                      }));
+                      setSelectedGuestId('');
+                      setGuestSearch('');
+                    }}
+                  >
+                    +
+                  </button>
                   <button
                     type="button"
                     className="btn btn-outline"
                     onClick={() => setIsGuestModalOpen(true)}
-                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
+                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Yeni Misafir Ekle"
                   >
-                    +
+                    Yeni
                   </button>
-                </div>
-                <div className="listbox-container" style={{ height: '115px', maxHeight: '115px', overflowY: 'auto' }}>
-                  {guests
-                    .filter(g => {
-                      const isSelected = formData.GuestIDs.includes(String(g.GuestID));
-                      if (isSelected) return true;
-                      return (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'));
-                    })
-                    .sort((a, b) => {
-                      const aSel = formData.GuestIDs.includes(String(a.GuestID)) ? 1 : 0;
-                      const bSel = formData.GuestIDs.includes(String(b.GuestID)) ? 1 : 0;
-                      if (aSel !== bSel) return bSel - aSel;
-                      return (a.FullName || '').toLocaleLowerCase('tr-TR').localeCompare((b.FullName || '').toLocaleLowerCase('tr-TR'), 'tr');
-                    })
-                    .map(g => {
-                      const isSelected = formData.GuestIDs.includes(String(g.GuestID));
-                      return (
-                        <div
-                          key={g.GuestID}
-                          className={`listbox-item ${isSelected ? 'selected' : ''}`}
-                          onClick={() => {
-                            setFormData(prev => {
-                              const guestIdStr = String(g.GuestID);
-                              const isAlreadySelected = prev.GuestIDs.includes(guestIdStr);
-                              const newGuestIDs = isAlreadySelected
-                                ? prev.GuestIDs.filter(id => id !== guestIdStr)
-                                : [...prev.GuestIDs, guestIdStr];
-                              return { ...prev, GuestIDs: newGuestIDs };
-                            });
-                          }}
-                        >
-                          <span>{g.FullName}</span>
-                          {isSelected && <span style={{ fontSize: '0.8rem' }}>✓</span>}
-                        </div>
-                      );
-                    })
-                  }
-                  {guests.filter(g => {
-                    const isSelected = formData.GuestIDs.includes(String(g.GuestID));
-                    if (isSelected) return true;
-                    return (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'));
-                  }).length === 0 && (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem' }}>Misafir bulunamadı.</div>
-                  )}
                 </div>
               </div>
               <div className="form-group">
