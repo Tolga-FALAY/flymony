@@ -252,6 +252,7 @@ export default function Songs() {
   });
 
   const [artistSearch, setArtistSearch] = useState('');
+  const [selectedArtistId, setSelectedArtistId] = useState('');
   const [isArtistModalOpen, setIsArtistModalOpen] = useState(false);
   const [newArtistName, setNewArtistName] = useState('');
 
@@ -326,6 +327,7 @@ export default function Songs() {
     setIsModalOpen(false);
     setEditingSong(null);
     setArtistSearch('');
+    setSelectedArtistId('');
     if (editorRef.current) {
       editorRef.current.innerHTML = '';
     }
@@ -558,11 +560,6 @@ export default function Songs() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleArtistChange = (e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-    setFormData({ ...formData, ArtistIDs: selectedOptions });
   };
 
   const handleSubmit = async (e) => {
@@ -832,38 +829,93 @@ export default function Songs() {
                 <input type="text" name="SongTitle" value={formData.SongTitle} onChange={handleChange} required />
               </div>
               <div className="form-group">
-                <label>Sanatçılar (Birden fazla seçmek için CTRL/CMD basılı tutun)</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <label>Sanatçılar</label>
+                <div className="listbox-container" style={{ minHeight: '60px', maxHeight: '120px', overflowY: 'auto', marginBottom: '0.5rem' }}>
+                  {formData.ArtistIDs && formData.ArtistIDs.length > 0 ? (
+                    formData.ArtistIDs.map(id => {
+                      const a = artists.find(artistItem => artistItem.ArtistID === Number(id));
+                      if (!a) return null;
+                      return (
+                        <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.95rem' }}>
+                          <span>{a.ArtistName}</span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px' }}
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                ArtistIDs: prev.ArtistIDs.filter(aId => String(aId) !== String(id))
+                              }));
+                            }}
+                          >
+                            Sil
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '0.5rem', textAlign: 'center' }}>
+                      Henüz sanatçı eklenmemiş.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
                   <input
                     type="text"
                     placeholder="Sanatçı ara..."
                     value={artistSearch}
                     onChange={(e) => setArtistSearch(e.target.value)}
-                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                    style={{ flex: '0 1 30%', minWidth: '0', margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
                   />
+                  <select
+                    value={selectedArtistId}
+                    onChange={(e) => setSelectedArtistId(e.target.value)}
+                    style={{ flex: '0 1 45%', minWidth: '0', margin: 0, padding: '0.5rem', fontSize: '0.9rem', height: '38px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: 'white' }}
+                  >
+                    <option value="">Sanatçı Seçin...</option>
+                    {artists
+                      .filter(a => {
+                        if (formData.ArtistIDs && formData.ArtistIDs.includes(String(a.ArtistID))) return false;
+                        return (a.ArtistName || '').toLocaleLowerCase('tr-TR').includes(artistSearch.toLocaleLowerCase('tr-TR'));
+                      })
+                      .map(a => (
+                        <option key={a.ArtistID} value={String(a.ArtistID)}>
+                          {a.ArtistName}
+                        </option>
+                      ))
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => {
+                      if (!selectedArtistId) {
+                        alert("Lütfen listeden bir sanatçı seçin.");
+                        return;
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        ArtistIDs: [...(prev.ArtistIDs || []), String(selectedArtistId)]
+                      }));
+                      setSelectedArtistId('');
+                      setArtistSearch('');
+                    }}
+                  >
+                    +
+                  </button>
                   <button
                     type="button"
                     className="btn btn-outline"
                     onClick={() => setIsArtistModalOpen(true)}
-                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
+                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Yeni Sanatçı Ekle"
                   >
-                    +
+                    Yeni
                   </button>
                 </div>
-                <select multiple name="ArtistIDs" value={formData.ArtistIDs} onChange={handleArtistChange} style={{ height: '100px' }}>
-                  {artists.map(artist => {
-                    const isVisible = (artist.ArtistName || '').toLocaleLowerCase('tr-TR').includes(artistSearch.toLocaleLowerCase('tr-TR'));
-                    return (
-                      <option 
-                        key={artist.ArtistID} 
-                        value={String(artist.ArtistID)}
-                        style={{ display: isVisible ? 'block' : 'none' }}
-                      >
-                        {artist.ArtistName}
-                      </option>
-                    );
-                  })}
-                </select>
               </div>
               <div className="form-group">
                 <label>Yılı</label>
