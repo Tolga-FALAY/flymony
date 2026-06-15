@@ -33,11 +33,13 @@ export default function Guests() {
   const [filterName, setFilterName] = useState('');
   const [filterNotes, setFilterNotes] = useState('');
   const [filterBirthMonth, setFilterBirthMonth] = useState('');
+  const [filterIsMusician, setFilterIsMusician] = useState(false);
 
   const clearAllFilters = () => {
     setFilterName('');
     setFilterNotes('');
     setFilterBirthMonth('');
+    setFilterIsMusician(false);
   };
 
   // Paste section target configuration
@@ -504,6 +506,13 @@ export default function Guests() {
       }
     }
 
+    // 4. Musician filter
+    if (filterIsMusician) {
+      if (!guest.IsMusician) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -535,6 +544,19 @@ export default function Guests() {
               onChange={(e) => setFilterName(e.target.value)}
             />
           </div>
+          
+          {/* Musician Filter */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-end', marginBottom: '0.65rem', padding: '0.5rem 0.25rem', flex: '0 0 auto' }}>
+            <span style={{ fontSize: '1.25rem', filter: 'drop-shadow(0 2px 4px rgba(14, 165, 233, 0.2))', lineHeight: 1 }} title="Sadece Müzisyenler">🎵</span>
+            <input 
+              type="checkbox" 
+              id="filterGuestIsMusicianReact" 
+              checked={filterIsMusician}
+              onChange={(e) => setFilterIsMusician(e.target.checked)}
+              style={{ cursor: 'pointer', margin: 0, width: '18px', height: '18px' }}
+            />
+          </div>
+
           <div className="filter-item">
             <label htmlFor="filterGuestNotesReact">Notlar</label>
             <input 
