@@ -37,9 +37,7 @@ export default function Requests() {
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [songSearch, setSongSearch] = useState('');
 
-  const [isSongModalOpen, setIsSongModalOpen] = useState(false);
-  const [newSongData, setNewSongData] = useState({ SongTitle: '', ArtistIDs: [] });
-  const [songArtistSearch, setSongArtistSearch] = useState('');
+
 
   useEffect(() => {
     const syncFromStore = () => {
@@ -97,56 +95,7 @@ export default function Requests() {
     setSelectedGuestId('');
   };
 
-  const handleCreateSongInline = async (e) => {
-    e.preventDefault();
-    const title = newSongData.SongTitle.trim();
-    if (!title) {
-      alert("Şarkı adı boş olamaz!");
-      return;
-    }
 
-    const isDuplicate = songs.some(s => {
-      const titleMatch = s.SongTitle && s.SongTitle.trim().toLowerCase() === title.toLowerCase();
-      if (!titleMatch) return false;
-      const existingArtistIDs = s.ArtistIDs || [];
-      const newArtistIDs = newSongData.ArtistIDs.map(Number);
-      if (existingArtistIDs.length === 0 && newArtistIDs.length === 0) return true;
-      return newArtistIDs.some(id => existingArtistIDs.includes(id));
-    });
-
-    if (isDuplicate) {
-      alert("Bu şarkı zaten kayıtlı!");
-      return;
-    }
-
-    try {
-      const res = await api.createSong({
-        SongTitle: title,
-        ArtistIDs: newSongData.ArtistIDs.map(Number)
-      });
-      // Firestore okuma YOK — store'a ekle, event ile lokal state güncellenir
-      const artistNames = store.resolveArtistNames(newSongData.ArtistIDs.map(Number)) || '-';
-      store.addSong({
-        SongID: res.SongID,
-        SongTitle: title,
-        Duration: '',
-        ArtistIDs: newSongData.ArtistIDs.map(Number),
-        ArtistNames: artistNames
-      });
-
-      setFormData(prev => ({
-        ...prev,
-        SongID: String(res.SongID)
-      }));
-
-      setNewSongData({ SongTitle: '', ArtistIDs: [] });
-      setSongSearch('');
-      setSongArtistSearch('');
-      setIsSongModalOpen(false);
-    } catch (err) {
-      alert("Şarkı ekleme hatası: " + err.message);
-    }
-  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -665,21 +614,34 @@ export default function Requests() {
               </div>
               <div className="form-group">
                 <label>Şarkı Seçin</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', width: '100%', alignItems: 'center' }}>
                   <input
                     type="text"
                     placeholder="Şarkı ara..."
                     value={songSearch}
                     onChange={(e) => setSongSearch(e.target.value)}
-                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
+                    style={{ flex: 1, minWidth: '0', margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
                   />
                   <button
                     type="button"
                     className="btn btn-outline"
-                    onClick={() => setIsSongModalOpen(true)}
-                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', fontSize: '1.1rem', lineHeight: 1 }}
+                    onClick={() => {
+                      window.onSongCreated = (songId) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          SongID: String(songId)
+                        }));
+                        const newSong = store.songs.find(s => s.SongID === Number(songId));
+                        if (newSong) {
+                          setSongSearch(newSong.SongTitle);
+                        }
+                      };
+                      window.dispatchEvent(new CustomEvent('open-song-modal-from-external'));
+                    }}
+                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Yeni Şarkı Ekle"
                   >
-                    +
+                    Yeni
                   </button>
                 </div>
                 <div className="listbox-container" style={{ height: '115px', maxHeight: '115px', overflowY: 'auto' }}>
@@ -780,65 +742,7 @@ export default function Requests() {
         </div>
       )}
 
-      {isSongModalOpen && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Yeni Şarkı Ekle</h2>
-              <button className="close-btn" onClick={() => setIsSongModalOpen(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleCreateSongInline}>
-              <div className="form-group">
-                <label>Şarkı Adı</label>
-                <input
-                  type="text"
-                  value={newSongData.SongTitle}
-                  onChange={e => setNewSongData({ ...newSongData, SongTitle: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Sanatçılar (CTRL/CMD ile çoklu seçim, arama filtresi yapılabilir)</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <input
-                    type="text"
-                    placeholder="Sanatçı ara..."
-                    value={songArtistSearch}
-                    onChange={(e) => setSongArtistSearch(e.target.value)}
-                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
-                  />
-                </div>
-                <select
-                  multiple
-                  value={newSongData.ArtistIDs}
-                  onChange={e => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setNewSongData({ ...newSongData, ArtistIDs: selected });
-                  }}
-                  style={{ height: '100px' }}
-                >
-                  {artists.map(artist => {
-                    const isVisible = (artist.ArtistName || '').toLocaleLowerCase('tr-TR').includes(songArtistSearch.toLocaleLowerCase('tr-TR'));
-                    return (
-                      <option
-                        key={artist.ArtistID}
-                        value={String(artist.ArtistID)}
-                        style={{ display: isVisible ? 'block' : 'none' }}
-                      >
-                        {artist.ArtistName}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setIsSongModalOpen(false)}>İptal</button>
-                <button type="submit" className="btn btn-primary">Kaydet</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
       {isStatusDateModalOpen && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '380px', padding: '1.5rem' }}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
 
@@ -270,6 +271,14 @@ export default function Songs() {
     return () => window.removeEventListener('store-updated', syncFromStore);
   }, []);
 
+  useEffect(() => {
+    const handleOpenExternal = () => {
+      openModal();
+    };
+    window.addEventListener('open-song-modal-from-external', handleOpenExternal);
+    return () => window.removeEventListener('open-song-modal-from-external', handleOpenExternal);
+  }, []);
+
   const handleExecCommand = (command, value = null) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
@@ -336,6 +345,9 @@ export default function Songs() {
       mediaRecorderInstance.stop();
     }
     setIsRecording(false);
+    if (typeof window.onSongCreated === 'function') {
+      window.onSongCreated = null;
+    }
   };
 
   const openChordViewer = (song) => {
@@ -593,12 +605,19 @@ export default function Songs() {
     };
 
     try {
+      let savedSongId;
       if (editingSong) {
         await api.updateSong(editingSong.SongID, dataToSend);
+        savedSongId = editingSong.SongID;
       } else {
-        await api.createSong(dataToSend);
+        const res = await api.createSong(dataToSend);
+        savedSongId = res.SongID;
       }
       await store.load(true); // reload to get dynamic uploads path from backend
+      if (typeof window.onSongCreated === 'function') {
+        window.onSongCreated(savedSongId);
+        window.onSongCreated = null;
+      }
       closeModal();
     } catch (err) {
       alert(err.message);
@@ -816,7 +835,7 @@ export default function Songs() {
         </table>
       </div>
 
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
@@ -1052,10 +1071,11 @@ export default function Songs() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {isArtistModalOpen && (
+      {isArtistModalOpen && createPortal(
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content">
             <div className="modal-header">
@@ -1078,7 +1098,8 @@ export default function Songs() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* React Global Floating Player */}
