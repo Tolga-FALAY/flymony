@@ -149,6 +149,7 @@ const store = {
       BirthDateYear:  g.BirthDateYear  || '',
       Photos:         g.Photos         || [],
       RelatedGuestIDs: (g.RelatedGuestIDs || []).map(Number),
+      IsMusician:     g.IsMusician ? true : false,
       CreatedAt:      g.CreatedAt      || new Date().toISOString(),
       UpdatedAt:      g.UpdatedAt      || new Date().toISOString()
     }));

@@ -96,6 +96,7 @@ export const api = {
       BirthDateYear:  g.BirthDateYear || '',
       Photos:         g.Photos || [],
       RelatedGuestIDs: (g.RelatedGuestIDs || []).map(Number),
+      IsMusician:     g.IsMusician ? true : false,
       CreatedAt:      g.CreatedAt || '',
       UpdatedAt:      g.UpdatedAt || ''
     }));

@@ -337,7 +337,7 @@ app.get('/api/guests', (req, res) => {
 
 app.post('/api/guests', (req, res) => {
     try {
-        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, RelatedGuestIDs } = req.body;
+        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, RelatedGuestIDs, IsMusician } = req.body;
         if (!FirstName || !FirstName.trim() || !LastName || !LastName.trim()) {
             return res.status(400).json({ error: 'Ad ve soyad alanları boş bırakılamaz!' });
         }
@@ -348,8 +348,8 @@ app.post('/api/guests', (req, res) => {
 
         const insertGuestTransaction = db.transaction(() => {
             const info = db.prepare(`
-                INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, IsMusician) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 FirstName, 
                 LastName, 
@@ -360,7 +360,8 @@ app.post('/api/guests', (req, res) => {
                 BirthDateDay ? Number(BirthDateDay) : null, 
                 BirthDateMonth ? Number(BirthDateMonth) : null, 
                 BirthDateYear ? Number(BirthDateYear) : null, 
-                Photos ? JSON.stringify(Photos) : '[]'
+                Photos ? JSON.stringify(Photos) : '[]',
+                IsMusician ? 1 : 0
             );
             const guestId = info.lastInsertRowid;
             
@@ -383,7 +384,7 @@ app.post('/api/guests', (req, res) => {
 
 app.put('/api/guests/:id', (req, res) => {
     try {
-        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, RelatedGuestIDs } = req.body;
+        const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, RelatedGuestIDs, IsMusician } = req.body;
         const guestId = req.params.id;
         if (!FirstName || !FirstName.trim() || !LastName || !LastName.trim()) {
             return res.status(400).json({ error: 'Ad ve soyad alanları boş bırakılamaz!' });
@@ -396,7 +397,7 @@ app.put('/api/guests/:id', (req, res) => {
         const updateGuestTransaction = db.transaction(() => {
             db.prepare(`
                 UPDATE Guests 
-                SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ?, UpdatedAt = CURRENT_TIMESTAMP 
+                SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ?, IsMusician = ?, UpdatedAt = CURRENT_TIMESTAMP 
                 WHERE GuestID = ?
             `).run(
                 FirstName, 
@@ -409,6 +410,7 @@ app.put('/api/guests/:id', (req, res) => {
                 BirthDateMonth ? Number(BirthDateMonth) : null, 
                 BirthDateYear ? Number(BirthDateYear) : null, 
                 Photos ? JSON.stringify(Photos) : '[]',
+                IsMusician ? 1 : 0,
                 guestId
             );
 

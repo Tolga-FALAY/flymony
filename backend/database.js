@@ -48,6 +48,7 @@ export const initializeDB = () => {
             BirthDateMonth INTEGER,
             BirthDateYear INTEGER,
             Photos TEXT,
+            IsMusician INTEGER DEFAULT 0,
             CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
             UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -179,6 +180,7 @@ export const initializeDB = () => {
             { name: 'BirthDateMonth', type: 'INTEGER' },
             { name: 'BirthDateYear', type: 'INTEGER' },
             { name: 'Photos', type: 'TEXT' },
+            { name: 'IsMusician', type: 'INTEGER DEFAULT 0' },
             { name: 'CreatedAt', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
             { name: 'UpdatedAt', type: 'DATETIME DEFAULT CURRENT_TIMESTAMP' }
         ];

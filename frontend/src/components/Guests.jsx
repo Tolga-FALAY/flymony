@@ -56,7 +56,8 @@ export default function Guests() {
     BirthDateMonth: '',
     BirthDateYear: '',
     Photos: [],
-    RelatedGuestIDs: []
+    RelatedGuestIDs: [],
+    IsMusician: false
   });
 
   const getIndirectRelations = () => {
@@ -163,7 +164,8 @@ export default function Guests() {
         BirthDateMonth: guest.BirthDateMonth || '',
         BirthDateYear: guest.BirthDateYear || '',
         Photos: guest.Photos || [],
-        RelatedGuestIDs: (guest.RelatedGuestIDs || []).map(String)
+        RelatedGuestIDs: (guest.RelatedGuestIDs || []).map(String),
+        IsMusician: guest.IsMusician ? true : false
       });
     } else {
       setEditingGuest(null);
@@ -178,7 +180,8 @@ export default function Guests() {
         BirthDateMonth: '',
         BirthDateYear: '',
         Photos: [],
-        RelatedGuestIDs: []
+        RelatedGuestIDs: [],
+        IsMusician: false
       });
     }
     setIsModalOpen(true);
@@ -371,6 +374,7 @@ export default function Guests() {
     try {
       const payload = {
         ...formData,
+        IsMusician: formData.IsMusician ? 1 : 0,
         RelatedGuestIDs: (formData.RelatedGuestIDs || []).map(Number)
       };
       if (editingGuest) {
@@ -378,6 +382,7 @@ export default function Guests() {
         // Store'u güncelle — Firestore okuma YOK
         store.updateGuest(editingGuest.GuestID, {
           ...payload,
+          IsMusician: formData.IsMusician,
           GuestID:  editingGuest.GuestID,
           FullName: `${payload.FirstName} ${payload.LastName}`.trim()
         });
@@ -385,6 +390,7 @@ export default function Guests() {
         const result = await api.createGuest(payload);
         store.addGuest({
           ...payload,
+          IsMusician: formData.IsMusician,
           GuestID:  result.GuestID,
           FullName: `${payload.FirstName} ${payload.LastName}`.trim(),
           CreatedAt: new Date().toISOString(),
@@ -603,7 +609,17 @@ export default function Guests() {
                         </div>
                       )}
                     </div>
-                    <span className="guest-name-text">{guest.FullName}</span>
+                     <span className="guest-name-text">
+                      {guest.FullName}
+                      {guest.IsMusician && (
+                        <span 
+                          style={{ marginLeft: '0.45rem', display: 'inline-flex', alignItems: 'center', color: 'var(--primary)', filter: 'drop-shadow(0 2px 4px rgba(14, 165, 233, 0.2))' }} 
+                          title="Müzisyen"
+                        >
+                          🎵
+                        </span>
+                      )}
+                    </span>
                   </div>
                 </td>
                 <td data-label="Telefon">
@@ -768,6 +784,19 @@ export default function Guests() {
                   placeholder="Misafir hakkında özel notlar, tercihler..."
                   style={{ resize: 'vertical' }}
                 />
+              </div>
+
+              {/* IsMusician Checkbox */}
+              <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '-0.5rem', marginBottom: '1.25rem', width: '100%' }}>
+                <input
+                  type="checkbox"
+                  id="guestIsMusician"
+                  name="IsMusician"
+                  checked={formData.IsMusician}
+                  onChange={(e) => setFormData(prev => ({ ...prev, IsMusician: e.target.checked }))}
+                  style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
+                />
+                <label htmlFor="guestIsMusician" style={{ margin: 0, cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem' }}>Müzisyen mi?</label>
               </div>
 
               {/* Photos Gallery Section */}
