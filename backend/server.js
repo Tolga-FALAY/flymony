@@ -567,6 +567,160 @@ app.delete('/api/requests/:id', (req, res) => {
     }
 });
 
+// ========================
+// REQUEST STATUSES API
+// ========================
+app.get('/api/statuses', (req, res) => {
+    try {
+        const statuses = db.prepare('SELECT * FROM RequestStatuses').all();
+        res.json(statuses);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/statuses', (req, res) => {
+    try {
+        const { StatusName, Color } = req.body;
+        if (!StatusName || !StatusName.trim()) {
+            return res.status(400).json({ error: 'Durum adı boş olamaz!' });
+        }
+        if (!Color || !Color.trim()) {
+            return res.status(400).json({ error: 'Renk boş olamaz!' });
+        }
+        const existing = db.prepare('SELECT * FROM RequestStatuses WHERE TRIM(LOWER(StatusName)) = TRIM(LOWER(?))').get(StatusName);
+        if (existing) {
+            return res.status(400).json({ error: 'Bu durum zaten tanımlı!' });
+        }
+        const info = db.prepare('INSERT INTO RequestStatuses (StatusName, Color) VALUES (?, ?)').run(StatusName.trim(), Color.trim());
+        res.status(201).json({ id: info.lastInsertRowid, StatusName: StatusName.trim(), Color: Color.trim() });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/statuses/:id', (req, res) => {
+    try {
+        const { StatusName, Color } = req.body;
+        const statusId = req.params.id;
+        if (!StatusName || !StatusName.trim()) {
+            return res.status(400).json({ error: 'Durum adı boş olamaz!' });
+        }
+        if (!Color || !Color.trim()) {
+            return res.status(400).json({ error: 'Renk boş olamaz!' });
+        }
+        
+        const existing = db.prepare('SELECT * FROM RequestStatuses WHERE TRIM(LOWER(StatusName)) = TRIM(LOWER(?)) AND StatusID != ?').get(StatusName, statusId);
+        if (existing) {
+            return res.status(400).json({ error: 'Bu isimde başka bir durum zaten tanımlı!' });
+        }
+
+        const oldStatus = db.prepare('SELECT StatusName FROM RequestStatuses WHERE StatusID = ?').get(statusId);
+        
+        const transaction = db.transaction((id, name, color, oldName) => {
+            db.prepare('UPDATE RequestStatuses SET StatusName = ?, Color = ? WHERE StatusID = ?').run(name, color, id);
+            // If the status name changed, update existing requests with this status to keep compatibility
+            if (oldName && oldName.toLowerCase() !== name.toLowerCase()) {
+                db.prepare('UPDATE Requests SET Status = ? WHERE Status = ?').run(name, oldName);
+            }
+        });
+
+        transaction(statusId, StatusName.trim(), Color.trim(), oldStatus ? oldStatus.StatusName : null);
+        res.json({ message: 'Status updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/statuses/:id', (req, res) => {
+    try {
+        const statusId = req.params.id;
+        const status = db.prepare('SELECT StatusName FROM RequestStatuses WHERE StatusID = ?').get(statusId);
+        if (!status) {
+            return res.status(404).json({ error: 'Durum bulunamadı!' });
+        }
+
+        const isLinked = db.prepare('SELECT 1 FROM Requests WHERE Status = ?').get(status.StatusName);
+        if (isLinked) {
+            return res.status(400).json({ error: 'Silmek istediğiniz durum parametresi, bir istek kaydında mevcut. Durum kaydını silmek için önce istek kaydından durum bilgisini değişmeniz gerekir' });
+        }
+
+        db.prepare('DELETE FROM RequestStatuses WHERE StatusID = ?').run(statusId);
+        res.json({ message: 'Status deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ========================
+// VENUES API
+// ========================
+app.get('/api/venues', (req, res) => {
+    try {
+        const venues = db.prepare('SELECT * FROM Venues').all();
+        res.json(venues);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/venues', (req, res) => {
+    try {
+        const { VenueName, ContactPerson, ContactPhone, InstagramLink } = req.body;
+        if (!VenueName || !VenueName.trim()) {
+            return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
+        }
+        const existing = db.prepare('SELECT * FROM Venues WHERE TRIM(LOWER(VenueName)) = TRIM(LOWER(?))').get(VenueName);
+        if (existing) {
+            return res.status(400).json({ error: 'Bu mekan zaten tanımlı!' });
+        }
+        const info = db.prepare(`
+            INSERT INTO Venues (VenueName, ContactPerson, ContactPhone, InstagramLink) 
+            VALUES (?, ?, ?, ?)
+        `).run(VenueName.trim(), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '');
+        res.status(201).json({ 
+            id: info.lastInsertRowid, 
+            VenueName: VenueName.trim(), 
+            ContactPerson: ContactPerson ? ContactPerson.trim() : '', 
+            ContactPhone: ContactPhone ? ContactPhone.trim() : '', 
+            InstagramLink: InstagramLink ? InstagramLink.trim() : ''
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/venues/:id', (req, res) => {
+    try {
+        const { VenueName, ContactPerson, ContactPhone, InstagramLink } = req.body;
+        const venueId = req.params.id;
+        if (!VenueName || !VenueName.trim()) {
+            return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
+        }
+        const existing = db.prepare('SELECT * FROM Venues WHERE TRIM(LOWER(VenueName)) = TRIM(LOWER(?)) AND VenueID != ?').get(VenueName, venueId);
+        if (existing) {
+            return res.status(400).json({ error: 'Bu isimde başka bir mekan zaten tanımlı!' });
+        }
+        db.prepare(`
+            UPDATE Venues 
+            SET VenueName = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ? 
+            WHERE VenueID = ?
+        `).run(VenueName.trim(), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', venueId);
+        res.json({ message: 'Venue updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/venues/:id', (req, res) => {
+    try {
+        db.prepare('DELETE FROM Venues WHERE VenueID = ?').run(req.params.id);
+        res.json({ message: 'Venue deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Fallback for React Router (Single Page Application routing)
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/vanilla')) {

@@ -60,6 +60,20 @@ export const initializeDB = () => {
             FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE,
             FOREIGN KEY (RelatedGuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS RequestStatuses (
+            StatusID INTEGER PRIMARY KEY AUTOINCREMENT,
+            StatusName TEXT NOT NULL UNIQUE,
+            Color TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS Venues (
+            VenueID INTEGER PRIMARY KEY AUTOINCREMENT,
+            VenueName TEXT NOT NULL UNIQUE,
+            ContactPerson TEXT,
+            ContactPhone TEXT,
+            InstagramLink TEXT
+        );
     `);
 
     // Check if Requests table exists and has GuestID column
@@ -309,6 +323,30 @@ export const initializeDB = () => {
         db.prepare("UPDATE Requests SET Status = 'Bakalım' WHERE Status = 'Vardı'").run();
     } catch (e) {
         console.error("Migration error while updating Status 'Vardı' to 'Bakalım':", e);
+    }
+
+    // Seed RequestStatuses if empty
+    try {
+        const count = db.prepare("SELECT COUNT(*) as count FROM RequestStatuses").get().count;
+        if (count === 0) {
+            console.log("Seeding default RequestStatuses...");
+            const insertStatus = db.prepare("INSERT INTO RequestStatuses (StatusName, Color) VALUES (?, ?)");
+            const seed = [
+                ['Kayıtlı', '#0ea5e9'],
+                ['Denemede', '#f59e0b'],
+                ['Eklendi', '#10b981'],
+                ['Bakalım', '#8b5cf6'],
+                ['İptal', '#ef4444']
+            ];
+            const runSeeding = db.transaction(() => {
+                for (const item of seed) {
+                    insertStatus.run(item[0], item[1]);
+                }
+            });
+            runSeeding();
+        }
+    } catch (e) {
+        console.error("Migration error while seeding RequestStatuses:", e);
     }
 
     console.log("Database tables initialized.");

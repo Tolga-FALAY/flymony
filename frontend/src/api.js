@@ -144,5 +144,63 @@ export const api = {
 
   deleteRequest: async (id) => {
     return request(`/requests/${id}`, 'DELETE');
+  },
+
+  // ========================
+  // REQUEST STATUSES API
+  // ========================
+  getStatuses: async () => {
+    const list = await request('/statuses');
+    return list.map(s => ({
+      StatusID: Number(s.StatusID),
+      StatusName: s.StatusName,
+      Color: s.Color
+    }));
+  },
+
+  createStatus: async (data) => {
+    const result = await request('/statuses', 'POST', data);
+    return { StatusID: Number(result.id), StatusName: result.StatusName, Color: result.Color };
+  },
+
+  updateStatus: async (id, data) => {
+    return request(`/statuses/${id}`, 'PUT', data);
+  },
+
+  deleteStatus: async (id) => {
+    return request(`/statuses/${id}`, 'DELETE');
+  },
+
+  // ========================
+  // VENUES API
+  // ========================
+  getVenues: async () => {
+    const list = await request('/venues');
+    return list.map(v => ({
+      VenueID: Number(v.VenueID),
+      VenueName: v.VenueName,
+      ContactPerson: v.ContactPerson || '',
+      ContactPhone: v.ContactPhone || '',
+      InstagramLink: v.InstagramLink || ''
+    }));
+  },
+
+  createVenue: async (data) => {
+    const result = await request('/venues', 'POST', data);
+    return {
+      VenueID: Number(result.id),
+      VenueName: result.VenueName,
+      ContactPerson: result.ContactPerson,
+      ContactPhone: result.ContactPhone,
+      InstagramLink: result.InstagramLink
+    };
+  },
+
+  updateVenue: async (id, data) => {
+    return request(`/venues/${id}`, 'PUT', data);
+  },
+
+  deleteVenue: async (id) => {
+    return request(`/venues/${id}`, 'DELETE');
   }
 };

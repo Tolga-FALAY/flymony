@@ -7,6 +7,7 @@ export default function Requests() {
   const [songs, setSongs] = useState([]);
   const [guests, setGuests] = useState([]);
   const [artists, setArtists] = useState([]);
+  const [statuses, setStatuses] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState(null);
 
@@ -45,6 +46,7 @@ export default function Requests() {
       setSongs([...store.songs]);
       setGuests([...store.guests]);
       setArtists([...store.artists]);
+      setStatuses([...store.statuses]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -55,13 +57,28 @@ export default function Requests() {
     return () => window.removeEventListener('store-updated', syncFromStore);
   }, []);
 
+  const getStatusStyle = (statusName) => {
+    const statusObj = statuses.find(s => s.StatusName === statusName);
+    const color = statusObj ? statusObj.Color : '#64748b';
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) || 100;
+    const g = parseInt(hex.substring(2, 4), 16) || 116;
+    const b = parseInt(hex.substring(4, 6), 16) || 139;
+    return {
+      backgroundColor: `rgba(${r}, ${g}, ${b}, 0.12)`,
+      color: color,
+      border: `1px solid rgba(${r}, ${g}, ${b}, 0.22)`,
+      fontWeight: 'bold'
+    };
+  };
+
   const openModal = (req = null) => {
     if (req) {
       setEditingRequest(req);
       setFormData({
         SongID: String(req.SongID),
         GuestIDs: (req.GuestIDs || []).map(String),
-        Status: req.Status || 'Kayıtlı',
+        Status: req.Status || (store.statuses[0] ? store.statuses[0].StatusName : 'Kayıtlı'),
         Link: req.Link || '',
         Vardi: req.Vardi ? true : false,
         Notes: req.Notes || '',
@@ -80,7 +97,7 @@ export default function Requests() {
       }
     } else {
       setEditingRequest(null);
-      setFormData({ SongID: '', GuestIDs: [], Status: 'Kayıtlı', Link: '', Vardi: false, Notes: '', StatusChangeDate: '' });
+      setFormData({ SongID: '', GuestIDs: [], Status: store.statuses[0] ? store.statuses[0].StatusName : 'Kayıtlı', Link: '', Vardi: false, Notes: '', StatusChangeDate: '' });
       setGuestSearch('');
       setSongSearch('');
     }
@@ -394,11 +411,9 @@ export default function Requests() {
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="">Tüm Durumlar</option>
-              <option value="Kayıtlı">Kayıtlı</option>
-              <option value="Denemede">Denemede</option>
-              <option value="Eklendi">Eklendi</option>
-              <option value="Bakalım">Bakalım</option>
-              <option value="İptal">İptal</option>
+              {statuses.map(s => (
+                <option key={s.StatusID} value={s.StatusName}>{s.StatusName}</option>
+              ))}
             </select>
           </div>
           <div className="filter-item filter-actions">
@@ -443,17 +458,7 @@ export default function Requests() {
               const rawDate = req.RequestDate || '';
               const dateObj = new Date(rawDate.endsWith('Z') ? rawDate : (rawDate ? rawDate + 'Z' : Date.now()));
 
-              // Helper to assign CSS class to request status badges
-              const getStatusBadgeClass = (status) => {
-                switch (status) {
-                  case 'Kayıtlı': return 'status-badge status-registered';
-                  case 'Denemede': return 'status-badge status-trial';
-                  case 'Eklendi': return 'status-badge status-added';
-                  case 'Bakalım': return 'status-badge status-existed';
-                  case 'İptal': return 'status-badge status-cancelled';
-                  default: return 'status-badge';
-                }
-              };
+              // Dynamically colored status badge helper
 
               return (
                 <tr key={req.RequestID}>
@@ -477,7 +482,7 @@ export default function Requests() {
                   </td>
                   <td data-label="Durum">
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span className={getStatusBadgeClass(req.Status)}>{req.Status}</span>
+                      <span className="status-badge" style={getStatusStyle(req.Status)}>{req.Status}</span>
                       {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
                     </div>
                   </td>
@@ -679,11 +684,9 @@ export default function Requests() {
               <div className="form-group">
                 <label>İstek Durumu</label>
                 <select name="Status" value={formData.Status} onChange={handleChange} required>
-                  <option value="Kayıtlı">Kayıtlı</option>
-                  <option value="Denemede">Denemede</option>
-                  <option value="Eklendi">Eklendi</option>
-                  <option value="Bakalım">Bakalım</option>
-                  <option value="İptal">İptal</option>
+                  {statuses.map(s => (
+                    <option key={s.StatusID} value={s.StatusName}>{s.StatusName}</option>
+                  ))}
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: '-0.25rem', marginBottom: '1rem', width: '100%' }}>

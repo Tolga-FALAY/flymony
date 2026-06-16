@@ -12,6 +12,8 @@ let _artists = [];
 let _songs   = [];
 let _guests  = [];
 let _requests = [];
+let _statuses = [];
+let _venues  = [];
 let _loaded  = false;
 
 // ─── Yardımcı: sanatçı adlarını listeden çöz ────────────────────────────────
@@ -50,7 +52,9 @@ function _notify() {
       artists: _artists,
       songs: _songs,
       guests: _guests,
-      requests: _requests
+      requests: _requests,
+      statuses: _statuses,
+      venues: _venues
     };
     localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
     localStorage.setItem(cacheTimeKey, Date.now().toString());
@@ -71,6 +75,8 @@ const store = {
   get songs()    { return _songs; },
   get guests()   { return _guests; },
   get requests() { return _requests; },
+  get statuses() { return _statuses; },
+  get venues()   { return _venues; },
   get isLoaded() { return _loaded; },
 
   // ── Tek seferlik yükleme ─────────────────────────────────────────────────
@@ -95,6 +101,8 @@ const store = {
           _songs = parsed.songs || [];
           _guests = parsed.guests || [];
           _requests = parsed.requests || [];
+          _statuses = parsed.statuses || [];
+          _venues = parsed.venues || [];
           _loaded = true;
           _notify();
           return;
@@ -104,11 +112,13 @@ const store = {
       }
     }
 
-    const [artistsList, songsList, guestsList, requestsList] = await Promise.all([
+    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList] = await Promise.all([
       api.getArtists(),
       api.getSongs(),
       api.getGuests(),
-      api.getRequests()
+      api.getRequests(),
+      api.getStatuses(),
+      api.getVenues()
     ]);
 
     // 1. Sanatçıları yükle
@@ -177,6 +187,26 @@ const store = {
     });
     // Yeniden eskiye sırala
     _requests.sort((a, b) => new Date(b.RequestDate) - new Date(a.RequestDate));
+
+    // 5. Durumları yükle
+    _statuses = statusesList.map(s => ({
+      StatusID: Number(s.StatusID),
+      StatusName: s.StatusName,
+      Color: s.Color
+    }));
+
+    // 6. Mekanları yükle
+    _venues = venuesList.map(v => ({
+      VenueID: Number(v.VenueID),
+      VenueName: v.VenueName,
+      ContactPerson: v.ContactPerson || '',
+      ContactPhone: v.ContactPhone || '',
+      InstagramLink: v.InstagramLink || ''
+    }));
+    _venues.sort((a, b) =>
+      (a.VenueName || '').toLocaleLowerCase('tr-TR')
+        .localeCompare((b.VenueName || '').toLocaleLowerCase('tr-TR'), 'tr')
+    );
 
     _loaded = true;
     _notify();
@@ -340,6 +370,60 @@ const store = {
 
   resolveArtistNames(artistIds) {
     return _resolveArtistNames(artistIds, _artists);
+  },
+
+  // ── Durum mutasyonları ───────────────────────────────────────────────────
+  addStatus(status) {
+    _statuses.push(status);
+    _notify();
+  },
+
+  updateStatus(id, data) {
+    const idx = _statuses.findIndex(s => s.StatusID === id);
+    if (idx !== -1) {
+      const oldName = _statuses[idx].StatusName;
+      _statuses[idx] = { ..._statuses[idx], ...data };
+      
+      // If the status name changed, update the status field in cached requests as well
+      if (data.StatusName && oldName !== data.StatusName) {
+        _requests = _requests.map(r => 
+          r.Status === oldName ? { ...r, Status: data.StatusName } : r
+        );
+      }
+    }
+    _notify();
+  },
+
+  removeStatus(id) {
+    _statuses = _statuses.filter(s => s.StatusID !== id);
+    _notify();
+  },
+
+  // ── Mekan mutasyonları ───────────────────────────────────────────────────
+  addVenue(venue) {
+    _venues.push(venue);
+    _venues.sort((a, b) =>
+      (a.VenueName || '').toLocaleLowerCase('tr-TR')
+        .localeCompare((b.VenueName || '').toLocaleLowerCase('tr-TR'), 'tr')
+    );
+    _notify();
+  },
+
+  updateVenue(id, data) {
+    const idx = _venues.findIndex(v => v.VenueID === id);
+    if (idx !== -1) {
+      _venues[idx] = { ..._venues[idx], ...data };
+      _venues.sort((a, b) =>
+        (a.VenueName || '').toLocaleLowerCase('tr-TR')
+          .localeCompare((b.VenueName || '').toLocaleLowerCase('tr-TR'), 'tr')
+      );
+    }
+    _notify();
+  },
+
+  removeVenue(id) {
+    _venues = _venues.filter(v => v.VenueID !== id);
+    _notify();
   }
 };
 
