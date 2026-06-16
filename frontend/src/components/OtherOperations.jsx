@@ -248,11 +248,11 @@ export default function OtherOperations() {
           {/* Photos Upload (Left Column) */}
           <div className="bulk-col" style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column' }}>
             <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div className="bulk-header-row">
                 <label style={{ margin: 0, fontWeight: 600 }}>Fotoğrafları Seçin</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="bulk-action-buttons">
                   <button type="button" className="btn btn-sm btn-outline" onClick={() => cameraInputRef.current?.click()}>📷 Fotoğraf Çek</button>
-                  <button type="button" class="btn btn-sm btn-outline" onClick={() => browseInputRef.current?.click()}>📂 Görsel Ekle</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => browseInputRef.current?.click()}>📂 Görsel Ekle</button>
                   <button type="button" className="btn btn-sm btn-outline" onClick={pastePhoto}>📋 Yapıştır</button>
                 </div>
               </div>
@@ -294,7 +294,9 @@ export default function OtherOperations() {
           {/* Guest Selection (Right Column) */}
           <div className="bulk-col" style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column' }}>
             <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <label style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Misafirleri İşaretleyin</label>
+              <label style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
+                Misafirleri İşaretleyin {selectedGuestIds.size > 0 && <span style={{ fontWeight: 'bold', color: '#000000' }}> ({selectedGuestIds.size} misafir seçildi)</span>}
+              </label>
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <input 
                   type="text" 

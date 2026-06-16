@@ -1732,4 +1732,43 @@ body.dark-mode .rich-editor-content {
 .chord-sheet-container-single.chord-sheet-light .chord-sheet-pre-single .chord-highlight {
   color: #d00000 !important; /* Darker red for light mode */
 }
+
+/* Responsive styles for bulk photo processing screen */
+.bulk-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bulk-action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .bulk-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .bulk-action-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .bulk-action-buttons .btn,
+  .bulk-action-buttons button {
+    flex: 1;
+    min-width: 0;
+    padding: 0.4rem 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    text-align: center;
+  }
+}
+
 

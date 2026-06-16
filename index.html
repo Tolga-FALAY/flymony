@@ -277,9 +277,9 @@
             <!-- Sol Sütun: Fotoğraf Yükleme -->
             <div class="bulk-col">
               <div class="form-group">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div class="bulk-header-row">
                   <label style="margin: 0; font-weight: 600;">Fotoğrafları Seçin</label>
-                  <div style="display: flex; gap: 0.5rem;">
+                  <div class="bulk-action-buttons">
                     <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('bulkCameraInput').click()">📷 Fotoğraf Çek</button>
                     <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('bulkBrowseInput').click()">📂 Görsel Ekle</button>
                     <button type="button" class="btn btn-sm btn-outline" onclick="pasteVanillaBulkPhoto()">📋 Yapıştır</button>
@@ -300,7 +300,7 @@
             <!-- Sağ Sütun: Misafir Seçimi -->
             <div class="bulk-col">
               <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
-                <label style="font-weight: 600; margin-bottom: 0.25rem;">Misafirleri İşaretleyin</label>
+                <label style="font-weight: 600; margin-bottom: 0.25rem;">Misafirleri İşaretleyin <span id="bulkGuestSelectionCount" style="font-weight: bold; color: #000;"></span></label>
                 <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
                   <input type="text" id="bulkGuestSearchInput" placeholder="Misafir ara..." oninput="handleBulkGuestSearch()" style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
                 </div>

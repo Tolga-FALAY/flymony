@@ -2223,6 +2223,17 @@ function toggleListboxItem(hiddenInputId, containerId, id) {
   }
 }
 
+function updateBulkGuestSelectionCount() {
+  const el = document.getElementById('bulkGuestSelectionCount');
+  if (el) {
+    if (bulkSelectedGuestIds.size > 0) {
+      el.innerText = ` (${bulkSelectedGuestIds.size} misafir seçildi)`;
+    } else {
+      el.innerText = '';
+    }
+  }
+}
+
 // ----------------- BULK PHOTO PROCESSING -----------------
 function showBulkPhotoPanel() {
   document.getElementById('otherOperationsHome').style.display = 'none';
@@ -2240,6 +2251,7 @@ function showBulkPhotoPanel() {
   // Render views
   renderBulkPhotoPreviews();
   populateBulkGuestListbox();
+  updateBulkGuestSelectionCount();
 }
 
 function showOtherOperationsHome() {
@@ -2292,6 +2304,7 @@ function toggleBulkGuestSelection(id) {
       }
     }
   }
+  updateBulkGuestSelectionCount();
 }
 
 function handleBulkGuestSearch() {
@@ -2308,11 +2321,13 @@ function bulkSelectAllGuests() {
   
   filteredGuests.forEach(g => bulkSelectedGuestIds.add(g.id));
   populateBulkGuestListbox();
+  updateBulkGuestSelectionCount();
 }
 
 function bulkClearGuestSelection() {
   bulkSelectedGuestIds.clear();
   populateBulkGuestListbox();
+  updateBulkGuestSelectionCount();
 }
 
 async function handleVanillaBulkPhotoUpload(input) {
@@ -2430,6 +2445,7 @@ async function saveBulkPhotos() {
     // Clear state
     bulkSelectedPhotos = [];
     bulkSelectedGuestIds.clear();
+    updateBulkGuestSelectionCount();
     
     // Reload and redraw
     await DB.loadFromFirestore(true);
