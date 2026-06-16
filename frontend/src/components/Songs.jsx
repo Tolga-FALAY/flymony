@@ -212,6 +212,12 @@ export default function Songs() {
   const [viewerTheme, setViewerTheme] = useState('dark');
   const [isSingleScreen, setIsSingleScreen] = useState(false);
 
+  // Static Chord Image States
+  const [isChordImageOpen, setIsChordImageOpen] = useState(false);
+  const [chordImageSrc, setChordImageSrc] = useState('');
+  const [chordImageTitle, setChordImageTitle] = useState('');
+  const [chordImagePreviewUrl, setChordImagePreviewUrl] = useState('');
+
   const triggerReactAutoFit = () => {
     const pre = chordViewerContentRef.current;
     if (!pre) return;
@@ -249,6 +255,8 @@ export default function Songs() {
     AudioPath: '',
     AudioData: '',
     OriginalKey: '',
+    ChordImagePath: '',
+    ChordImageData: '',
     ArtistIDs: []
   });
 
@@ -296,6 +304,81 @@ export default function Songs() {
     }));
   };
 
+  // HTML5 Canvas client-side image compression
+  const compressImage = (file, maxWidth, maxHeight, quality = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
+  // Paste handler for chord images in React Song Modal
+  useEffect(() => {
+    const handleGlobalPaste = async (e) => {
+      if (!isModalOpen) return;
+      
+      // Don't hijack if user is typing text in normal inputs, unless it contains an image file
+      const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+      if (!items) return;
+
+      let imageFile = null;
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          imageFile = item.getAsFile();
+          break;
+        }
+      }
+
+      if (imageFile) {
+        e.preventDefault();
+        try {
+          const compressedBase64 = await compressImage(imageFile, 1200, 1200, 0.8);
+          setFormData(prev => ({
+            ...prev,
+            ChordImageData: compressedBase64,
+            ChordImagePath: ''
+          }));
+          setChordImagePreviewUrl(URL.createObjectURL(imageFile));
+        } catch (err) {
+          console.error("Paste error:", err);
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [isModalOpen]);
+
   const openModal = (song = null) => {
     if (song) {
       setEditingSong(song);
@@ -307,12 +390,19 @@ export default function Songs() {
         AudioPath: song.AudioPath || '',
         AudioData: '',
         OriginalKey: song.OriginalKey || '',
+        ChordImagePath: song.ChordImagePath || '',
+        ChordImageData: '',
         ArtistIDs: (song.ArtistIDs || []).map(String)
       });
       if (song.AudioPath) {
         setAudioPreviewUrl(getUploadsUrl(song.AudioPath));
       } else {
         setAudioPreviewUrl('');
+      }
+      if (song.ChordImagePath) {
+        setChordImagePreviewUrl(getUploadsUrl(song.ChordImagePath));
+      } else {
+        setChordImagePreviewUrl('');
       }
       setTimeout(() => {
         if (editorRef.current) {
@@ -321,8 +411,9 @@ export default function Songs() {
       }, 50);
     } else {
       setEditingSong(null);
-      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ArtistIDs: [] });
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [] });
       setAudioPreviewUrl('');
+      setChordImagePreviewUrl('');
       setTimeout(() => {
         if (editorRef.current) {
           editorRef.current.innerHTML = '';
@@ -341,6 +432,7 @@ export default function Songs() {
       editorRef.current.innerHTML = '';
     }
     setAudioPreviewUrl('');
+    setChordImagePreviewUrl('');
     if (mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') {
       mediaRecorderInstance.stop();
     }
@@ -348,6 +440,70 @@ export default function Songs() {
     if (typeof window.onSongCreated === 'function') {
       window.onSongCreated = null;
     }
+  };
+
+  const handleChordImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const compressedBase64 = await compressImage(file, 1200, 1200, 0.8);
+      setFormData(prev => ({
+        ...prev,
+        ChordImageData: compressedBase64,
+        ChordImagePath: '' // clear existing path
+      }));
+      setChordImagePreviewUrl(URL.createObjectURL(file));
+    } catch (err) {
+      alert("Görsel yükleme hatası: " + err.message);
+    }
+  };
+
+  const pasteChordImage = async () => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        throw new Error("Tarayıcı doğrudan pano okuma özelliğini desteklemiyor.");
+      }
+      const clipboardItems = await navigator.clipboard.read();
+      let found = false;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const compressedBase64 = await compressImage(blob, 1200, 1200, 0.8);
+            setFormData(prev => ({
+              ...prev,
+              ChordImageData: compressedBase64,
+              ChordImagePath: '' // clear existing path
+            }));
+            setChordImagePreviewUrl(URL.createObjectURL(blob));
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (!found) {
+        alert("Panoda doğrudan okunabilir bir görsel bulunamadı.\n\nEğer bir dosya kopyaladıysanız, lütfen modal açıkken klavyenizden CTRL+V tuşlarına basarak yapıştırın!");
+      }
+    } catch (err) {
+      alert("Doğrudan pano okuma engellendi (Güvenlik Kısıtlaması).\n\nLütfen görselinizi yapıştırmak için klavyenizden CTRL+V kısayolunu kullanın!");
+    }
+  };
+
+  const clearChordImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      ChordImageData: '',
+      ChordImagePath: ''
+    }));
+    setChordImagePreviewUrl('');
+  };
+
+  const openChordImageViewer = (song) => {
+    setChordImageSrc(getUploadsUrl(song.ChordImagePath));
+    setChordImageTitle(`${song.SongTitle} ${song.ArtistNames && song.ArtistNames !== '-' ? ` - ${song.ArtistNames}` : ''}`);
+    setIsChordImageOpen(true);
   };
 
   const openChordViewer = (song) => {
@@ -601,6 +757,8 @@ export default function Songs() {
       AudioPath: formData.AudioPath || '',
       AudioData: formData.AudioData || '',
       OriginalKey: formData.OriginalKey || '',
+      ChordImagePath: formData.ChordImagePath || '',
+      ChordImageData: formData.ChordImageData || '',
       ArtistIDs: formData.ArtistIDs.map(Number)
     };
 
@@ -795,7 +953,7 @@ export default function Songs() {
                   {renderSortArrow('SongYear')}
                 </span>
               </th>
-              <th style={{ width: '220px', textAlign: 'right' }}>İşlemler</th>
+              <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -806,11 +964,11 @@ export default function Songs() {
                     <span>{song.SongTitle}</span>
                     {song.AudioPath && (
                       <button 
-                        type="button" 
-                        className="audio-play-btn" 
-                        onClick={() => playSongAudio(song)} 
-                        title="Ses Kaydını Oynat" 
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '0.5rem', fontSize: '1.1rem', lineHeight: 1 }}
+                         type="button" 
+                         className="audio-play-btn" 
+                         onClick={() => playSongAudio(song)} 
+                         title="Ses Kaydını Oynat" 
+                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '0.5rem', fontSize: '1.1rem', lineHeight: 1 }}
                       >
                         ▶️
                       </button>
@@ -820,8 +978,11 @@ export default function Songs() {
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
                 <td data-label="Yıl">{song.SongYear || '-'}</td>
                 <td data-label="İşlemler" className="action-btns">
+                  {song.ChordImagePath && (
+                    <button className="btn btn-sm btn-outline" onClick={() => openChordImageViewer(song)}>Akor</button>
+                  )}
                   {hasLyricsContent(song.Lyrics) && (
-                    <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Akorlar</button>
+                    <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Transpoze</button>
                   )}
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
@@ -1062,6 +1223,27 @@ export default function Songs() {
                 </div>
               </div>
               <div className="form-group">
+                <label>Akor Görseli (JPG, PNG vb.)</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {chordImagePreviewUrl && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
+                      <img src={chordImagePreviewUrl} alt="Akor Görseli Önizleme" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', objectFit: 'contain' }} />
+                      <button type="button" className="btn btn-sm btn-danger" onClick={clearChordImage} style={{ padding: '0.25rem 0.5rem', minHeight: 'auto', fontSize: '0.9rem', lineHeight: 1, borderRadius: '6px' }} title="Akor Görselini Sil">&times; Kaldır</button>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <label className="btn btn-outline" style={{ flex: 1, textAlign: 'center', cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
+                      📂 Görsel Seç
+                      <input type="file" accept="image/*" onChange={handleChordImageUpload} style={{ display: 'none' }} />
+                    </label>
+                    <button type="button" className="btn btn-outline" onClick={pasteChordImage} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
+                      📋 Yapıştır
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="form-group">
                 <label>Süre (örn: 3:45)</label>
                 <input type="text" name="Duration" value={formData.Duration} onChange={handleChange} />
               </div>
@@ -1281,6 +1463,23 @@ export default function Songs() {
           </div>
         );
       })()}
+      {isChordImageOpen && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 1600 }}>
+          <div className="modal-content" style={{ maxWidth: '800px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header">
+              <h2>{chordImageTitle} (Akor Görseli)</h2>
+              <button className="close-btn" onClick={() => setIsChordImageOpen(false)}>&times;</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src={chordImageSrc} alt="Akor Görseli" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1rem' }}>
+              <button type="button" className="btn btn-outline" onClick={() => setIsChordImageOpen(false)}>Kapat</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

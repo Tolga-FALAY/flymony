@@ -59,6 +59,7 @@ export const api = {
       Lyrics: s.Lyrics || '',
       AudioPath: s.AudioPath || '',
       OriginalKey: s.OriginalKey || '',
+      ChordImagePath: s.ChordImagePath || '',
       ArtistIDs: (s.ArtistIDs || []).map(Number),
       ArtistNames: s.ArtistNames || '-'
     }));

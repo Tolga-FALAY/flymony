@@ -139,6 +139,7 @@ const store = {
         Lyrics: s.Lyrics || '',
         AudioPath: s.AudioPath || '',
         OriginalKey: s.OriginalKey || '',
+        ChordImagePath: s.ChordImagePath || '',
         ArtistIDs: artistIds,
         ArtistNames: artistNames
       };

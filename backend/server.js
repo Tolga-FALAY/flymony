@@ -93,7 +93,7 @@ app.get('/api/songs', (req, res) => {
     try {
         // Fetch songs with their associated artists
         const songs = db.prepare(`
-            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey,
+            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath,
                    GROUP_CONCAT(a.ArtistID) as ArtistIDs,
                    GROUP_CONCAT(a.ArtistName, ', ') as ArtistNames
             FROM Songs s
@@ -109,7 +109,8 @@ app.get('/api/songs', (req, res) => {
             SongYear: s.SongYear || '',
             Lyrics: s.Lyrics || '',
             AudioPath: s.AudioPath || '',
-            OriginalKey: s.OriginalKey || ''
+            OriginalKey: s.OriginalKey || '',
+            ChordImagePath: s.ChordImagePath || ''
         }));
 
         // Sort songs alphabetically ascending by title (Turkish locale aware)
@@ -154,8 +155,37 @@ function saveAudioFile(audioData) {
     return `/uploads/${fileName}`;
 }
 
+// Helper to save base64 chord image data to disk
+function saveChordImageFile(imageData) {
+    if (!imageData) return null;
+    let mimeType = 'image/jpeg';
+    let base64Content = imageData;
+    let extension = 'jpg';
+    
+    if (imageData.startsWith('data:')) {
+        const parts = imageData.split(';base64,');
+        const meta = parts[0];
+        base64Content = parts[1];
+        mimeType = meta.split(':')[1].split(';')[0];
+        
+        if (mimeType.includes('png')) extension = 'png';
+        else if (mimeType.includes('gif')) extension = 'gif';
+        else if (mimeType.includes('webp')) extension = 'webp';
+        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+    }
+    
+    const buffer = Buffer.from(base64Content, 'base64');
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const fileName = `chord_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
+    fs.writeFileSync(path.join(uploadDir, fileName), buffer);
+    return `/uploads/${fileName}`;
+}
+
 app.post('/api/songs', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey } = req.body; // ArtistIDs should be an array of IDs
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData } = req.body; // ArtistIDs should be an array of IDs
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
     }
@@ -188,11 +218,18 @@ app.post('/api/songs', (req, res) => {
             audioPathToSave = AudioPath;
         }
 
-        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey) VALUES (?, ?, ?, ?, ?, ?)');
+        let chordImagePathToSave = null;
+        if (ChordImageData) {
+            chordImagePathToSave = saveChordImageFile(ChordImageData);
+        } else if (ChordImagePath) {
+            chordImagePathToSave = ChordImagePath;
+        }
+
+        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath) VALUES (?, ?, ?, ?, ?, ?, ?)');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
-        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, artistIds) => {
-            const info = insertSong.run(songTitle, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null);
+        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, artistIds) => {
+            const info = insertSong.run(songTitle, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null);
             const songId = info.lastInsertRowid;
             if (artistIds && artistIds.length > 0) {
                 for (const artistId of artistIds) {
@@ -202,7 +239,7 @@ app.post('/api/songs', (req, res) => {
             return songId;
         });
 
-        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, ArtistIDs || []);
+        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, chordImagePathToSave, ArtistIDs || []);
         res.status(201).json({ id: songId, message: 'Song created successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -210,7 +247,7 @@ app.post('/api/songs', (req, res) => {
 });
 
 app.put('/api/songs/:id', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData } = req.body;
     const songId = req.params.id;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
@@ -237,8 +274,9 @@ app.put('/api/songs/:id', (req, res) => {
             return res.status(400).json({ error: 'Bu şarkı zaten kayıtlı!' });
         }
 
-        const existingSong = db.prepare('SELECT AudioPath FROM Songs WHERE SongID = ?').get(songId);
+        const existingSong = db.prepare('SELECT AudioPath, ChordImagePath FROM Songs WHERE SongID = ?').get(songId);
         let finalAudioPath = existingSong ? existingSong.AudioPath : null;
+        let finalChordImagePath = existingSong ? existingSong.ChordImagePath : null;
 
         if (AudioData) {
             // Delete old file if exists
@@ -260,12 +298,32 @@ app.put('/api/songs/:id', (req, res) => {
             finalAudioPath = null;
         }
 
-        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ? WHERE SongID = ?');
+        if (ChordImageData) {
+            // Delete old file if exists
+            if (finalChordImagePath) {
+                const oldFilePath = path.join(__dirname, '..', finalChordImagePath);
+                if (fs.existsSync(oldFilePath)) {
+                    try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old chord image:", e); }
+                }
+            }
+            finalChordImagePath = saveChordImageFile(ChordImageData);
+        } else if (ChordImagePath === '' || ChordImagePath === null) {
+            // User explicitly cleared the chord image
+            if (finalChordImagePath) {
+                const oldFilePath = path.join(__dirname, '..', finalChordImagePath);
+                if (fs.existsSync(oldFilePath)) {
+                    try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old chord image:", e); }
+                }
+            }
+            finalChordImagePath = null;
+        }
+
+        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ? WHERE SongID = ?');
         const deleteSongArtists = db.prepare('DELETE FROM Song_Artists WHERE SongID = ?');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
-        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, artistIds) => {
-            updateSong.run(title, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null, id);
+        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, artistIds) => {
+            updateSong.run(title, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, id);
             deleteSongArtists.run(id);
             if (artistIds && artistIds.length > 0) {
                 for (const artistId of artistIds) {
@@ -274,7 +332,7 @@ app.put('/api/songs/:id', (req, res) => {
             }
         });
 
-        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, ArtistIDs || []);
+        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, finalChordImagePath, ArtistIDs || []);
         res.json({ message: 'Song updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -288,7 +346,7 @@ app.delete('/api/songs/:id', (req, res) => {
             return res.status(400).json({ error: 'Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz' });
         }
         
-        const existingSong = db.prepare('SELECT AudioPath FROM Songs WHERE SongID = ?').get(req.params.id);
+        const existingSong = db.prepare('SELECT AudioPath, ChordImagePath FROM Songs WHERE SongID = ?').get(req.params.id);
         
         db.prepare('DELETE FROM Songs WHERE SongID = ?').run(req.params.id);
         
@@ -296,6 +354,12 @@ app.delete('/api/songs/:id', (req, res) => {
             const filePath = path.join(__dirname, '..', existingSong.AudioPath);
             if (fs.existsSync(filePath)) {
                 try { fs.unlinkSync(filePath); } catch (e) { console.error("Error deleting file on song deletion:", e); }
+            }
+        }
+        if (existingSong && existingSong.ChordImagePath) {
+            const filePath = path.join(__dirname, '..', existingSong.ChordImagePath);
+            if (fs.existsSync(filePath)) {
+                try { fs.unlinkSync(filePath); } catch (e) { console.error("Error deleting chord image file on song deletion:", e); }
             }
         }
         res.json({ message: 'Song deleted successfully' });

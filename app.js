@@ -140,7 +140,8 @@ const DB = {
           year: s.SongYear || "",
           lyrics: s.Lyrics || "",
           audioPath: s.AudioPath || "",
-          originalKey: s.OriginalKey || ""
+          originalKey: s.OriginalKey || "",
+          chordImagePath: s.ChordImagePath || ""
         });
         const artistIds = s.ArtistIDs || [];
         artistIds.forEach(aid => {
@@ -883,14 +884,16 @@ function setupVanillaGlobalPasteListener() {
   document.addEventListener('paste', async (event) => {
     const guestModal = document.getElementById('guestModal');
     const bulkPhotoPanel = document.getElementById('bulkPhotoPanel');
+    const songModal = document.getElementById('songModal');
     
     const isGuestModalOpen = guestModal && guestModal.style.display !== 'none';
     const isBulkPanelVisible = bulkPhotoPanel && bulkPhotoPanel.style.display !== 'none';
+    const isSongModalOpen = songModal && songModal.style.display !== 'none';
     
-    if (!isGuestModalOpen && !isBulkPanelVisible) return;
+    if (!isGuestModalOpen && !isBulkPanelVisible && !isSongModalOpen) return;
 
-    // Do not hijack paste event if focus is in Notes textarea or search inputs
-    if (document.activeElement && (document.activeElement.id === 'guestNotes' || document.activeElement.id === 'bulkGuestSearchInput')) {
+    // Do not hijack paste event if focus is in Notes textarea, search inputs, or rich lyrics editor
+    if (document.activeElement && (document.activeElement.id === 'guestNotes' || document.activeElement.id === 'bulkGuestSearchInput' || document.activeElement.id === 'songLyricsRich')) {
       return;
     }
 
@@ -928,6 +931,14 @@ function setupVanillaGlobalPasteListener() {
           const compressedBase64 = await compressVanillaImage(imageFile, 800, 800, 0.7);
           bulkSelectedPhotos.push(compressedBase64);
           renderBulkPhotoPreviews();
+        } else if (isSongModalOpen) {
+          const compressedBase64 = await compressVanillaImage(imageFile, 1200, 1200, 0.8);
+          document.getElementById('songChordImageData').value = compressedBase64;
+          document.getElementById('songChordImagePath').value = ''; // clear existing path
+          
+          const preview = document.getElementById('songChordImagePreview');
+          preview.src = URL.createObjectURL(imageFile);
+          document.getElementById('songChordImagePreviewContainer').style.display = 'flex';
         }
       } catch (err) {
         alert("Görsel yapıştırılırken hata oluştu: " + err.message);
@@ -1448,8 +1459,12 @@ function renderSongs() {
       ? `<button type="button" class="audio-play-btn" onclick="playVanillaSongAudio(event, '${song.audioPath}', '${song.title.replace(/'/g, "\\'")}')" title="Ses Kaydını Oynat" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: 0.5rem; font-size: 1.1rem; line-height: 1;">▶️</button>`
       : '';
 
-    const chordsBtnHtml = hasLyricsContent(song.lyrics)
-      ? `<button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Akorlar</button>`
+    const transpozeBtnHtml = hasLyricsContent(song.lyrics)
+      ? `<button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Transpoze</button>`
+      : '';
+
+    const akorBtnHtml = song.chordImagePath
+      ? `<button class="btn btn-sm btn-outline" onclick="openChordImageModal(${song.id})">Akor</button>`
       : '';
 
     const tr = document.createElement('tr');
@@ -1463,7 +1478,8 @@ function renderSongs() {
       <td data-label="Sanatçılar">${artistNames || '-'}</td>
       <td data-label="Yıl">${song.year || '-'}</td>
       <td data-label="İşlemler" class="action-btns">
-        ${chordsBtnHtml}
+        ${akorBtnHtml}
+        ${transpozeBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSong(${song.id})">Sil</button>
       </td>
@@ -1471,6 +1487,7 @@ function renderSongs() {
     tbody.appendChild(tr);
   });
 }
+
 
 async function saveSong(e) {
   e.preventDefault();
@@ -1512,6 +1529,9 @@ async function saveSong(e) {
     let songId = id;
     const audioPathVal = document.getElementById('songAudioPath').value;
     const audioDataVal = document.getElementById('songAudioData').value;
+    const chordImagePathVal = document.getElementById('songChordImagePath').value;
+    const chordImageDataVal = document.getElementById('songChordImageData').value;
+    
     const songData = {
       SongTitle: title,
       Duration: "",
@@ -1520,7 +1540,9 @@ async function saveSong(e) {
       ArtistIDs: selectedArtistIds.map(Number),
       AudioPath: audioPathVal || "",
       AudioData: audioDataVal || "",
-      OriginalKey: originalKeyVal || ""
+      OriginalKey: originalKeyVal || "",
+      ChordImagePath: chordImagePathVal || "",
+      ChordImageData: chordImageDataVal || ""
     };
 
     if (id) {
@@ -1576,6 +1598,22 @@ function editSong(id) {
   } else {
     audioPreview.src = '';
     previewContainer.style.display = 'none';
+  }
+
+  // Set chord image fields
+  document.getElementById('songChordImagePath').value = song.chordImagePath || '';
+  document.getElementById('songChordImageData').value = '';
+  document.getElementById('songChordImageFile').value = '';
+  
+  const chordImagePreview = document.getElementById('songChordImagePreview');
+  const chordPreviewContainer = document.getElementById('songChordImagePreviewContainer');
+  
+  if (song.chordImagePath) {
+    chordImagePreview.src = `${UPLOADS_BASE_URL}${song.chordImagePath}`;
+    chordPreviewContainer.style.display = 'flex';
+  } else {
+    chordImagePreview.src = '';
+    chordPreviewContainer.style.display = 'none';
   }
   
   document.getElementById('songModalTitle').innerText = 'Şarkı Düzenle';
@@ -3190,6 +3228,89 @@ function toggleChordViewerTheme() {
   }
 }
 
+// Chord Image Upload, Paste and View Functions
+async function handleVanillaChordImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const compressedBase64 = await compressVanillaImage(file, 1200, 1200, 0.8);
+    document.getElementById('songChordImageData').value = compressedBase64;
+    document.getElementById('songChordImagePath').value = ''; // clear path
+    
+    const preview = document.getElementById('songChordImagePreview');
+    preview.src = URL.createObjectURL(file);
+    document.getElementById('songChordImagePreviewContainer').style.display = 'flex';
+  } catch (err) {
+    alert("Akor görseli yüklenirken hata oluştu: " + err.message);
+  }
+}
+
+async function pasteVanillaChordImage() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error("Tarayıcı doğrudan pano okuma özelliğini desteklemiyor.");
+    }
+    const clipboardItems = await navigator.clipboard.read();
+    let found = false;
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const compressedBase64 = await compressVanillaImage(blob, 1200, 1200, 0.8);
+          document.getElementById('songChordImageData').value = compressedBase64;
+          document.getElementById('songChordImagePath').value = ''; // clear path
+          
+          const preview = document.getElementById('songChordImagePreview');
+          preview.src = URL.createObjectURL(blob);
+          document.getElementById('songChordImagePreviewContainer').style.display = 'flex';
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (!found) {
+      alert("Panoda doğrudan okunabilir bir görsel bulunamadı.\n\nEğer bir dosya kopyaladıysanız, lütfen modal açıkken klavyenizden CTRL+V tuşlarına basarak yapıştırın!");
+    }
+  } catch (err) {
+    alert("Doğrudan pano okuma engellendi (Güvenlik Kısıtlaması).\n\nLütfen görselinizi yapıştırmak için klavyenizden CTRL+V kısayolunu kullanın!");
+  }
+}
+
+function clearVanillaSongChordImage() {
+  document.getElementById('songChordImageData').value = '';
+  document.getElementById('songChordImagePath').value = '';
+  document.getElementById('songChordImageFile').value = '';
+  document.getElementById('songChordImagePreview').src = '';
+  document.getElementById('songChordImagePreviewContainer').style.display = 'none';
+}
+
+function openChordImageModal(songId) {
+  const song = DB.songs.find(s => s.id == songId);
+  if (!song || !song.chordImagePath) return;
+
+  const UPLOADS_BASE_URL = API_BASE_URL.replace('/api', '');
+  const modal = document.getElementById('chordImageModal');
+  const img = document.getElementById('chordImageModalImg');
+  const title = document.getElementById('chordImageModalTitle');
+
+  // Find artist names to show in the title
+  const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
+  const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ');
+
+  title.innerText = `${song.title} ${artistNames ? ` - ${artistNames}` : ''}`;
+  img.src = `${UPLOADS_BASE_URL}${song.chordImagePath}`;
+  modal.style.display = 'flex';
+}
+
+function closeChordImageModal() {
+  const modal = document.getElementById('chordImageModal');
+  const img = document.getElementById('chordImageModalImg');
+  if (modal) modal.style.display = 'none';
+  if (img) img.src = '';
+}
+
 // Window Exports
 window.openChordViewer = openChordViewer;
 window.closeChordViewer = closeChordViewer;
@@ -3200,5 +3321,10 @@ window.toggleChordViewerTheme = toggleChordViewerTheme;
 window.execEditorCommand = execEditorCommand;
 window.toggleSingleScreenMode = toggleSingleScreenMode;
 window.triggerAutoFit = triggerAutoFit;
+window.handleVanillaChordImageUpload = handleVanillaChordImageUpload;
+window.pasteVanillaChordImage = pasteVanillaChordImage;
+window.clearVanillaSongChordImage = clearVanillaSongChordImage;
+window.openChordImageModal = openChordImageModal;
+window.closeChordImageModal = closeChordImageModal;
 
 

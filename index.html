@@ -135,7 +135,7 @@
                   <th onclick="sortSongs('title')" style="cursor: pointer; user-select: none;">Şarkı Adı <span id="sortIconSongTitle" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
                   <th onclick="sortSongs('artists')" style="cursor: pointer; user-select: none;">Sanatçılar <span id="sortIconSongArtists" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
                   <th onclick="sortSongs('year')" style="cursor: pointer; user-select: none;">Yıl <span id="sortIconSongYear" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th style="width: 220px; text-align: right;">İşlemler</th>
+                  <th style="width: 300px; text-align: right;">İşlemler</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -397,6 +397,8 @@
         <input type="hidden" id="songID">
         <input type="hidden" id="songAudioPath">
         <input type="hidden" id="songAudioData">
+        <input type="hidden" id="songChordImagePath">
+        <input type="hidden" id="songChordImageData">
         <div class="form-group">
           <label>Şarkı Adı</label>
           <input type="text" id="songTitle" required>
@@ -506,6 +508,25 @@
                 <span id="songRecordingTime">00:00</span>
               </div>
               <button type="button" class="btn btn-sm btn-danger" onclick="stopVanillaAudioRecording()" style="padding: 0.25rem 0.5rem; min-height: auto; font-weight: 600; border-radius: 6px;">Durdur</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Akor Görseli (JPG, PNG vb.)</label>
+          <div id="songChordImageSection" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div id="songChordImagePreviewContainer" style="display: none; flex-direction: column; align-items: center; gap: 0.5rem; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); padding: 0.5rem; border-radius: 8px;">
+              <img id="songChordImagePreview" src="" alt="Akor Görseli Önizleme" style="max-width: 100%; max-height: 200px; border-radius: 6px; object-fit: contain;">
+              <button type="button" class="btn btn-sm btn-danger" onclick="clearVanillaSongChordImage()" style="padding: 0.25rem 0.5rem; min-height: auto; font-size: 0.9rem; line-height: 1; border-radius: 6px;" title="Akor Görselini Sil">&times; Kaldır</button>
+            </div>
+            
+            <div id="songChordImageControls" style="display: flex; gap: 0.5rem;">
+              <label class="btn btn-outline" style="flex: 1; text-align: center; cursor: pointer; margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.9rem; border-radius: 8px;">
+                📂 Görsel Seç
+                <input type="file" id="songChordImageFile" accept="image/*" onchange="handleVanillaChordImageUpload(event)" style="display: none;">
+              </label>
+              <button type="button" class="btn btn-outline" onclick="pasteVanillaChordImage()" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.9rem; border-radius: 8px;">
+                📋 Yapıştır
+              </button>
             </div>
           </div>
         </div>
@@ -758,6 +779,22 @@
           <button type="button" class="chord-action-btn" onclick="toggleChordViewerTheme()">Görünüm: <span id="chordViewerThemeLabel">Koyu</span></button>
         </div>
         <button type="button" class="btn btn-outline" onclick="closeChordViewer()">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Akor Görseli Görüntüleme Modalı -->
+  <div id="chordImageModal" class="modal-overlay" style="display: none; z-index: 1600;">
+    <div class="modal-content" style="max-width: 800px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <h2 id="chordImageModalTitle">Akor Görseli</h2>
+        <button class="close-btn" onclick="closeChordImageModal()">&times;</button>
+      </div>
+      <div style="flex: 1; overflow: auto; text-align: center; background: #f8fafc; border-radius: 8px; padding: 1rem; display: flex; align-items: center; justify-content: center;">
+        <img id="chordImageModalImg" src="" alt="Akor Görseli" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
+      </div>
+      <div class="modal-actions" style="margin-top: 1rem;">
+        <button type="button" class="btn btn-outline" onclick="closeChordImageModal()">Kapat</button>
       </div>
     </div>
   </div>
