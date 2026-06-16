@@ -9,6 +9,7 @@ export default function OtherOperations() {
   const [selectedGuestIds, setSelectedGuestIds] = useState(new Set());
   const [guestSearch, setGuestSearch] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
 
   const cameraInputRef = useRef(null);
   const browseInputRef = useRef(null);
@@ -166,6 +167,16 @@ export default function OtherOperations() {
 
   const clearGuestSelection = () => {
     setSelectedGuestIds(new Set());
+    setShowOnlySelected(false);
+  };
+
+  const toggleShowOnlySelected = () => {
+    if (!showOnlySelected) {
+      setGuestSearch('');
+      setShowOnlySelected(true);
+    } else {
+      setShowOnlySelected(false);
+    }
   };
 
   const handleSave = async () => {
@@ -210,6 +221,7 @@ export default function OtherOperations() {
       setSelectedPhotos([]);
       setSelectedGuestIds(new Set());
       setGuestSearch('');
+      setShowOnlySelected(false);
       setCurrentView('home');
     } catch (err) {
       alert("Kaydetme işlemi sırasında hata oluştu: " + err.message);
@@ -223,12 +235,16 @@ export default function OtherOperations() {
       setSelectedPhotos([]);
       setSelectedGuestIds(new Set());
       setGuestSearch('');
+      setShowOnlySelected(false);
       setCurrentView('home');
     }
   };
 
   // Filter guests locally
   const filteredGuests = guests.filter(g => {
+    if (showOnlySelected && !selectedGuestIds.has(g.GuestID)) {
+      return false;
+    }
     const fullName = (g.FullName || '').toLocaleLowerCase('tr-TR');
     return fullName.includes(guestSearch.toLocaleLowerCase('tr-TR'));
   });
@@ -307,9 +323,24 @@ export default function OtherOperations() {
                   style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
                 />
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <div className="bulk-action-buttons" style={{ marginBottom: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  className={`btn btn-sm ${showOnlySelected ? '' : 'btn-outline'}`}
+                  style={showOnlySelected ? { flex: 1, backgroundColor: 'var(--primary)', color: '#ffffff', borderColor: 'var(--primary)' } : { flex: 1 }}
+                  onClick={toggleShowOnlySelected}
+                >
+                  {showOnlySelected ? 'Tümü' : 'Seçilenler'}
+                </button>
                 <button type="button" className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={selectAllFilteredGuests}>Tümünü Seç</button>
-                <button type="button" className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={clearGuestSelection}>Seçimleri Temizle</button>
+                <button 
+                  type="button" 
+                  className="btn btn-sm" 
+                  style={{ flex: 1, backgroundColor: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }} 
+                  onClick={clearGuestSelection}
+                >
+                  Seçimleri Temizle
+                </button>
               </div>
               <div className="listbox-container" style={{ flex: 1, minHeight: '200px', maxHeight: '300px' }}>
                 {filteredGuests.map(g => (

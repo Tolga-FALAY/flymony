@@ -304,9 +304,10 @@
                 <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
                   <input type="text" id="bulkGuestSearchInput" placeholder="Misafir ara..." oninput="handleBulkGuestSearch()" style="flex: 1; margin: 0; padding: 0.5rem 0.75rem; font-size: 0.9rem;">
                 </div>
-                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div class="bulk-action-buttons" style="margin-bottom: 0.5rem;">
+                  <button type="button" id="btnBulkToggleSelected" class="btn btn-sm btn-outline" style="flex: 1;" onclick="toggleBulkShowOnlySelected()">Seçilenler</button>
                   <button type="button" class="btn btn-sm btn-outline" style="flex: 1;" onclick="bulkSelectAllGuests()">Tümünü Seç</button>
-                  <button type="button" class="btn btn-sm btn-outline" style="flex: 1;" onclick="bulkClearGuestSelection()">Seçimleri Temizle</button>
+                  <button type="button" class="btn btn-sm" style="flex: 1; background-color: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;" onclick="bulkClearGuestSelection()">Seçimleri Temizle</button>
                 </div>
                 <div id="bulkGuestListboxContainer" class="listbox-container" style="flex: 1; min-height: 200px; max-height: 300px;">
                   <!-- Misafir listesi dinamik olarak dolacak -->

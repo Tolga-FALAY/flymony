@@ -37,6 +37,7 @@ let vanillaRelatedGuestIDs = [];
 let bulkSelectedPhotos = [];
 let bulkSelectedGuestIds = new Set();
 let bulkGuestFilter = '';
+let bulkShowOnlySelected = false;
 
 // Filter variables
 let filterGuest = '';
@@ -2243,6 +2244,16 @@ function showBulkPhotoPanel() {
   bulkSelectedPhotos = [];
   bulkSelectedGuestIds.clear();
   bulkGuestFilter = '';
+  bulkShowOnlySelected = false;
+  
+  const toggleBtn = document.getElementById('btnBulkToggleSelected');
+  if (toggleBtn) {
+    toggleBtn.innerText = 'Seçilenler';
+    toggleBtn.className = 'btn btn-sm btn-outline';
+    toggleBtn.style.backgroundColor = '';
+    toggleBtn.style.color = '';
+    toggleBtn.style.borderColor = '';
+  }
   
   // Reset search input
   const searchInput = document.getElementById('bulkGuestSearchInput');
@@ -2264,6 +2275,9 @@ function populateBulkGuestListbox() {
   if (!container) return;
   
   const filteredGuests = DB.guests.filter(g => {
+    if (bulkShowOnlySelected && !bulkSelectedGuestIds.has(g.id)) {
+      return false;
+    }
     const fullName = `${g.firstName} ${g.lastName}`.toLocaleLowerCase('tr-TR');
     return fullName.includes(bulkGuestFilter.toLocaleLowerCase('tr-TR'));
   });
@@ -2326,8 +2340,47 @@ function bulkSelectAllGuests() {
 
 function bulkClearGuestSelection() {
   bulkSelectedGuestIds.clear();
+  bulkShowOnlySelected = false;
+  const toggleBtn = document.getElementById('btnBulkToggleSelected');
+  if (toggleBtn) {
+    toggleBtn.innerText = 'Seçilenler';
+    toggleBtn.className = 'btn btn-sm btn-outline';
+    toggleBtn.style.backgroundColor = '';
+    toggleBtn.style.color = '';
+    toggleBtn.style.borderColor = '';
+  }
   populateBulkGuestListbox();
   updateBulkGuestSelectionCount();
+}
+
+function toggleBulkShowOnlySelected() {
+  const btn = document.getElementById('btnBulkToggleSelected');
+  if (!btn) return;
+  
+  bulkShowOnlySelected = !bulkShowOnlySelected;
+  
+  if (bulkShowOnlySelected) {
+    // Clear search
+    const searchInput = document.getElementById('bulkGuestSearchInput');
+    if (searchInput) searchInput.value = '';
+    bulkGuestFilter = '';
+    
+    // Change label and styling
+    btn.innerText = 'Tümü';
+    btn.className = 'btn btn-sm';
+    btn.style.backgroundColor = 'var(--primary-color)';
+    btn.style.color = '#ffffff';
+    btn.style.borderColor = 'var(--primary-color)';
+  } else {
+    // Change label and styling
+    btn.innerText = 'Seçilenler';
+    btn.className = 'btn btn-sm btn-outline';
+    btn.style.backgroundColor = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }
+  
+  populateBulkGuestListbox();
 }
 
 async function handleVanillaBulkPhotoUpload(input) {
@@ -2484,6 +2537,7 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.saveArtist = saveArtist;
 window.editArtist = editArtist;
+window.toggleBulkShowOnlySelected = toggleBulkShowOnlySelected;
 window.deleteArtist = deleteArtist;
 window.saveGuest = saveGuest;
 window.editGuest = editGuest;
