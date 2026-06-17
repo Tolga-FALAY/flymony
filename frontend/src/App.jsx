@@ -6,6 +6,7 @@ import Requests from './components/Requests';
 import OtherOperations from './components/OtherOperations';
 import Parameters from './components/Parameters';
 import store from './store';
+import ChordFullscreenViewer from './components/ChordFullscreenViewer';
 
 const NAV_ITEMS = [
   {
@@ -161,6 +162,7 @@ function App() {
           <div style={{ display: activeTab === 'parameters' ? 'block' : 'none' }}><Parameters /></div>
         </div>
       </main>
+      <ChordFullscreenViewer />
     </div>
   );
 }

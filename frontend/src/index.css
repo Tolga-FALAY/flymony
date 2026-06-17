@@ -1441,4 +1441,425 @@ body.dark-mode .rich-editor-content {
   }
 }
 
+/* ==========================================================================
+   GLOBAL FULL-SCREEN VIEWER STYLES
+   ========================================================================== */
+
+.fullscreen-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+  font-family: 'Montserrat', system-ui, sans-serif;
+}
+
+/* Theme configurations mapping to style variables dynamically */
+.fullscreen-viewer-overlay.theme-chord {
+  background: #000000;
+  color: #ffffff;
+}
+
+.fullscreen-viewer-overlay.theme-dark {
+  background: #0f172a;
+  color: #e2e8f0;
+  --surface: #1e293b;
+  --border: #334155;
+  --border-strong: #475569;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary-soft: rgba(14, 165, 233, 0.15);
+}
+
+.fullscreen-viewer-overlay.theme-light {
+  background: #f8fafc;
+  color: #0f2742;
+  --surface: #ffffff;
+  --border: #e2eaf3;
+  --border-strong: #cfddec;
+  --text-main: #0f2742;
+  --text-muted: #64748b;
+  --primary-soft: #e3f2fd;
+}
+
+/* Floating overlay controls */
+.fullscreen-viewer-floating-controls {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  gap: 12px;
+}
+
+.viewer-btn-float {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  font-family: inherit;
+  user-select: none;
+}
+
+.theme-chord .viewer-btn-float {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.theme-dark .viewer-btn-float {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.theme-light .viewer-btn-float {
+  background: rgba(15, 39, 66, 0.08);
+  color: #0f2742;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.viewer-btn-float:hover {
+  transform: scale(1.08) translateY(-2px);
+  color: #ffffff;
+}
+
+.btn-transpose-toggle:hover,
+.btn-chord-toggle:hover {
+  background: var(--primary) !important;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.45);
+}
+
+.btn-close-toggle:hover {
+  background: var(--danger) !important;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.45);
+}
+
+/* Fullscreen viewer body */
+.fullscreen-viewer-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+/* Chord visual view styles */
+.fullscreen-chord-image-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  overflow: hidden;
+}
+
+.fullscreen-chord-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Transpose sheet view styles */
+.fullscreen-transpose-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.fullscreen-transpose-toolbar {
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex-shrink: 0;
+  z-index: 10;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.theme-dark .fullscreen-transpose-toolbar {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-right: 120px; /* Leave space for floating close/toggle buttons */
+}
+
+.song-title-label {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.orig-key-badge {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-soft);
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+}
+
+.toolbar-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.control-group.autofit-group {
+  margin-left: auto;
+}
+
+.transpose-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--text-main);
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.btn-danger-soft {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+}
+
+.btn-danger-soft:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.toolbar-target-keys {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.target-key-label {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.target-key-buttons {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.target-key-btn {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.target-key-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.target-key-btn.active {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #ffffff !important;
+}
+
+/* Chord sheet text display area */
+.fullscreen-chord-sheet-box {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 2rem 3rem;
+  width: 100%;
+}
+
+.fullscreen-chord-sheet-box.single-screen {
+  overflow: hidden;
+  padding: 1.5rem 2rem;
+  height: 100%;
+}
+
+/* Pre-formatted chord text style modifications */
+.fullscreen-viewer-overlay .chord-sheet-pre {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  line-height: 1.7;
+}
+
+.fullscreen-viewer-overlay.theme-dark .chord-sheet-pre {
+  color: #cbd5e1;
+}
+
+.fullscreen-viewer-overlay.theme-light .chord-sheet-pre {
+  color: #334155;
+}
+
+/* Auto Column Fit classes for Single Screen mode */
+.fullscreen-viewer-overlay .chord-sheet-pre-single {
+  flex: 1;
+  margin: 0 !important;
+  padding: 0.5rem 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  height: 100% !important;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  column-width: 380px;
+  column-gap: 2.5rem;
+  column-fill: auto;
+  overflow-y: hidden !important;
+  overflow-x: auto !important;
+}
+
+.fullscreen-viewer-overlay.theme-dark .chord-sheet-pre-single {
+  column-rule: 1px dashed rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+.fullscreen-viewer-overlay.theme-light .chord-sheet-pre-single {
+  column-rule: 1px dashed rgba(0, 0, 0, 0.1);
+  color: #334155;
+}
+
+/* Highlight chords inside fullscreen viewers */
+.fullscreen-viewer-overlay.theme-dark .chord-highlight,
+.fullscreen-viewer-overlay.theme-dark [style*="color: rgb(255, 0, 0)"],
+.fullscreen-viewer-overlay.theme-dark [style*="color: red"],
+.fullscreen-viewer-overlay.theme-dark font[color*="red"],
+.fullscreen-viewer-overlay.theme-dark font[color*="#ff0000"] {
+  color: #ff4d4d !important;
+  font-weight: bold;
+}
+
+.fullscreen-viewer-overlay.theme-light .chord-highlight,
+.fullscreen-viewer-overlay.theme-light [style*="color: rgb(255, 0, 0)"],
+.fullscreen-viewer-overlay.theme-light [style*="color: red"],
+.fullscreen-viewer-overlay.theme-light font[color*="red"],
+.fullscreen-viewer-overlay.theme-light font[color*="#ff0000"] {
+  color: #d00000 !important;
+  font-weight: bold;
+}
+
+/* Responsive adjustment for controls and toolbar */
+@media (max-width: 768px) {
+  .fullscreen-viewer-floating-controls {
+    top: 15px;
+    right: 15px;
+    gap: 8px;
+  }
+  
+  .viewer-btn-float {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+  }
+  
+  .fullscreen-transpose-toolbar {
+    padding: 1rem;
+    gap: 0.65rem;
+  }
+  
+  .toolbar-section {
+    padding-right: 100px;
+  }
+  
+  .song-title-label {
+    font-size: 1.15rem;
+  }
+  
+  .toolbar-controls-row {
+    gap: 0.75rem;
+  }
+  
+  .control-group.autofit-group {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .fullscreen-chord-sheet-box {
+    padding: 1.25rem 1.5rem;
+  }
+}
+
 

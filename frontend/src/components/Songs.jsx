@@ -3,174 +3,7 @@ import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
 
-const getUploadsUrl = (path) => {
-  if (!path) return '';
-  const apiBase = typeof window !== 'undefined' && window.location.port === '5173'
-    ? 'http://localhost:5000/api'
-    : '/api';
-  const base = apiBase.replace('/api', '');
-  return `${base}${path}`;
-};
-
-// ==========================================================================
-// CHORD SHEET TRANSPOSITION HELPER FUNCTIONS FOR REACT
-// ==========================================================================
-
-const noteToSemitone = {
-  'C': 0, 'C#': 1, 'Db': 1,
-  'D': 2, 'D#': 3, 'Eb': 3,
-  'E': 4, 'Fb': 4,
-  'F': 5, 'F#': 6, 'Gb': 6,
-  'G': 7, 'G#': 8, 'Ab': 8,
-  'A': 9, 'A#': 10, 'Bb': 10,
-  'B': 11, 'Cb': 11
-};
-
-const sharpScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const flatScale  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-
-function getScaleForTargetKey(targetKey) {
-  if (!targetKey) return sharpScale;
-  const keyUpper = targetKey.toUpperCase();
-  if (['F', 'BB', 'EB', 'AB', 'DB', 'GB', 'Fm', 'Bbm', 'Ebm', 'Abm', 'Dbm', 'Gbm'].some(k => keyUpper.startsWith(k))) {
-    return flatScale;
-  }
-  return sharpScale;
-}
-
-function isChord(token) {
-  const chordTokenRegex = /^[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*(?:\/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*)?$/;
-  return chordTokenRegex.test(token);
-}
-
-function isChordLine(line) {
-  const tokens = line.trim().split(/\s+/);
-  if (tokens.length === 0 || tokens[0] === "") return false;
-  
-  let chordCount = 0;
-  let ignoredCount = 0;
-  
-  const ignoredTokens = ['|', ':', '-', 'x', 'intro', 'solo', 'nakarat', 'köprü', 'bridge', 'outro', 'söz', 'sözler', 've', 'ritim', 'ritm', 'kapo', 'capo', 'arpaj', 'fill'];
-  
-  for (const token of tokens) {
-    const cleanToken = token.toLowerCase().replace(/[:|()]/g, '');
-    if (isChord(token)) {
-      chordCount++;
-    } else if (ignoredTokens.includes(cleanToken) || /^[0-9]+$/.test(cleanToken)) {
-      ignoredCount++;
-    }
-  }
-  
-  const totalMeaningfulTokens = tokens.length - ignoredCount;
-  if (totalMeaningfulTokens <= 0) return chordCount > 0;
-  
-  return (chordCount / totalMeaningfulTokens) >= 0.7;
-}
-
-function transposeNote(note, semitones, targetScale = sharpScale) {
-  const firstChar = note.charAt(0).toUpperCase();
-  const rest = note.slice(1);
-  const normalizedNote = firstChar + rest;
-  
-  const semitone = noteToSemitone[normalizedNote];
-  if (semitone === undefined) return note;
-  
-  let newSemitone = (semitone + semitones) % 12;
-  if (newSemitone < 0) newSemitone += 12;
-  
-  return targetScale[newSemitone];
-}
-
-function transposeChord(chord, semitones, targetScale = sharpScale) {
-  return chord.split('/').map(part => {
-    const match = part.match(/^([A-G][#b]?)(.*)$/i);
-    if (!match) return part;
-    
-    const root = match[1];
-    const suffix = match[2];
-    
-    const transposedRoot = transposeNote(root, semitones, targetScale);
-    return transposedRoot + suffix;
-  }).join('/');
-}
-
-// Check if DOM element is colored red (designates a chord)
-function isElementRed(el) {
-  if (!el || el.nodeType !== 1) return false;
-  
-  const styleColor = el.style.color;
-  if (styleColor) {
-    const cleanColor = styleColor.replace(/\s+/g, '').toLowerCase();
-    if (cleanColor === 'red' || cleanColor === '#ff0000' || cleanColor === '#f00' || cleanColor.includes('rgb(255,0,0)')) {
-      return true;
-    }
-  }
-  
-  if (el.tagName.toLowerCase() === 'font') {
-    const fontColor = el.getAttribute('color');
-    if (fontColor) {
-      const cleanFontColor = fontColor.replace(/\s+/g, '').toLowerCase();
-      if (cleanFontColor === 'red' || cleanFontColor === '#ff0000' || cleanFontColor === '#f00' || cleanFontColor.includes('rgb(255,0,0)')) {
-        return true;
-      }
-    }
-  }
-  
-  return false;
-}
-
-// Recursively traverse leaf text nodes and transpose chords inside them
-function transposeLeafTextNodes(node, semitones, targetScale) {
-  if (node.nodeType === 3) { // Node.TEXT_NODE
-    const text = node.nodeValue;
-    const transposed = text.replace(/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*(?:\/[A-G][#b]?(?:maj|min|m|sus|add|dim|aug|alt|omit|[0-9]|\+|-|b|#)*)?/g, (match) => {
-      if (isChord(match)) {
-        return transposeChord(match, semitones, targetScale);
-      }
-      return match;
-    });
-    node.nodeValue = transposed;
-  } else {
-    node.childNodes.forEach(child => transposeLeafTextNodes(child, semitones, targetScale));
-  }
-}
-
-// Find red elements and transpose them
-function traverseAndTranspose(node, semitones, targetScale) {
-  if (node.nodeType === 1) { // Node.ELEMENT_NODE
-    if (isElementRed(node)) {
-      transposeLeafTextNodes(node, semitones, targetScale);
-      return;
-    }
-  }
-  node.childNodes.forEach(child => traverseAndTranspose(child, semitones, targetScale));
-}
-
-function renderTransposedTextAsHTML(htmlText, semitones, targetScale = sharpScale) {
-  if (!htmlText) return '<div style="color:var(--text-muted); text-align:center; padding: 2rem;">Bu şarkı için henüz akor/not girilmemiş. Düzenle butonundan ekleyebilirsiniz.</div>';
-  
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlText, 'text/html');
-  
-  if (semitones !== 0) {
-    traverseAndTranspose(doc.body, semitones, targetScale);
-  }
-  
-  return doc.body.innerHTML;
-}
-
-function escapeHTML(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function hasLyricsContent(html) {
-  if (!html) return false;
-  const clean = html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, '')
-    .replace(/[\s\uFEFF\xA0]+/g, '');
-  return clean.length > 0;
-}
+import { hasLyricsContent, getUploadsUrl } from '../utils/chordUtils';
 
 export default function Songs() {
   const [songs, setSongs] = useState([]);
@@ -202,42 +35,8 @@ export default function Songs() {
 
   const globalAudioRef = useRef(null);
   const editorRef = useRef(null);
-  const chordViewerContentRef = useRef(null);
-
-  // Chord Viewer Modal States
-  const [isChordViewerOpen, setIsChordViewerOpen] = useState(false);
-  const [viewerSong, setViewerSong] = useState(null);
-  const [transposeShift, setTransposeShift] = useState(0);
-  const [viewerFontSize, setViewerFontSize] = useState(16);
-  const [viewerTheme, setViewerTheme] = useState('dark');
-  const [isSingleScreen, setIsSingleScreen] = useState(false);
-
-  // Static Chord Image States
-  const [isChordImageOpen, setIsChordImageOpen] = useState(false);
-  const [chordImageSrc, setChordImageSrc] = useState('');
-  const [chordImageTitle, setChordImageTitle] = useState('');
+  // Static Chord Image Preview State (For Editing/Adding)
   const [chordImagePreviewUrl, setChordImagePreviewUrl] = useState('');
-
-  const triggerReactAutoFit = () => {
-    const pre = chordViewerContentRef.current;
-    if (!pre) return;
-    let fontSize = 24;
-    pre.style.fontSize = fontSize + 'px';
-    const maxIterations = 50;
-    let iterations = 0;
-    while ((pre.scrollWidth > pre.clientWidth || pre.scrollHeight > pre.clientHeight) && fontSize > 8 && iterations < maxIterations) {
-      fontSize--;
-      pre.style.fontSize = fontSize + 'px';
-      iterations++;
-    }
-  };
-
-  useEffect(() => {
-    if (isChordViewerOpen && isSingleScreen) {
-      const timer = setTimeout(triggerReactAutoFit, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isChordViewerOpen, isSingleScreen, transposeShift, viewerSong, viewerFontSize]);
 
   const clearAllFilters = () => {
     setFilterSong('');
@@ -501,21 +300,15 @@ export default function Songs() {
   };
 
   const openChordImageViewer = (song) => {
-    setChordImageSrc(getUploadsUrl(song.ChordImagePath));
-    setChordImageTitle(`${song.SongTitle} ${song.ArtistNames && song.ArtistNames !== '-' ? ` - ${song.ArtistNames}` : ''}`);
-    setIsChordImageOpen(true);
+    window.dispatchEvent(new CustomEvent('open-global-chord-viewer', {
+      detail: { song, mode: 'chord' }
+    }));
   };
 
   const openChordViewer = (song) => {
-    setViewerSong(song);
-    setTransposeShift(0);
-    setIsSingleScreen(false);
-    setIsChordViewerOpen(true);
-  };
-
-  const closeChordViewer = () => {
-    setIsChordViewerOpen(false);
-    setViewerSong(null);
+    window.dispatchEvent(new CustomEvent('open-global-chord-viewer', {
+      detail: { song, mode: 'transpose' }
+    }));
   };
 
   // Recording timer effect
@@ -1328,158 +1121,7 @@ export default function Songs() {
         </div>
       )}
 
-      {/* Akor Görüntüleme Modalı */}
-      {isChordViewerOpen && viewerSong && (() => {
-        const origKey = viewerSong.OriginalKey || viewerSong.originalKey;
-        let origRoot = '';
-        let suffix = '';
-        let origSemitone = null;
-        
-        if (origKey) {
-          const match = origKey.match(/^([A-G][#b]?)(.*)$/i);
-          if (match) {
-            origRoot = match[1];
-            suffix = match[2];
-            const origRootUpper = origRoot.charAt(0).toUpperCase() + origRoot.slice(1).toLowerCase();
-            origSemitone = noteToSemitone[origRootUpper];
-          }
-        }
-        
-        let targetScale = sharpScale;
-        if (origSemitone !== null && origSemitone !== undefined) {
-          let targetSemitone = (origSemitone + transposeShift) % 12;
-          if (targetSemitone < 0) targetSemitone += 12;
-          const targetRoot = sharpScale[targetSemitone];
-          targetScale = getScaleForTargetKey(targetRoot);
-        }
 
-        const htmlContent = renderTransposedTextAsHTML(viewerSong.Lyrics || viewerSong.lyrics, transposeShift, targetScale);
-        const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
-        return (
-          <div className="modal-overlay" style={{ zIndex: 1500 }}>
-            <div className="modal-content" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh' }}>
-              <div className="modal-header">
-                <h2>
-                  {viewerSong.SongTitle || viewerSong.title}
-                  {viewerSong.ArtistNames && viewerSong.ArtistNames !== '-' && ` - ${viewerSong.ArtistNames}`}
-                  {origKey && ` (${origKey} Tonu)`}
-                </h2>
-                <button className="close-btn" onClick={closeChordViewer}>&times;</button>
-              </div>
-
-              <div className="transpose-controls-container">
-                <div className="transpose-row">
-                  <label>Transpoze:</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setTransposeShift(prev => prev - 1)}>-1 Semiton</button>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setTransposeShift(prev => prev + 1)}>+1 Semiton</button>
-                    <button 
-                      type="button" 
-                      className="btn btn-sm btn-outline btn-danger" 
-                      onClick={() => setTransposeShift(0)}
-                      style={{ padding: '0.35rem 0.5rem', color: '#dc2626', borderColor: '#fca5a5' }}
-                    >
-                      Sıfırla
-                    </button>
-                    <span className="transpose-info-badge">
-                      {transposeShift > 0 ? `+${transposeShift}` : transposeShift} Semiton
-                    </span>
-                  </div>
-                </div>
-
-                {origKey && origSemitone !== null && (
-                  <div className="transpose-row" style={{ marginTop: '0.5rem' }}>
-                    <label>Hedef Ton:</label>
-                    <div className="transpose-btn-group">
-                      {standardScale.map(targetRoot => {
-                        const targetSemitone = noteToSemitone[targetRoot];
-                        let diff = targetSemitone - origSemitone;
-                        if (diff < 0) diff += 12;
-                        
-                        const displayName = targetRoot + suffix;
-                        const isActive = (transposeShift % 12 + 12) % 12 === diff;
-
-                        return (
-                          <button
-                            key={targetRoot}
-                            type="button"
-                            className={`transpose-btn ${isActive ? 'active' : ''}`}
-                            onClick={() => setTransposeShift(diff)}
-                          >
-                            {displayName}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Tek Ekran Modu Sırası */}
-                <div className="transpose-row" style={{ marginTop: '0.5rem', justifyContent: 'space-between', width: '100%' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <label style={{ minWidth: 'auto', marginRight: '0.5rem' }}>Tek Ekran Modu:</label>
-                    <input 
-                      type="checkbox" 
-                      checked={isSingleScreen} 
-                      onChange={(e) => setIsSingleScreen(e.target.checked)} 
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0 }}
-                    />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>(Sahnede kaydırma yapmadan sığdırır)</span>
-                  </div>
-                  {isSingleScreen && (
-                    <button 
-                      type="button" 
-                      className="btn btn-sm btn-outline" 
-                      onClick={triggerReactAutoFit}
-                      style={{ padding: '0.35rem 0.5rem', fontWeight: 600 }}
-                    >
-                      Ekrana Sığdır
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className={`chord-sheet-container ${isSingleScreen ? 'chord-sheet-container-single' : ''} ${viewerTheme === 'light' ? 'chord-sheet-light' : ''}`}>
-                <pre 
-                  ref={chordViewerContentRef}
-                  className={isSingleScreen ? 'chord-sheet-pre-single' : `chord-sheet-pre ${viewerTheme === 'light' ? 'chord-sheet-light' : ''}`}
-                  style={isSingleScreen ? {} : { fontSize: `${viewerFontSize}px` }}
-                  dangerouslySetInnerHTML={{ __html: htmlContent }}
-                />
-              </div>
-
-              <div className="chord-viewer-actions">
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="chord-action-btn" onClick={() => setViewerFontSize(f => Math.max(10, f - 1))}>Yazı A-</button>
-                  <button type="button" className="chord-action-btn" onClick={() => setViewerFontSize(f => Math.min(32, f + 1))}>Yazı A+</button>
-                  <button type="button" className="chord-action-btn" onClick={() => setViewerTheme(t => t === 'dark' ? 'light' : 'dark')}>
-                    Görünüm: {viewerTheme === 'dark' ? 'Koyu' : 'Açık'}
-                  </button>
-                </div>
-                <button type="button" className="btn btn-outline" onClick={closeChordViewer}>Kapat</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-      {isChordImageOpen && createPortal(
-        <div className="modal-overlay" style={{ zIndex: 1600 }}>
-          <div className="modal-content" style={{ maxWidth: '800px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-header">
-              <h2>{chordImageTitle} (Akor Görseli)</h2>
-              <button className="close-btn" onClick={() => setIsChordImageOpen(false)}>&times;</button>
-            </div>
-            <div style={{ flex: 1, overflow: 'auto', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img src={chordImageSrc} alt="Akor Görseli" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
-            </div>
-            <div className="modal-actions" style={{ marginTop: '1rem' }}>
-              <button type="button" className="btn btn-outline" onClick={() => setIsChordImageOpen(false)}>Kapat</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
