@@ -92,22 +92,27 @@ const store = {
     if (_loaded && !force) return;
 
     if (!force) {
-      const cachedData = localStorage.getItem(cacheKey);
-      const cachedTime = localStorage.getItem(cacheTimeKey);
-      if (cachedData && cachedTime && (Date.now() - Number(cachedTime) < CACHE_DURATION)) {
-        try {
-          const parsed = JSON.parse(cachedData);
-          _artists = parsed.artists || [];
-          _songs = parsed.songs || [];
-          _guests = parsed.guests || [];
-          _requests = parsed.requests || [];
-          _statuses = parsed.statuses || [];
-          _venues = parsed.venues || [];
-          _loaded = true;
-          _notify();
-          return;
-        } catch (e) {
-          console.warn("Önbellekten veri okunamadı, veritabanından yüklenecek...", e);
+      const isLocalhost = typeof window !== 'undefined' && 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        
+      if (!isLocalhost) {
+        const cachedData = localStorage.getItem(cacheKey);
+        const cachedTime = localStorage.getItem(cacheTimeKey);
+        if (cachedData && cachedTime && (Date.now() - Number(cachedTime) < CACHE_DURATION)) {
+          try {
+            const parsed = JSON.parse(cachedData);
+            _artists = parsed.artists || [];
+            _songs = parsed.songs || [];
+            _guests = parsed.guests || [];
+            _requests = parsed.requests || [];
+            _statuses = parsed.statuses || [];
+            _venues = parsed.venues || [];
+            _loaded = true;
+            _notify();
+            return;
+          } catch (e) {
+            console.warn("Önbellekten veri okunamadı, veritabanından yüklenecek...", e);
+          }
         }
       }
     }

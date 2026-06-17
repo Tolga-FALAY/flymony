@@ -75,8 +75,10 @@ const DB = {
     const cacheKey = 'flymony_db_cache_vanilla';
     const cacheTimeKey = 'flymony_db_cache_vanilla_time';
     const CACHE_DURATION = 5 * 60 * 1000; // 5 dakikalık önbellek süresi
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-    if (!force) {
+    if (!force && !isLocalhost) {
       const cachedData = localStorage.getItem(cacheKey);
       const cachedTime = localStorage.getItem(cacheTimeKey);
       if (cachedData && cachedTime && (Date.now() - Number(cachedTime) < CACHE_DURATION)) {
@@ -263,7 +265,9 @@ function openModal(modalId) {
   }
   if(modalId === 'guestModal') {
     populateBirthdateDropdowns();
-    vanillaRelatedGuestIDs = [];
+    if (!document.getElementById('guestID')?.value) {
+      vanillaRelatedGuestIDs = [];
+    }
     populateVanillaGuestRelationDropdown();
     renderVanillaGuestRelationsList();
   }

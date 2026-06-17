@@ -66,23 +66,24 @@ export default function Guests() {
     if (!formData.RelatedGuestIDs || formData.RelatedGuestIDs.length === 0) return [];
     
     const indirectIds = new Set();
+    const directIdsNum = formData.RelatedGuestIDs.map(Number);
     
-    formData.RelatedGuestIDs.forEach(directId => {
-      const directGuest = guests.find(g => Number(g.GuestID) === Number(directId));
+    directIdsNum.forEach(directId => {
+      const directGuest = guests.find(g => Number(g.GuestID) === directId);
       if (directGuest && directGuest.RelatedGuestIDs) {
         directGuest.RelatedGuestIDs.forEach(indirectId => {
-          const indirectIdStr = String(indirectId);
+          const indirectIdNum = Number(indirectId);
           // Exclude self (the editing guest)
-          if (editingGuest && String(editingGuest.GuestID) === indirectIdStr) return;
+          if (editingGuest && Number(editingGuest.GuestID) === indirectIdNum) return;
           // Exclude direct relations of the editing guest
-          if (formData.RelatedGuestIDs.includes(indirectIdStr)) return;
+          if (directIdsNum.includes(indirectIdNum)) return;
           
-          indirectIds.add(Number(indirectId));
+          indirectIds.add(indirectIdNum);
         });
       }
     });
     
-    return Array.from(indirectIds).map(id => guests.find(g => g.GuestID === id)).filter(Boolean);
+    return Array.from(indirectIds).map(id => guests.find(g => Number(g.GuestID) === id)).filter(Boolean);
   };
 
   const profileCameraInputRef = useRef(null);
@@ -910,7 +911,7 @@ export default function Guests() {
                 {getIndirectRelations().length > 0 && (
                   <div style={{ marginBottom: '0.75rem' }}>
                     <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.25rem', fontWeight: '500' }}>
-                      Dolaylı İlişkiler
+                      Bağlantılı / Dolaylı İlişkiler
                     </div>
                     <div className="listbox-container" style={{ minHeight: '40px', maxHeight: '100px', overflowY: 'auto', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.25rem' }}>
                       {getIndirectRelations().map(g => (
