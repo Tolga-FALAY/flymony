@@ -122,7 +122,7 @@ export default function ChordFullscreenViewer() {
         {mode === 'chord' ? (
           <button 
             type="button" 
-            className="viewer-btn-float btn-transpose-toggle" 
+            className={`viewer-btn-float btn-transpose-toggle ${hasLyricsContent(song.Lyrics) ? 'btn-status-success' : 'btn-status-danger'}`} 
             onClick={handleToggleToTranspose}
             title="Transpoze Ekranına Geç (T)"
           >
@@ -131,7 +131,7 @@ export default function ChordFullscreenViewer() {
         ) : (
           <button 
             type="button" 
-            className="viewer-btn-float btn-chord-toggle" 
+            className={`viewer-btn-float btn-chord-toggle ${song.ChordImagePath ? 'btn-status-success' : 'btn-status-danger'}`} 
             onClick={handleToggleToChord}
             title="Akor Görseline Geç (A)"
           >

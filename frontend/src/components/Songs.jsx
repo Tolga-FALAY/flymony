@@ -771,12 +771,24 @@ export default function Songs() {
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
                 <td data-label="Yıl">{song.SongYear || '-'}</td>
                 <td data-label="İşlemler" className="action-btns">
-                  {song.ChordImagePath && (
-                    <button className="btn btn-sm btn-outline" onClick={() => openChordImageViewer(song)}>Akor</button>
-                  )}
-                  {hasLyricsContent(song.Lyrics) && (
-                    <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Transpoze</button>
-                  )}
+                  {(() => {
+                    const hasChord = !!song.ChordImagePath;
+                    const hasTranspose = hasLyricsContent(song.Lyrics);
+                    if (hasChord && hasTranspose) {
+                      return (
+                        <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>A/T</button>
+                      );
+                    } else if (hasChord) {
+                      return (
+                        <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>Akor</button>
+                      );
+                    } else if (hasTranspose) {
+                      return (
+                        <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Trans.</button>
+                      );
+                    }
+                    return null;
+                  })()}
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
                 </td>

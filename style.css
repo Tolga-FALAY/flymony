@@ -1771,4 +1771,60 @@ body.dark-mode .rich-editor-content {
   }
 }
 
+.btn-added-style {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #047857 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.btn-added-style:hover {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #035c43 !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+}
+
+.vanilla-viewer-btn-float {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-family: inherit;
+  user-select: none;
+}
+
+.vanilla-viewer-btn-float.btn-status-success {
+  background: #10b981 !important;
+  color: #ffffff !important;
+}
+
+.vanilla-viewer-btn-float.btn-status-success:hover {
+  background: #059669 !important;
+}
+
+.vanilla-viewer-btn-float.btn-status-danger {
+  background: var(--danger) !important;
+  color: #ffffff !important;
+}
+
+.vanilla-viewer-btn-float.btn-status-danger:hover {
+  background: var(--danger-hover) !important;
+}
+
+.vanilla-viewer-btn-float.btn-close-toggle {
+  background: var(--danger) !important;
+  color: #ffffff !important;
+}
+
+.vanilla-viewer-btn-float.btn-close-toggle:hover {
+  background: var(--danger-hover) !important;
+}
+
 

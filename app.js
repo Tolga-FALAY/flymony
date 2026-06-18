@@ -1463,13 +1463,17 @@ function renderSongs() {
       ? `<button type="button" class="audio-play-btn" onclick="playVanillaSongAudio(event, '${song.audioPath}', '${song.title.replace(/'/g, "\\'")}')" title="Ses Kaydını Oynat" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: 0.5rem; font-size: 1.1rem; line-height: 1;">▶️</button>`
       : '';
 
-    const transpozeBtnHtml = hasLyricsContent(song.lyrics)
-      ? `<button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Transpoze</button>`
-      : '';
+    let songBtnHtml = '';
+    const hasChord = !!song.chordImagePath;
+    const hasTranspose = hasLyricsContent(song.lyrics);
 
-    const akorBtnHtml = song.chordImagePath
-      ? `<button class="btn btn-sm btn-outline" onclick="openChordImageModal(${song.id})">Akor</button>`
-      : '';
+    if (hasChord && hasTranspose) {
+      songBtnHtml = `<button class="btn btn-sm btn-outline btn-added-style" onclick="openChordImageModal(${song.id})">A/T</button>`;
+    } else if (hasChord) {
+      songBtnHtml = `<button class="btn btn-sm btn-outline btn-added-style" onclick="openChordImageModal(${song.id})">Akor</button>`;
+    } else if (hasTranspose) {
+      songBtnHtml = `<button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Trans.</button>`;
+    }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1482,8 +1486,7 @@ function renderSongs() {
       <td data-label="Sanatçılar">${artistNames || '-'}</td>
       <td data-label="Yıl">${song.year || '-'}</td>
       <td data-label="İşlemler" class="action-btns">
-        ${akorBtnHtml}
-        ${transpozeBtnHtml}
+        ${songBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteSong(${song.id})">Sil</button>
       </td>
@@ -3064,6 +3067,16 @@ function openChordViewer(songId) {
   // Initialize font size style
   pre.style.fontSize = chordViewerFontSize + 'px';
   
+  // Update the toggle button style for "A" (Akor Görseli)
+  const toggleBtn = document.getElementById('vanillaChordViewerToggleBtn');
+  if (toggleBtn) {
+    if (song.chordImagePath) {
+      toggleBtn.className = 'vanilla-viewer-btn-float btn-status-success';
+    } else {
+      toggleBtn.className = 'vanilla-viewer-btn-float btn-status-danger';
+    }
+  }
+
   updateChordViewerContent();
   document.getElementById('chordViewerModal').style.display = 'flex';
 }
@@ -3294,6 +3307,18 @@ function openChordImageModal(songId) {
   const song = DB.songs.find(s => s.id == songId);
   if (!song || !song.chordImagePath) return;
 
+  chordViewerSong = song; // set it!
+
+  // Update the toggle button style for "T" (Transpoze)
+  const toggleBtn = document.getElementById('vanillaChordImageToggleBtn');
+  if (toggleBtn) {
+    if (hasLyricsContent(song.lyrics)) {
+      toggleBtn.className = 'vanilla-viewer-btn-float btn-status-success';
+    } else {
+      toggleBtn.className = 'vanilla-viewer-btn-float btn-status-danger';
+    }
+  }
+
   const UPLOADS_BASE_URL = API_BASE_URL.replace('/api', '');
   const modal = document.getElementById('chordImageModal');
   const img = document.getElementById('chordImageModalImg');
@@ -3315,6 +3340,26 @@ function closeChordImageModal() {
   if (img) img.src = '';
 }
 
+function toggleVanillaViewerMode() {
+  if (!chordViewerSong) return;
+  const isChordViewerOpen = document.getElementById('chordViewerModal').style.display === 'flex';
+  if (isChordViewerOpen) {
+    if (chordViewerSong.chordImagePath) {
+      closeChordViewer();
+      openChordImageModal(chordViewerSong.id);
+    } else {
+      alert("Bu şarkının akor görseli yoktur");
+    }
+  } else {
+    if (hasLyricsContent(chordViewerSong.lyrics)) {
+      closeChordImageModal();
+      openChordViewer(chordViewerSong.id);
+    } else {
+      alert("Bu şarkının transpoze bilgisi yoktur");
+    }
+  }
+}
+
 // Window Exports
 window.openChordViewer = openChordViewer;
 window.closeChordViewer = closeChordViewer;
@@ -3330,5 +3375,6 @@ window.pasteVanillaChordImage = pasteVanillaChordImage;
 window.clearVanillaSongChordImage = clearVanillaSongChordImage;
 window.openChordImageModal = openChordImageModal;
 window.closeChordImageModal = closeChordImageModal;
+window.toggleVanillaViewerMode = toggleVanillaViewerMode;
 
 
