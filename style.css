@@ -754,18 +754,26 @@ tr:hover td {
     flex-shrink: 0;
   }
 
+  .table-wrapper td[data-label="İşlemler"]::before {
+    display: none;
+  }
+
   .action-btns {
     width: 100%;
-    justify-content: stretch;
+    justify-content: flex-start;
     gap: 0.5rem;
   }
 
   .action-btns .btn {
-    flex: 1;
+    flex: 0 0 auto;
     max-width: none;
     border-radius: 10px;
     font-size: 0.85rem;
     padding: 0.55rem 0.5rem;
+  }
+
+  .action-btns .btn-danger {
+    margin-left: auto;
   }
 
   /* ── Modals on Mobile ── */
