@@ -79,12 +79,13 @@ export default function Songs() {
   }, []);
 
   useEffect(() => {
-    const handleOpenExternal = () => {
-      openModal();
+    const handleOpenExternal = (e) => {
+      const song = e.detail && e.detail.song;
+      openModal(song || null);
     };
     window.addEventListener('open-song-modal-from-external', handleOpenExternal);
     return () => window.removeEventListener('open-song-modal-from-external', handleOpenExternal);
-  }, []);
+  }, [songs]);
 
   const handleExecCommand = (command, value = null) => {
     document.execCommand(command, false, value);

@@ -1797,6 +1797,22 @@ function renderRequests() {
     const tickHtml = req.vardi ? `<span style="color: #059669; font-weight: bold; font-size: 1.2rem; margin-left: 0.35rem;" title="Vardı">✓</span>` : '';
     const statusHtml = `<div style="display: inline-flex; align-items: center;"><span class="${getStatusClass(req.status)}">${req.status || 'Kayıtlı'}</span>${tickHtml}</div>`;
 
+    let songBtnHtml = '';
+    const hasChord = !!song.chordImagePath;
+    const hasTranspose = hasLyricsContent(song.lyrics);
+
+    if (hasChord && hasTranspose) {
+      songBtnHtml = `<button class="btn btn-sm btn-outline btn-added-style" onclick="openChordImageModal(${song.id})">A/T</button>`;
+    } else if (hasChord) {
+      songBtnHtml = `<button class="btn btn-sm btn-outline btn-added-style" onclick="openChordImageModal(${song.id})">Akor</button>`;
+    } else if (hasTranspose) {
+      songBtnHtml = `<button class="btn btn-sm btn-outline" onclick="openChordViewer(${song.id})">Trans.</button>`;
+    } else {
+      songBtnHtml = `<span style="color: #991b1b; font-weight: 600; font-size: 0.82rem; padding: 3px 6px; background: rgba(153, 27, 27, 0.1); border-radius: 4px; border: 1px solid rgba(153, 27, 27, 0.2); display: inline-flex; align-items: center; justify-content: center; height: 28px; box-sizing: border-box; white-space: nowrap;">Akor Yok</span>`;
+    }
+
+    const editSongBtnHtml = `<button class="btn btn-sm btn-outline" onclick="editSong(${song.id})">Şarkı</button>`;
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="Tarih">${dateStr}</td>
@@ -1809,6 +1825,8 @@ function renderRequests() {
       </td>
       <td data-label="Durum">${statusHtml}</td>
       <td data-label="İşlemler" class="action-btns">
+        ${songBtnHtml}
+        ${editSongBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editRequest(${req.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteRequest(${req.id})">Sil</button>
       </td>

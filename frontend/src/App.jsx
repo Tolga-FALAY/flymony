@@ -113,6 +113,16 @@ function App() {
     return () => window.removeEventListener('store-updated', updateCounts);
   }, []);
 
+  useEffect(() => {
+    const handleOpenSongModalExternal = (e) => {
+      if (e.detail && e.detail.song) {
+        setActiveTab('songs');
+      }
+    };
+    window.addEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
+    return () => window.removeEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
+  }, []);
+
   function handleNavClick(key) {
     setActiveTab(key);
     setMenuOpen(false);

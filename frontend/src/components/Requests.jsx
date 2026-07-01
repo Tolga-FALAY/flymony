@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import store from '../store';
+import { hasLyricsContent } from '../utils/chordUtils';
+
 
 export default function Requests() {
   const [requests, setRequests] = useState([]);
@@ -450,7 +452,7 @@ export default function Requests() {
                   {renderSortArrow('Status')}
                 </span>
               </th>
-              <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
+              <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -498,6 +500,72 @@ export default function Requests() {
                           </span>
                         ) : null}
                       </div>
+                      {(() => {
+                        const song = songs.find(s => s.SongID === req.SongID);
+                        if (!song) return null;
+                        const hasChord = !!song.ChordImagePath;
+                        const hasTranspose = hasLyricsContent(song.Lyrics);
+                        if (hasChord && hasTranspose) {
+                          return (
+                            <button
+                              className="btn btn-sm btn-outline btn-added-style"
+                              onClick={() => {
+                                window.dispatchEvent(new CustomEvent('open-global-chord-viewer', {
+                                  detail: { song, mode: 'chord' }
+                                }));
+                              }}
+                            >
+                              A/T
+                            </button>
+                          );
+                        } else if (hasChord) {
+                          return (
+                            <button
+                              className="btn btn-sm btn-outline btn-added-style"
+                              onClick={() => {
+                                window.dispatchEvent(new CustomEvent('open-global-chord-viewer', {
+                                  detail: { song, mode: 'chord' }
+                                }));
+                              }}
+                            >
+                              Akor
+                            </button>
+                          );
+                        } else if (hasTranspose) {
+                          return (
+                            <button
+                              className="btn btn-sm btn-outline"
+                              onClick={() => {
+                                window.dispatchEvent(new CustomEvent('open-global-chord-viewer', {
+                                  detail: { song, mode: 'transpose' }
+                                }));
+                              }}
+                            >
+                              Trans.
+                            </button>
+                          );
+                        } else {
+                          return (
+                            <span style={{ color: '#991b1b', fontWeight: '600', fontSize: '0.82rem', padding: '3px 6px', background: 'rgba(153, 27, 27, 0.1)', borderRadius: '4px', border: '1px solid rgba(153, 27, 27, 0.2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '28px', boxSizing: 'border-box', whiteSpace: 'nowrap' }}>
+                              Akor Yok
+                            </span>
+                          );
+                        }
+                      })()}
+                      {(() => {
+                        const song = songs.find(s => s.SongID === req.SongID);
+                        if (!song) return null;
+                        return (
+                          <button
+                            className="btn btn-sm btn-outline"
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('open-song-modal-from-external', { detail: { song } }));
+                            }}
+                          >
+                            Şarkı
+                          </button>
+                        );
+                      })()}
                       <button className="btn btn-sm btn-outline" onClick={() => openModal(req)}>Düzenle</button>
                       <button className="btn btn-sm btn-danger" onClick={() => handleDelete(req.RequestID)}>Sil</button>
                     </div>
