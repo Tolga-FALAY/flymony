@@ -15,6 +15,7 @@ let _requests = [];
 let _statuses = [];
 let _venues  = [];
 let _gigs    = [];
+let _cities  = [];
 let _loaded  = false;
 
 // ─── Yardımcı: sanatçı adlarını listeden çöz ────────────────────────────────
@@ -56,7 +57,8 @@ function _notify() {
       requests: _requests,
       statuses: _statuses,
       venues: _venues,
-      gigs: _gigs
+      gigs: _gigs,
+      cities: _cities
     };
     localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
     localStorage.setItem(cacheTimeKey, Date.now().toString());
@@ -80,6 +82,7 @@ const store = {
   get statuses() { return _statuses; },
   get venues()   { return _venues; },
   get gigs()     { return _gigs; },
+  get cities()   { return _cities; },
   get isLoaded() { return _loaded; },
 
   // ── Tek seferlik yükleme ─────────────────────────────────────────────────
@@ -111,6 +114,7 @@ const store = {
             _statuses = parsed.statuses || [];
             _venues = parsed.venues || [];
             _gigs = parsed.gigs || [];
+            _cities = parsed.cities || [];
             _loaded = true;
             _notify();
             return;
@@ -121,14 +125,15 @@ const store = {
       }
     }
 
-    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList] = await Promise.all([
+    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList] = await Promise.all([
       api.getArtists(),
       api.getSongs(),
       api.getGuests(),
       api.getRequests(),
       api.getStatuses(),
       api.getVenues(),
-      api.getGigs()
+      api.getGigs(),
+      api.getCities()
     ]);
 
     // 1. Sanatçıları yükle
@@ -206,10 +211,22 @@ const store = {
       Color: s.Color
     }));
 
-    // 6. Mekanları yükle
+    // 6. Şehirleri yükle
+    _cities = citiesList.map(c => ({
+      CityID: Number(c.CityID),
+      CityName: c.CityName
+    }));
+    _cities.sort((a, b) =>
+      (a.CityName || '').toLocaleLowerCase('tr-TR')
+        .localeCompare((b.CityName || '').toLocaleLowerCase('tr-TR'), 'tr')
+    );
+
+    // 7. Mekanları yükle
     _venues = venuesList.map(v => ({
       VenueID: Number(v.VenueID),
       VenueName: v.VenueName,
+      CityID: Number(v.CityID),
+      CityName: v.CityName || '-',
       ContactPerson: v.ContactPerson || '',
       ContactPhone: v.ContactPhone || '',
       InstagramLink: v.InstagramLink || ''
@@ -219,10 +236,12 @@ const store = {
         .localeCompare((b.VenueName || '').toLocaleLowerCase('tr-TR'), 'tr')
     );
     
-    // 7. Sahneleri yükle
+    // 8. Sahneleri yükle
     _gigs = gigsList.map(gig => ({
       GigID: Number(gig.GigID),
+      VenueID: Number(gig.VenueID),
       VenueName: gig.VenueName,
+      CityName: gig.CityName || '-',
       GigDate: gig.GigDate,
       Notes: gig.Notes || '',
       Photos: gig.Photos || [],
@@ -482,6 +501,34 @@ const store = {
 
   removeGig(id) {
     _gigs = _gigs.filter(g => g.GigID !== id);
+    _notify();
+  },
+
+  // ── Şehir mutasyonları ───────────────────────────────────────────────────
+  addCity(city) {
+    _cities.push(city);
+    _cities.sort((a, b) =>
+      (a.CityName || '').toLocaleLowerCase('tr-TR')
+        .localeCompare((b.CityName || '').toLocaleLowerCase('tr-TR'), 'tr')
+    );
+    _notify();
+  },
+
+  updateCity(id, data) {
+    const idx = _cities.findIndex(c => c.CityID === id);
+    if (idx !== -1) {
+      _cities[idx] = { ..._cities[idx], ...data };
+      _cities.sort((a, b) =>
+        (a.CityName || '').toLocaleLowerCase('tr-TR')
+          .localeCompare((b.CityName || '').toLocaleLowerCase('tr-TR'), 'tr')
+      );
+      _venues = _venues.map(v => v.CityID === id ? { ...v, CityName: data.CityName } : v);
+    }
+    _notify();
+  },
+
+  removeCity(id) {
+    _cities = _cities.filter(c => c.CityID !== id);
     _notify();
   }
 };

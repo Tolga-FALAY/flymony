@@ -19,7 +19,7 @@ export default function Gigs() {
 
   // Gig Editor Form State
   const [formData, setFormData] = useState({
-    VenueName: '',
+    VenueID: '',
     GigDate: '',
     Notes: '',
     Photos: [],
@@ -135,7 +135,7 @@ export default function Gigs() {
   const handleEdit = (gig) => {
     setEditingGig(gig);
     setFormData({
-      VenueName: gig.VenueName,
+      VenueID: gig.VenueID || '',
       GigDate: gig.GigDate,
       Notes: gig.Notes || '',
       Photos: gig.Photos || [],
@@ -161,7 +161,7 @@ export default function Gigs() {
     setEditingGig(null);
     const today = new Date().toISOString().split('T')[0];
     setFormData({
-      VenueName: '',
+      VenueID: store.venues.length > 0 ? store.venues[0].VenueID : '',
       GigDate: today,
       Notes: '',
       Photos: [],
@@ -187,7 +187,7 @@ export default function Gigs() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!formData.VenueName.trim() || !formData.GigDate) {
+    if (!formData.VenueID || !formData.GigDate) {
       alert('Lütfen mekân ve tarih bilgilerini doldurun.');
       return;
     }
@@ -450,7 +450,7 @@ export default function Gigs() {
       
       const newSongsList = [...liveGig.Songs, newLiveSong];
       const payload = {
-        VenueName: liveGig.VenueName,
+        VenueID: liveGig.VenueID,
         GigDate: liveGig.GigDate,
         Notes: liveGig.Notes,
         Photos: liveGig.Photos,
@@ -613,7 +613,7 @@ export default function Gigs() {
               return (
                 <tr key={gig.GigID}>
                   <td data-label="Tarih">{formattedDate}</td>
-                  <td data-label="Mekân">{gig.VenueName}</td>
+                  <td data-label="Mekân">{gig.VenueName} ({gig.CityName || '-'})</td>
                   <td data-label="Şarkı Sayısı" style={{ textAlign: 'center' }}>
                     <span style={{ fontWeight: '600' }}>{playedCount}</span> / {songsCount}
                   </td>
@@ -648,13 +648,26 @@ export default function Gigs() {
               <div className="filter-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Sahne Alınan Mekân (Mekân)</label>
-                  <input 
-                    type="text" 
-                    value={formData.VenueName} 
-                    onChange={e => setFormData({ ...formData, VenueName: e.target.value })} 
-                    placeholder="Örn: Akustik Sahne, Kadıköy" 
-                    required 
-                  />
+                  <select
+                    value={formData.VenueID}
+                    onChange={e => setFormData({ ...formData, VenueID: e.target.value })}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: '10px',
+                      backgroundColor: 'var(--surface)',
+                      color: 'var(--text)'
+                    }}
+                  >
+                    <option value="">Mekân Seçin...</option>
+                    {store.venues.map(v => (
+                      <option key={v.VenueID} value={v.VenueID}>
+                        {v.VenueName} ({v.CityName})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Sahne Tarihi</label>

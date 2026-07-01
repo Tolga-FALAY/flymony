@@ -393,6 +393,199 @@ export const initializeDB = () => {
         console.error("Migration error while seeding RequestStatuses:", e);
     }
 
+    // ----------------------------------------------------
+    // CITIES TABLE CREATION & MIGRATIONS
+    // ----------------------------------------------------
+    try {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS Cities (
+                CityID INTEGER PRIMARY KEY AUTOINCREMENT,
+                CityName TEXT NOT NULL UNIQUE
+            );
+        `);
+        
+        // Seed default city if empty
+        const cityCount = db.prepare("SELECT COUNT(*) as count FROM Cities").get().count;
+        if (cityCount === 0) {
+            console.log("Seeding default city: İstanbul...");
+            db.prepare("INSERT INTO Cities (CityName) VALUES (?)").run("İstanbul");
+        }
+    } catch (e) {
+        console.error("Migration error while initializing Cities table:", e);
+    }
+
+    // ----------------------------------------------------
+    // VENUES TABLE MIGRATION (Add CityID)
+    // ----------------------------------------------------
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Venues)").all();
+        const hasCityID = tableInfo.some(col => col.name === 'CityID');
+        if (!hasCityID) {
+            console.log("Migrating Venues table: Adding CityID column...");
+            
+            // Get default city ID
+            const defaultCity = db.prepare("SELECT CityID FROM Cities WHERE CityName = ?").get("İstanbul") 
+                || db.prepare("SELECT CityID FROM Cities LIMIT 1").get();
+            const defaultCityID = defaultCity ? defaultCity.CityID : 1;
+
+            db.transaction(() => {
+                // Rename Venues to Venues_old
+                db.exec("ALTER TABLE Venues RENAME TO Venues_old;");
+                
+                // Create new Venues table
+                db.exec(`
+                    CREATE TABLE Venues (
+                        VenueID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        VenueName TEXT NOT NULL UNIQUE,
+                        CityID INTEGER NOT NULL,
+                        ContactPerson TEXT,
+                        ContactPhone TEXT,
+                        InstagramLink TEXT,
+                        FOREIGN KEY (CityID) REFERENCES Cities(CityID)
+                    );
+                `);
+
+                // Copy old records to new table with default city
+                db.prepare(`
+                    INSERT INTO Venues (VenueID, VenueName, CityID, ContactPerson, ContactPhone, InstagramLink)
+                    SELECT VenueID, VenueName, ?, ContactPerson, ContactPhone, InstagramLink FROM Venues_old;
+                `).run(defaultCityID);
+
+                // Drop old table
+                db.exec("DROP TABLE Venues_old;");
+            })();
+            console.log("Venues table migration complete.");
+        }
+    } catch (e) {
+        console.error("Migration error while updating Venues table:", e);
+    }
+
+    // ----------------------------------------------------
+    // GIGS TABLE MIGRATION (VenueName -> VenueID)
+    // ----------------------------------------------------
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Gigs)").all();
+        const hasVenueID = tableInfo.some(col => col.name === 'VenueID');
+        if (!hasVenueID) {
+            console.log("Migrating Gigs table: Replacing VenueName with VenueID...");
+            
+            const defaultCity = db.prepare("SELECT CityID FROM Cities WHERE CityName = ?").get("İstanbul") 
+                || db.prepare("SELECT CityID FROM Cities LIMIT 1").get();
+            const defaultCityID = defaultCity ? defaultCity.CityID : 1;
+
+            db.transaction(() => {
+                // Rename Gigs to Gigs_old
+                db.exec("ALTER TABLE Gigs RENAME TO Gigs_old;");
+
+                // Create new Gigs table referencing VenueID
+                db.exec(`
+                    CREATE TABLE Gigs (
+                        GigID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        VenueID INTEGER NOT NULL,
+                        GigDate TEXT NOT NULL,
+                        Notes TEXT,
+                        Photos TEXT,
+                        Videos TEXT,
+                        CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (VenueID) REFERENCES Venues(VenueID)
+                    );
+                `);
+
+                // Get old Gigs
+                const oldGigs = db.prepare("SELECT * FROM Gigs_old").all();
+                
+                for (const gig of oldGigs) {
+                    const venueName = (gig.VenueName || 'Bilinmeyen Mekan').trim();
+                    
+                    // Check if venue already exists in Venues
+                    let venue = db.prepare("SELECT VenueID FROM Venues WHERE TRIM(LOWER(VenueName)) = TRIM(LOWER(?))").get(venueName);
+                    
+                    if (!venue) {
+                        // Create a new venue entry with the default city
+                        const ins = db.prepare("INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink) VALUES (?, ?, '', '', '')").run(venueName, defaultCityID);
+                        venue = { VenueID: ins.lastInsertRowid };
+                        console.log(`Auto-created parametric venue: ${venueName} (İstanbul)`);
+                    }
+
+                    // Insert gig referencing new/existing VenueID
+                    db.prepare(`
+                        INSERT INTO Gigs (GigID, VenueID, GigDate, Notes, Photos, Videos, CreatedAt, UpdatedAt)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(
+                        gig.GigID,
+                        venue.VenueID,
+                        gig.GigDate,
+                        gig.Notes || '',
+                        gig.Photos || '[]',
+                        gig.Videos || '[]',
+                        gig.CreatedAt,
+                        gig.UpdatedAt
+                    );
+                }
+
+                // Drop Gigs_old
+                db.exec("DROP TABLE Gigs_old;");
+            })();
+            console.log("Gigs table migration complete.");
+        }
+    } catch (e) {
+        console.error("Migration error while updating Gigs table:", e);
+    }
+
+    // ----------------------------------------------------
+    // GIG_SONGS & GIG_GUESTS FOREIGN KEY REPAIR MIGRATION
+    // ----------------------------------------------------
+    try {
+        const gigSongsSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='Gig_Songs'").get()?.sql || '';
+        const gigGuestsSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='Gig_Guests'").get()?.sql || '';
+
+        if (gigSongsSql.includes('Gigs_old') || gigGuestsSql.includes('Gigs_old')) {
+            console.log("Repairing broken foreign keys in Gig_Songs and Gig_Guests...");
+            
+            db.transaction(() => {
+                // Rebuild Gig_Songs
+                if (gigSongsSql.includes('Gigs_old')) {
+                    db.exec("ALTER TABLE Gig_Songs RENAME TO Gig_Songs_old;");
+                    db.exec(`
+                        CREATE TABLE Gig_Songs (
+                            GigSongID INTEGER PRIMARY KEY AUTOINCREMENT,
+                            GigID INTEGER NOT NULL,
+                            SongID INTEGER NOT NULL,
+                            SortOrder INTEGER NOT NULL,
+                            IsPlayed INTEGER DEFAULT 0,
+                            IsRequest INTEGER DEFAULT 0,
+                            FOREIGN KEY (GigID) REFERENCES Gigs(GigID) ON DELETE CASCADE,
+                            FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
+                        );
+                    `);
+                    db.exec("INSERT INTO Gig_Songs (GigSongID, GigID, SongID, SortOrder, IsPlayed, IsRequest) SELECT GigSongID, GigID, SongID, SortOrder, IsPlayed, IsRequest FROM Gig_Songs_old;");
+                    db.exec("DROP TABLE Gig_Songs_old;");
+                }
+
+                // Rebuild Gig_Guests
+                if (gigGuestsSql.includes('Gigs_old')) {
+                    db.exec("ALTER TABLE Gig_Guests RENAME TO Gig_Guests_old;");
+                    db.exec(`
+                        CREATE TABLE Gig_Guests (
+                            GigGuestID INTEGER PRIMARY KEY AUTOINCREMENT,
+                            GigID INTEGER NOT NULL,
+                            GuestID INTEGER NOT NULL,
+                            TableName TEXT,
+                            FOREIGN KEY (GigID) REFERENCES Gigs(GigID) ON DELETE CASCADE,
+                            FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
+                        );
+                    `);
+                    db.exec("INSERT INTO Gig_Guests (GigGuestID, GigID, GuestID, TableName) SELECT GigGuestID, GigID, GuestID, TableName FROM Gig_Guests_old;");
+                    db.exec("DROP TABLE Gig_Guests_old;");
+                }
+            })();
+            console.log("Gig_Songs and Gig_Guests foreign key repair complete.");
+        }
+    } catch (e) {
+        console.error("Migration error while repairing Gig_Songs/Gig_Guests tables:", e);
+    }
+
     console.log("Database tables initialized.");
 };
 

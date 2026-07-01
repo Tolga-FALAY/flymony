@@ -173,6 +173,33 @@ export const api = {
   },
 
   // ========================
+  // CITIES API
+  // ========================
+  getCities: async () => {
+    const list = await request('/cities');
+    return list.map(c => ({
+      CityID: Number(c.CityID),
+      CityName: c.CityName
+    }));
+  },
+
+  createCity: async (data) => {
+    const result = await request('/cities', 'POST', data);
+    return {
+      CityID: Number(result.CityID),
+      CityName: result.CityName
+    };
+  },
+
+  updateCity: async (id, data) => {
+    return request(`/cities/${id}`, 'PUT', data);
+  },
+
+  deleteCity: async (id) => {
+    return request(`/cities/${id}`, 'DELETE');
+  },
+
+  // ========================
   // VENUES API
   // ========================
   getVenues: async () => {
@@ -180,6 +207,8 @@ export const api = {
     return list.map(v => ({
       VenueID: Number(v.VenueID),
       VenueName: v.VenueName,
+      CityID: Number(v.CityID),
+      CityName: v.CityName || '-',
       ContactPerson: v.ContactPerson || '',
       ContactPhone: v.ContactPhone || '',
       InstagramLink: v.InstagramLink || ''
@@ -189,8 +218,10 @@ export const api = {
   createVenue: async (data) => {
     const result = await request('/venues', 'POST', data);
     return {
-      VenueID: Number(result.id),
+      VenueID: Number(result.VenueID),
       VenueName: result.VenueName,
+      CityID: Number(result.CityID),
+      CityName: result.CityName || '-',
       ContactPerson: result.ContactPerson,
       ContactPhone: result.ContactPhone,
       InstagramLink: result.InstagramLink
@@ -212,7 +243,9 @@ export const api = {
     const list = await request('/gigs');
     return list.map(gig => ({
       GigID: Number(gig.GigID),
+      VenueID: Number(gig.VenueID),
       VenueName: gig.VenueName,
+      CityName: gig.CityName || '-',
       GigDate: gig.GigDate,
       Notes: gig.Notes || '',
       Photos: gig.Photos || [],

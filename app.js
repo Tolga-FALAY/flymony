@@ -90,6 +90,9 @@ const DB = {
   requests: [],
   song_artists: [],
   gigs: [],
+  cities: [],
+  venues: [],
+  statuses: [],
 
   // Load all tables and construct in-memory lists
   loadFromFirestore: async function(force = false) {
@@ -111,6 +114,9 @@ const DB = {
           this.song_artists = parsed.song_artists || [];
           this.requests = parsed.requests || [];
           this.gigs = parsed.gigs || [];
+          this.cities = parsed.cities || [];
+          this.venues = parsed.venues || [];
+          this.statuses = parsed.statuses || [];
           console.log("Veriler localStorage önbelleğinden yüklendi.");
           return;
         } catch (e) {
@@ -120,12 +126,15 @@ const DB = {
     }
 
     try {
-      const [artistsList, songsList, guestsList, requestsList, gigsList] = await Promise.all([
+      const [artistsList, songsList, guestsList, requestsList, gigsList, citiesList, venuesList, statusesList] = await Promise.all([
         apiRequest('/artists'),
         apiRequest('/songs'),
         apiRequest('/guests'),
         apiRequest('/requests'),
-        apiRequest('/gigs').catch(() => [])
+        apiRequest('/gigs').catch(() => []),
+        apiRequest('/cities').catch(() => []),
+        apiRequest('/venues').catch(() => []),
+        apiRequest('/statuses').catch(() => [])
       ]);
 
       this.artists = artistsList.map(a => ({ id: Number(a.ArtistID), name: a.ArtistName }));
@@ -191,9 +200,23 @@ const DB = {
         notes: r.Notes || ''
       }));
 
+      this.cities = citiesList.map(c => ({ id: Number(c.CityID), name: c.CityName }));
+      this.venues = venuesList.map(v => ({
+        id: Number(v.VenueID),
+        name: v.VenueName,
+        cityId: Number(v.CityID),
+        cityName: v.CityName || '-',
+        contactPerson: v.ContactPerson || '',
+        contactPhone: v.ContactPhone || '',
+        instagramLink: v.InstagramLink || ''
+      }));
+      this.statuses = statusesList.map(s => ({ id: Number(s.StatusID), name: s.StatusName, color: s.Color }));
+
       this.gigs = gigsList.map(gig => ({
         id: Number(gig.GigID),
+        venueId: Number(gig.VenueID),
         venueName: gig.VenueName,
+        cityName: gig.CityName || '-',
         gigDate: gig.GigDate,
         notes: gig.Notes || '',
         photos: gig.Photos || [],
@@ -224,7 +247,10 @@ const DB = {
         songs: this.songs,
         song_artists: this.song_artists,
         requests: this.requests,
-        gigs: this.gigs
+        gigs: this.gigs,
+        cities: this.cities,
+        venues: this.venues,
+        statuses: this.statuses
       };
       try {
         localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
@@ -2072,6 +2098,7 @@ function renderAllTables() {
   populateFilterDropdowns();
   renderRequests();
   renderGigs();
+  renderParameters();
   updateSidebarCounts();
 }
 
@@ -3540,7 +3567,7 @@ function renderGigs() {
 
     tr.innerHTML = `
       <td data-label="Tarih">${formattedDate}</td>
-      <td data-label="Mekân">${gig.venueName}</td>
+      <td data-label="Mekân">${gig.venueName} (${gig.cityName || '-'})</td>
       <td data-label="Şarkı Sayısı" style="text-align: center;"><span style="font-weight: 600;">${playedCount}</span> / ${songsCount}</td>
       <td data-label="Misafir Sayısı" style="text-align: center;">${guestsCount}</td>
       <td data-label="Notlar" style="font-size: 0.82rem; color: var(--text-muted);">${gig.notes || '-'}</td>
@@ -3602,10 +3629,16 @@ function openGigModal(gigId = null) {
   const form = document.getElementById('gigForm');
   
   form.reset();
+
+  // Populate venues select dropdown
+  const venueSelect = document.getElementById('gigVenueID');
+  venueSelect.innerHTML = '<option value="">Mekân Seçin...</option>' + 
+    DB.venues.map(v => `<option value="${v.id}">${v.name} (${v.cityName})</option>`).join('');
   
   if (gigId === null) {
     title.innerText = 'Yeni Sahne Gecesi Ekle';
     document.getElementById('gigID').value = '';
+    document.getElementById('gigVenueID').value = DB.venues.length > 0 ? DB.venues[0].id : '';
     document.getElementById('gigDate').value = new Date().toISOString().split('T')[0];
     editorGigSongs = [];
     editorGigGuests = [];
@@ -3617,7 +3650,7 @@ function openGigModal(gigId = null) {
     if (!gig) return;
 
     document.getElementById('gigID').value = gig.id;
-    document.getElementById('gigVenueName').value = gig.venueName;
+    document.getElementById('gigVenueID').value = gig.venueId || '';
     document.getElementById('gigDate').value = gig.gigDate;
     document.getElementById('gigNotes').value = gig.notes || '';
 
@@ -3981,17 +4014,17 @@ async function relateGroupGuestsVanilla(tableName) {
 async function saveGig(event) {
   event.preventDefault();
   const gigIdVal = document.getElementById('gigID').value;
-  const venue = document.getElementById('gigVenueName').value.trim();
+  const venueId = document.getElementById('gigVenueID').value;
   const date = document.getElementById('gigDate').value;
   const notes = document.getElementById('gigNotes').value;
 
-  if (!venue || !date) {
+  if (!venueId || !date) {
     alert('Lütfen gerekli alanları doldurun.');
     return;
   }
 
   const payload = {
-    VenueName: venue,
+    VenueID: Number(venueId),
     GigDate: date,
     Notes: notes,
     Photos: editorGigPhotos,
@@ -4193,7 +4226,7 @@ async function toggleLiveSongPlayedFromCheckbox() {
   targetSong.isPlayed = cb.checked ? 1 : 0;
   
   const payload = {
-    VenueName: liveGigObj.venueName,
+    VenueID: liveGigObj.venueId,
     GigDate: liveGigObj.gigDate,
     Notes: liveGigObj.notes,
     Photos: liveGigObj.photos,
@@ -4306,7 +4339,7 @@ async function selectLiveRequestSong(songId, title, artistNames) {
 
     const newSongsList = [...liveGigObj.songs, newSong];
     const payload = {
-      VenueName: liveGigObj.venueName,
+      VenueID: liveGigObj.venueId,
       GigDate: liveGigObj.gigDate,
       Notes: liveGigObj.notes,
       Photos: liveGigObj.photos,
@@ -4337,5 +4370,337 @@ async function selectLiveRequestSong(songId, title, artistNames) {
   document.getElementById('gigLiveRequestSearch').value = '';
   document.getElementById('gigLiveRequestAutocomplete').style.display = 'none';
 }
+
+// ==========================================
+// SYSTEM PARAMETERS (STATUSES, VENUES, CITIES)
+// ==========================================
+let vanillaSubTab = 'statuses';
+
+function setVanillaSubTab(tab) {
+  vanillaSubTab = tab;
+  
+  // Update nav button classes
+  document.getElementById('btnSubTabStatuses').className = tab === 'statuses' ? 'btn btn-primary' : 'btn-outline';
+  document.getElementById('btnSubTabVenues').className = tab === 'venues' ? 'btn btn-primary' : 'btn-outline';
+  document.getElementById('btnSubTabCities').className = tab === 'cities' ? 'btn btn-primary' : 'btn-outline';
+  
+  // Show/Hide Panels
+  document.getElementById('subTabStatusesPanel').style.display = tab === 'statuses' ? 'block' : 'none';
+  document.getElementById('subTabVenuesPanel').style.display = tab === 'venues' ? 'block' : 'none';
+  document.getElementById('subTabCitiesPanel').style.display = tab === 'cities' ? 'block' : 'none';
+  
+  renderParameters();
+}
+
+function getVanillaStatusBadgeStyle(color) {
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16) || 148;
+  const g = parseInt(hex.substring(2, 4), 16) || 163;
+  const b = parseInt(hex.substring(4, 6), 16) || 184;
+  return `background-color: rgba(${r}, ${g}, ${b}, 0.12); color: ${color}; border: 1px solid rgba(${r}, ${g}, ${b}, 0.25); padding: 0.35rem 0.85rem; border-radius: 999px; font-weight: bold; font-size: 0.82rem; display: inline-block;`;
+}
+
+function renderParameters() {
+  // 1. Render Statuses
+  const statusesBody = document.getElementById('vanillaStatusesTableBody');
+  if (statusesBody) {
+    statusesBody.innerHTML = DB.statuses.map(s => `
+      <tr>
+        <td data-label="Durum Adı" style="font-weight: 600;">${s.name}</td>
+        <td data-label="Görünüm Önizleme">
+          <span style="${getVanillaStatusBadgeStyle(s.color)}">${s.name}</span>
+        </td>
+        <td data-label="Renk Kodu">
+          <span style="font-family: monospace; font-size: 0.9rem; color: var(--text-muted);">${s.color}</span>
+        </td>
+        <td data-label="İşlemler">
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick="openVanillaStatusModal(${s.id})">Düzenle</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteVanillaStatus(${s.id})">Sil</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    if (DB.statuses.length === 0) {
+      statusesBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+    }
+  }
+
+  // 2. Render Venues
+  const venuesBody = document.getElementById('vanillaVenuesTableBody');
+  if (venuesBody) {
+    venuesBody.innerHTML = DB.venues.map(v => `
+      <tr>
+        <td data-label="Mekan Adı" style="font-weight: 600;">${v.name}</td>
+        <td data-label="Şehir" style="font-weight: 500;">${v.cityName || '-'}</td>
+        <td data-label="İrtibat Kişisi">${v.contactPerson || '-'}</td>
+        <td data-label="İrtibat Telefonu">${v.contactPhone || '-'}</td>
+        <td data-label="Instagram">
+          ${v.instagramLink ? `<a href="${v.instagramLink}" target="_blank" class="instagram-link-badge">Instagram ↗</a>` : '-'}
+        </td>
+        <td data-label="İşlemler">
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick="openVanillaVenueModal(${v.id})">Düzenle</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteVanillaVenue(${v.id})">Sil</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    if (DB.venues.length === 0) {
+      venuesBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+    }
+  }
+
+  // 3. Render Cities
+  const citiesBody = document.getElementById('vanillaCitiesTableBody');
+  if (citiesBody) {
+    citiesBody.innerHTML = DB.cities.map(c => `
+      <tr>
+        <td data-label="Şehir Adı" style="font-weight: 600;">${c.name}</td>
+        <td data-label="İşlemler">
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick="openVanillaCityModal(${c.id})">Düzenle</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteVanillaCity(${c.id})">Sil</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    if (DB.cities.length === 0) {
+      citiesBody.innerHTML = '<tr><td colspan="2" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+    }
+  }
+}
+
+// STATUS HANDLERS
+function openVanillaStatusModal(statusId = null) {
+  const modal = document.getElementById('vanillaStatusModal');
+  const title = document.getElementById('vanillaStatusModalTitle');
+  const form = document.getElementById('vanillaStatusForm');
+  form.reset();
+
+  if (statusId === null) {
+    title.innerText = 'Yeni Durum Tanımla';
+    document.getElementById('vanillaStatusID').value = '';
+    document.getElementById('vanillaStatusColor').value = '#0ea5e9';
+    document.getElementById('vanillaStatusColorHex').innerText = '#0ea5e9';
+  } else {
+    title.innerText = 'Durumu Düzenle';
+    const status = DB.statuses.find(s => s.id === statusId);
+    if (!status) return;
+    document.getElementById('vanillaStatusID').value = status.id;
+    document.getElementById('vanillaStatusName').value = status.name;
+    document.getElementById('vanillaStatusColor').value = status.color;
+    document.getElementById('vanillaStatusColorHex').innerText = status.color;
+  }
+  openModal('vanillaStatusModal');
+}
+
+function updateStatusColorInputHex() {
+  const color = document.getElementById('vanillaStatusColor').value;
+  document.getElementById('vanillaStatusColorHex').innerText = color;
+}
+
+async function saveVanillaStatus(event) {
+  event.preventDefault();
+  const id = document.getElementById('vanillaStatusID').value;
+  const name = document.getElementById('vanillaStatusName').value.trim();
+  const color = document.getElementById('vanillaStatusColor').value;
+
+  if (!name) {
+    alert("Durum ismi boş olamaz!");
+    return;
+  }
+
+  const payload = { StatusName: name, Color: color };
+  try {
+    if (!id) {
+      await apiRequest('/statuses', 'POST', payload);
+    } else {
+      await apiRequest(`/statuses/${id}`, 'PUT', payload);
+    }
+    await DB.loadFromFirestore(true);
+    renderParameters();
+    renderAllTables();
+    closeModal('vanillaStatusModal');
+  } catch (err) {
+    alert('Hata: ' + err.message);
+  }
+}
+
+async function deleteVanillaStatus(statusId) {
+  const status = DB.statuses.find(s => s.id === statusId);
+  if (!status) return;
+  if (!confirm(`"${status.name}" durum parametresini silmek istediğinize emin misiniz?`)) return;
+
+  try {
+    await apiRequest(`/statuses/${statusId}`, 'DELETE');
+    await DB.loadFromFirestore(true);
+    renderParameters();
+    renderAllTables();
+  } catch (err) {
+    alert('Silme hatası: ' + err.message);
+  }
+}
+
+// VENUE HANDLERS
+function openVanillaVenueModal(venueId = null) {
+  const modal = document.getElementById('vanillaVenueModal');
+  const title = document.getElementById('vanillaVenueModalTitle');
+  const form = document.getElementById('vanillaVenueForm');
+  form.reset();
+
+  // Populate cities selector
+  const citySelect = document.getElementById('vanillaVenueCityID');
+  citySelect.innerHTML = '<option value="">Şehir Seçin...</option>' +
+    DB.cities.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+  if (venueId === null) {
+    title.innerText = 'Yeni Mekan Ekle';
+    document.getElementById('vanillaVenueID').value = '';
+    document.getElementById('vanillaVenueCityID').value = DB.cities.length > 0 ? DB.cities[0].id : '';
+  } else {
+    title.innerText = 'Mekanı Düzenle';
+    const venue = DB.venues.find(v => v.id === venueId);
+    if (!venue) return;
+    document.getElementById('vanillaVenueID').value = venue.id;
+    document.getElementById('vanillaVenueName').value = venue.name;
+    document.getElementById('vanillaVenueCityID').value = venue.cityId || '';
+    document.getElementById('vanillaVenueContactPerson').value = venue.contactPerson || '';
+    document.getElementById('vanillaVenueContactPhone').value = venue.contactPhone || '';
+    document.getElementById('vanillaVenueInstagramLink').value = venue.instagramLink || '';
+  }
+  openModal('vanillaVenueModal');
+}
+
+async function saveVanillaVenue(event) {
+  event.preventDefault();
+  const id = document.getElementById('vanillaVenueID').value;
+  const name = document.getElementById('vanillaVenueName').value.trim();
+  const cityId = document.getElementById('vanillaVenueCityID').value;
+  const contactPerson = document.getElementById('vanillaVenueContactPerson').value.trim();
+  const contactPhone = document.getElementById('vanillaVenueContactPhone').value.trim();
+  const instagram = document.getElementById('vanillaVenueInstagramLink').value.trim();
+
+  if (!name) {
+    alert("Mekan ismi boş bırakılamaz!");
+    return;
+  }
+  if (!cityId) {
+    alert("Şehir seçimi zorunludur!");
+    return;
+  }
+
+  const payload = {
+    VenueName: name,
+    CityID: Number(cityId),
+    ContactPerson: contactPerson,
+    ContactPhone: contactPhone,
+    InstagramLink: instagram
+  };
+
+  try {
+    if (!id) {
+      await apiRequest('/venues', 'POST', payload);
+    } else {
+      await apiRequest(`/venues/${id}`, 'PUT', payload);
+    }
+    await DB.loadFromFirestore(true);
+    renderParameters();
+    renderAllTables();
+    closeModal('vanillaVenueModal');
+  } catch (err) {
+    alert('Hata: ' + err.message);
+  }
+}
+
+async function deleteVanillaVenue(venueId) {
+  const venue = DB.venues.find(v => v.id === venueId);
+  if (!venue) return;
+  if (!confirm(`"${venue.name}" mekan kaydını silmek istediğinize emin misiniz?`)) return;
+
+  try {
+    await apiRequest(`/venues/${venueId}`, 'DELETE');
+    await DB.loadFromFirestore(true);
+    renderParameters();
+    renderAllTables();
+  } catch (err) {
+    alert('Silme hatası: ' + err.message);
+  }
+}
+
+// CITY HANDLERS
+function openVanillaCityModal(cityId = null) {
+  const modal = document.getElementById('vanillaCityModal');
+  const title = document.getElementById('vanillaCityModalTitle');
+  const form = document.getElementById('vanillaCityForm');
+  form.reset();
+
+  if (cityId === null) {
+    title.innerText = 'Yeni Şehir Ekle';
+    document.getElementById('vanillaCityID').value = '';
+  } else {
+    title.innerText = 'Şehri Düzenle';
+    const city = DB.cities.find(c => c.id === cityId);
+    if (!city) return;
+    document.getElementById('vanillaCityID').value = city.id;
+    document.getElementById('vanillaCityName').value = city.name;
+  }
+  openModal('vanillaCityModal');
+}
+
+async function saveVanillaCity(event) {
+  event.preventDefault();
+  const id = document.getElementById('vanillaCityID').value;
+  const name = document.getElementById('vanillaCityName').value.trim();
+
+  if (!name) {
+    alert("Şehir adı boş olamaz!");
+    return;
+  }
+
+  const payload = { CityName: name };
+  try {
+    if (!id) {
+      await apiRequest('/cities', 'POST', payload);
+    } else {
+      await apiRequest(`/cities/${id}`, 'PUT', payload);
+    }
+    await DB.loadFromFirestore(true);
+    renderParameters();
+    renderAllTables();
+    closeModal('vanillaCityModal');
+  } catch (err) {
+    alert('Hata: ' + err.message);
+  }
+}
+
+async function deleteVanillaCity(cityId) {
+  const city = DB.cities.find(c => c.id === cityId);
+  if (!city) return;
+  if (!confirm(`"${city.name}" şehir parametresini silmek istediğinize emin misiniz?`)) return;
+
+  try {
+    await apiRequest(`/cities/${cityId}`, 'DELETE');
+    await DB.loadFromFirestore(true);
+    renderParameters();
+    renderAllTables();
+  } catch (err) {
+    alert('Silme hatası: ' + err.message);
+  }
+}
+
+// Window Exports
+window.setVanillaSubTab = setVanillaSubTab;
+window.renderParameters = renderParameters;
+window.openVanillaStatusModal = openVanillaStatusModal;
+window.updateStatusColorInputHex = updateStatusColorInputHex;
+window.saveVanillaStatus = saveVanillaStatus;
+window.deleteVanillaStatus = deleteVanillaStatus;
+window.openVanillaVenueModal = openVanillaVenueModal;
+window.saveVanillaVenue = saveVanillaVenue;
+window.deleteVanillaVenue = deleteVanillaVenue;
+window.openVanillaCityModal = openVanillaCityModal;
+window.saveVanillaCity = saveVanillaCity;
+window.deleteVanillaCity = deleteVanillaCity;
 
 

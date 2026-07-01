@@ -717,12 +717,88 @@ app.delete('/api/statuses/:id', (req, res) => {
 });
 
 // ========================
+// CITIES API
+// ========================
+app.get('/api/cities', (req, res) => {
+    try {
+        const cities = db.prepare('SELECT * FROM Cities ORDER BY CityName ASC').all();
+        res.json(cities.map(c => ({
+            CityID: Number(c.CityID),
+            CityName: c.CityName
+        })));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/cities', (req, res) => {
+    try {
+        const { CityName } = req.body;
+        if (!CityName || !CityName.trim()) {
+            return res.status(400).json({ error: 'Şehir adı boş olamaz!' });
+        }
+        const existing = db.prepare('SELECT * FROM Cities WHERE TRIM(LOWER(CityName)) = TRIM(LOWER(?))').get(CityName);
+        if (existing) {
+            return res.status(400).json({ error: 'Bu şehir zaten tanımlı!' });
+        }
+        const info = db.prepare('INSERT INTO Cities (CityName) VALUES (?)').run(CityName.trim());
+        res.status(201).json({ CityID: Number(info.lastInsertRowid), CityName: CityName.trim() });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/cities/:id', (req, res) => {
+    try {
+        const { CityName } = req.body;
+        const cityId = req.params.id;
+        if (!CityName || !CityName.trim()) {
+            return res.status(400).json({ error: 'Şehir adı boş olamaz!' });
+        }
+        const existing = db.prepare('SELECT * FROM Cities WHERE TRIM(LOWER(CityName)) = TRIM(LOWER(?)) AND CityID != ?').get(CityName, cityId);
+        if (existing) {
+            return res.status(400).json({ error: 'Bu isimde başka bir şehir zaten tanımlı!' });
+        }
+        db.prepare('UPDATE Cities SET CityName = ? WHERE CityID = ?').run(CityName.trim(), cityId);
+        res.json({ message: 'Şehir güncellendi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/cities/:id', (req, res) => {
+    try {
+        const inUse = db.prepare('SELECT COUNT(*) as count FROM Venues WHERE CityID = ?').get(req.params.id).count;
+        if (inUse > 0) {
+            return res.status(400).json({ error: 'Bu şehir kullanımda olan mekânlar olduğundan silinemez!' });
+        }
+        db.prepare('DELETE FROM Cities WHERE CityID = ?').run(req.params.id);
+        res.json({ message: 'Şehir silindi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ========================
 // VENUES API
 // ========================
 app.get('/api/venues', (req, res) => {
     try {
-        const venues = db.prepare('SELECT * FROM Venues').all();
-        res.json(venues);
+        const venues = db.prepare(`
+            SELECT v.*, c.CityName 
+            FROM Venues v 
+            LEFT JOIN Cities c ON v.CityID = c.CityID
+            ORDER BY v.VenueName ASC
+        `).all();
+        res.json(venues.map(v => ({
+            VenueID: Number(v.VenueID),
+            VenueName: v.VenueName,
+            CityID: Number(v.CityID),
+            CityName: v.CityName || '-',
+            ContactPerson: v.ContactPerson || '',
+            ContactPhone: v.ContactPhone || '',
+            InstagramLink: v.InstagramLink || ''
+        })));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -730,21 +806,29 @@ app.get('/api/venues', (req, res) => {
 
 app.post('/api/venues', (req, res) => {
     try {
-        const { VenueName, ContactPerson, ContactPhone, InstagramLink } = req.body;
+        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink } = req.body;
         if (!VenueName || !VenueName.trim()) {
             return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
+        }
+        if (!CityID) {
+            return res.status(400).json({ error: 'Şehir seçimi zorunludur!' });
         }
         const existing = db.prepare('SELECT * FROM Venues WHERE TRIM(LOWER(VenueName)) = TRIM(LOWER(?))').get(VenueName);
         if (existing) {
             return res.status(400).json({ error: 'Bu mekan zaten tanımlı!' });
         }
         const info = db.prepare(`
-            INSERT INTO Venues (VenueName, ContactPerson, ContactPhone, InstagramLink) 
-            VALUES (?, ?, ?, ?)
-        `).run(VenueName.trim(), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '');
+            INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink) 
+            VALUES (?, ?, ?, ?, ?)
+        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '');
+        
+        const cityName = db.prepare('SELECT CityName FROM Cities WHERE CityID = ?').get(CityID)?.CityName || '-';
+        
         res.status(201).json({ 
-            id: info.lastInsertRowid, 
+            VenueID: Number(info.lastInsertRowid), 
             VenueName: VenueName.trim(), 
+            CityID: Number(CityID),
+            CityName: cityName,
             ContactPerson: ContactPerson ? ContactPerson.trim() : '', 
             ContactPhone: ContactPhone ? ContactPhone.trim() : '', 
             InstagramLink: InstagramLink ? InstagramLink.trim() : ''
@@ -756,10 +840,13 @@ app.post('/api/venues', (req, res) => {
 
 app.put('/api/venues/:id', (req, res) => {
     try {
-        const { VenueName, ContactPerson, ContactPhone, InstagramLink } = req.body;
+        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink } = req.body;
         const venueId = req.params.id;
         if (!VenueName || !VenueName.trim()) {
             return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
+        }
+        if (!CityID) {
+            return res.status(400).json({ error: 'Şehir seçimi zorunludur!' });
         }
         const existing = db.prepare('SELECT * FROM Venues WHERE TRIM(LOWER(VenueName)) = TRIM(LOWER(?)) AND VenueID != ?').get(VenueName, venueId);
         if (existing) {
@@ -767,9 +854,9 @@ app.put('/api/venues/:id', (req, res) => {
         }
         db.prepare(`
             UPDATE Venues 
-            SET VenueName = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ? 
+            SET VenueName = ?, CityID = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ? 
             WHERE VenueID = ?
-        `).run(VenueName.trim(), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', venueId);
+        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', venueId);
         res.json({ message: 'Venue updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -778,6 +865,11 @@ app.put('/api/venues/:id', (req, res) => {
 
 app.delete('/api/venues/:id', (req, res) => {
     try {
+        // Enforce constraint that no gig uses this venue
+        const inUse = db.prepare('SELECT COUNT(*) as count FROM Gigs WHERE VenueID = ?').get(req.params.id).count;
+        if (inUse > 0) {
+            return res.status(400).json({ error: 'Bu mekân sahnelerde (etkinliklerde) kullanıldığından silinemez!' });
+        }
         db.prepare('DELETE FROM Venues WHERE VenueID = ?').run(req.params.id);
         res.json({ message: 'Venue deleted successfully' });
     } catch (err) {
@@ -790,7 +882,13 @@ app.delete('/api/venues/:id', (req, res) => {
 // ========================
 app.get('/api/gigs', (req, res) => {
     try {
-        const gigs = db.prepare('SELECT * FROM Gigs ORDER BY GigDate DESC, GigID DESC').all();
+        const gigs = db.prepare(`
+            SELECT g.*, v.VenueName, c.CityName 
+            FROM Gigs g 
+            LEFT JOIN Venues v ON g.VenueID = v.VenueID
+            LEFT JOIN Cities c ON v.CityID = c.CityID
+            ORDER BY g.GigDate DESC, g.GigID DESC
+        `).all();
         
         const formattedGigs = gigs.map(gig => {
             const songs = db.prepare(`
@@ -829,7 +927,9 @@ app.get('/api/gigs', (req, res) => {
 
             return {
                 GigID: Number(gig.GigID),
-                VenueName: gig.VenueName,
+                VenueID: Number(gig.VenueID),
+                VenueName: gig.VenueName || 'Bilinmeyen Mekan',
+                CityName: gig.CityName || '-',
                 GigDate: gig.GigDate,
                 Notes: gig.Notes || '',
                 Photos: gig.Photos ? JSON.parse(gig.Photos) : [],
@@ -848,18 +948,18 @@ app.get('/api/gigs', (req, res) => {
 });
 
 app.post('/api/gigs', (req, res) => {
-    const { VenueName, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
-    if (!VenueName || !VenueName.trim() || !GigDate) {
-        return res.status(400).json({ error: 'Mekân adı ve tarih alanları boş bırakılamaz!' });
+    const { VenueID, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
+    if (!VenueID || !GigDate) {
+        return res.status(400).json({ error: 'Mekân ve tarih alanları boş bırakılamaz!' });
     }
 
     try {
         const createTransaction = db.transaction(() => {
             const gigInfo = db.prepare(`
-                INSERT INTO Gigs (VenueName, GigDate, Notes, Photos, Videos)
+                INSERT INTO Gigs (VenueID, GigDate, Notes, Photos, Videos)
                 VALUES (?, ?, ?, ?, ?)
             `).run(
-                VenueName.trim(),
+                Number(VenueID),
                 GigDate,
                 Notes || '',
                 Photos ? JSON.stringify(Photos) : '[]',
@@ -899,19 +999,19 @@ app.post('/api/gigs', (req, res) => {
 
 app.put('/api/gigs/:id', (req, res) => {
     const gigId = req.params.id;
-    const { VenueName, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
-    if (!VenueName || !VenueName.trim() || !GigDate) {
-        return res.status(400).json({ error: 'Mekân adı ve tarih alanları boş bırakılamaz!' });
+    const { VenueID, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
+    if (!VenueID || !GigDate) {
+        return res.status(400).json({ error: 'Mekân ve tarih alanları boş bırakılamaz!' });
     }
 
     try {
         const updateTransaction = db.transaction(() => {
             db.prepare(`
                 UPDATE Gigs
-                SET VenueName = ?, GigDate = ?, Notes = ?, Photos = ?, Videos = ?, UpdatedAt = CURRENT_TIMESTAMP
+                SET VenueID = ?, GigDate = ?, Notes = ?, Photos = ?, Videos = ?, UpdatedAt = CURRENT_TIMESTAMP
                 WHERE GigID = ?
             `).run(
-                VenueName.trim(),
+                Number(VenueID),
                 GigDate,
                 Notes || '',
                 Photos ? JSON.stringify(Photos) : '[]',

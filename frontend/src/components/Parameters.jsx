@@ -14,9 +14,10 @@ const COLOR_PRESETS = [
 ];
 
 export default function Parameters() {
-  const [subTab, setSubTab] = useState('statuses'); // 'statuses' or 'venues'
+  const [subTab, setSubTab] = useState('statuses'); // 'statuses', 'venues', or 'cities'
   const [statuses, setStatuses] = useState([]);
   const [venues, setVenues] = useState([]);
+  const [cities, setCities] = useState([]);
 
   // Modal states
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -27,15 +28,21 @@ export default function Parameters() {
   const [editingVenue, setEditingVenue] = useState(null);
   const [venueForm, setVenueForm] = useState({
     VenueName: '',
+    CityID: '',
     ContactPerson: '',
     ContactPhone: '',
     InstagramLink: ''
   });
 
+  const [isCityModalOpen, setIsCityModalOpen] = useState(false);
+  const [editingCity, setEditingCity] = useState(null);
+  const [cityForm, setCityForm] = useState({ CityName: '' });
+
   useEffect(() => {
     const syncFromStore = () => {
       setStatuses([...store.statuses]);
       setVenues([...store.venues]);
+      setCities([...store.cities]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -105,6 +112,7 @@ export default function Parameters() {
       setEditingVenue(venue);
       setVenueForm({
         VenueName: venue.VenueName,
+        CityID: venue.CityID || '',
         ContactPerson: venue.ContactPerson || '',
         ContactPhone: venue.ContactPhone || '',
         InstagramLink: venue.InstagramLink || ''
@@ -113,6 +121,7 @@ export default function Parameters() {
       setEditingVenue(null);
       setVenueForm({
         VenueName: '',
+        CityID: store.cities.length > 0 ? store.cities[0].CityID : '',
         ContactPerson: '',
         ContactPhone: '',
         InstagramLink: ''
@@ -132,16 +141,25 @@ export default function Parameters() {
       alert("Mekan adı boş bırakılamaz.");
       return;
     }
+    if (!venueForm.CityID) {
+      alert("Lütfen bir şehir seçin.");
+      return;
+    }
 
     try {
       if (editingVenue) {
         await api.updateVenue(editingVenue.VenueID, venueForm);
-        store.updateVenue(editingVenue.VenueID, venueForm);
+        store.updateVenue(editingVenue.VenueID, {
+          ...venueForm,
+          CityName: store.cities.find(c => c.CityID === Number(venueForm.CityID))?.CityName || '-'
+        });
       } else {
         const result = await api.createVenue(venueForm);
         store.addVenue({
           VenueID: result.VenueID,
           VenueName: result.VenueName,
+          CityID: result.CityID,
+          CityName: result.CityName,
           ContactPerson: result.ContactPerson,
           ContactPhone: result.ContactPhone,
           InstagramLink: result.InstagramLink
@@ -158,6 +176,58 @@ export default function Parameters() {
       try {
         await api.deleteVenue(venue.VenueID);
         store.removeVenue(venue.VenueID);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
+  // City handlers
+  const openCityModal = (city = null) => {
+    if (city) {
+      setEditingCity(city);
+      setCityForm({ CityName: city.CityName });
+    } else {
+      setEditingCity(null);
+      setCityForm({ CityName: '' });
+    }
+    setIsCityModalOpen(true);
+  };
+
+  const closeCityModal = () => {
+    setIsCityModalOpen(false);
+    setEditingCity(null);
+  };
+
+  const handleCitySubmit = async (e) => {
+    e.preventDefault();
+    if (!cityForm.CityName.trim()) {
+      alert("Şehir adı boş bırakılamaz.");
+      return;
+    }
+
+    try {
+      if (editingCity) {
+        await api.updateCity(editingCity.CityID, cityForm);
+        store.updateCity(editingCity.CityID, cityForm);
+      } else {
+        const result = await api.createCity(cityForm);
+        store.addCity({
+          CityID: result.CityID,
+          CityName: result.CityName
+        });
+      }
+      closeCityModal();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleCityDelete = async (city) => {
+    if (window.confirm(`"${city.CityName}" şehir parametresini silmek istediğinize emin misiniz?`)) {
+      try {
+        await api.deleteCity(city.CityID);
+        store.removeCity(city.CityID);
       } catch (err) {
         alert(err.message);
       }
@@ -203,6 +273,13 @@ export default function Parameters() {
           style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
         >
           📍 Mekan Tanımları
+        </button>
+        <button
+          className={`btn ${subTab === 'cities' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setSubTab('cities')}
+          style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
+        >
+          🏙️ Şehir Tanımları
         </button>
       </div>
 
@@ -272,6 +349,7 @@ export default function Parameters() {
               <thead>
                 <tr>
                   <th>Mekan Adı</th>
+                  <th>Şehir</th>
                   <th>İrtibat Kişisi</th>
                   <th>İrtibat Telefonu</th>
                   <th>Instagram</th>
@@ -282,6 +360,7 @@ export default function Parameters() {
                 {venues.map(v => (
                   <tr key={v.VenueID}>
                     <td data-label="Mekan Adı" style={{ fontWeight: 600 }}>{v.VenueName}</td>
+                    <td data-label="Şehir" style={{ fontWeight: 500 }}>{v.CityName || '-'}</td>
                     <td data-label="İrtibat Kişisi">{v.ContactPerson || '-'}</td>
                     <td data-label="İrtibat Telefonu">{v.ContactPhone || '-'}</td>
                     <td data-label="Instagram">
@@ -305,7 +384,48 @@ export default function Parameters() {
                   </tr>
                 ))}
                 {venues.length === 0 && (
-                  <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+                  <tr><td colSpan="6" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* --- CITIES VIEW --- */}
+      {subTab === 'cities' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-muted)' }}>
+              Mekanların bağlı olduğu şehir listelerini yönetin.
+            </p>
+            <button className="btn btn-primary btn-sm" onClick={() => openCityModal()}>
+              + Yeni Şehir Ekle
+            </button>
+          </div>
+
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Şehir Adı</th>
+                  <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cities.map(c => (
+                  <tr key={c.CityID}>
+                    <td data-label="Şehir Adı" style={{ fontWeight: 600 }}>{c.CityName}</td>
+                    <td data-label="İşlemler">
+                      <div className="action-btns">
+                        <button className="btn btn-sm btn-outline" onClick={() => openCityModal(c)}>Düzenle</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleCityDelete(c)}>Sil</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {cities.length === 0 && (
+                  <tr><td colSpan="2" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
               </tbody>
             </table>
@@ -416,6 +536,28 @@ export default function Parameters() {
               </div>
 
               <div className="form-group">
+                <label>Şehir (Zorunlu)</label>
+                <select
+                  value={venueForm.CityID}
+                  onChange={e => setVenueForm({ ...venueForm, CityID: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: '10px',
+                    backgroundColor: 'var(--surface)',
+                    color: 'var(--text)'
+                  }}
+                >
+                  <option value="">Şehir Seçin...</option>
+                  {cities.map(c => (
+                    <option key={c.CityID} value={c.CityID}>{c.CityName}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
                 <label>Kontak Kişi</label>
                 <input
                   type="text"
@@ -447,6 +589,35 @@ export default function Parameters() {
 
               <div className="modal-actions">
                 <button type="button" className="btn btn-outline" onClick={closeVenueModal}>İptal</button>
+                <button type="submit" className="btn btn-primary">Kaydet</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- CITY ADD/EDIT MODAL --- */}
+      {isCityModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>{editingCity ? 'Şehri Düzenle' : 'Yeni Şehir Ekle'}</h2>
+              <button className="close-btn" onClick={closeCityModal}>&times;</button>
+            </div>
+            <form onSubmit={handleCitySubmit}>
+              <div className="form-group">
+                <label>Şehir Adı</label>
+                <input
+                  type="text"
+                  value={cityForm.CityName}
+                  onChange={e => setCityForm({ ...cityForm, CityName: e.target.value })}
+                  placeholder="Örn: İstanbul, Ankara..."
+                  required
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={closeCityModal}>İptal</button>
                 <button type="submit" className="btn btn-primary">Kaydet</button>
               </div>
             </form>
