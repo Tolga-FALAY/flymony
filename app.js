@@ -61,6 +61,26 @@ let filterSongLyrics = '';
 let filterSongMinYear = '';
 let filterSongMaxYear = '';
 
+// Gigs Filter and Sorting State
+let gigsSortKey = 'date';
+let gigsSortDirection = 'desc';
+let gigFilterSearch = '';
+let gigFilterVenue = '';
+let gigFilterStartDate = '';
+let gigFilterEndDate = '';
+
+// Editor temporary lists
+let editorGigSongs = [];
+let editorGigGuests = [];
+let editorGigPhotos = [];
+let editorGigVideos = [];
+
+// Live mode temporary states
+let liveGigObj = null;
+let liveGigSongIndex = -1;
+let liveGigFontSize = 1.1;
+let liveGigTheme = 'dark';
+
 
 
 const DB = {
@@ -69,6 +89,7 @@ const DB = {
   guests: [],
   requests: [],
   song_artists: [],
+  gigs: [],
 
   // Load all tables and construct in-memory lists
   loadFromFirestore: async function(force = false) {
@@ -89,6 +110,7 @@ const DB = {
           this.songs = parsed.songs || [];
           this.song_artists = parsed.song_artists || [];
           this.requests = parsed.requests || [];
+          this.gigs = parsed.gigs || [];
           console.log("Veriler localStorage önbelleğinden yüklendi.");
           return;
         } catch (e) {
@@ -98,11 +120,12 @@ const DB = {
     }
 
     try {
-      const [artistsList, songsList, guestsList, requestsList] = await Promise.all([
+      const [artistsList, songsList, guestsList, requestsList, gigsList] = await Promise.all([
         apiRequest('/artists'),
         apiRequest('/songs'),
         apiRequest('/guests'),
-        apiRequest('/requests')
+        apiRequest('/requests'),
+        apiRequest('/gigs').catch(() => [])
       ]);
 
       this.artists = artistsList.map(a => ({ id: Number(a.ArtistID), name: a.ArtistName }));
@@ -168,13 +191,40 @@ const DB = {
         notes: r.Notes || ''
       }));
 
+      this.gigs = gigsList.map(gig => ({
+        id: Number(gig.GigID),
+        venueName: gig.VenueName,
+        gigDate: gig.GigDate,
+        notes: gig.Notes || '',
+        photos: gig.Photos || [],
+        videos: gig.Videos || [],
+        songs: (gig.Songs || []).map(s => ({
+          gigSongId: Number(s.GigSongID),
+          songId: Number(s.SongID),
+          sortOrder: Number(s.SortOrder),
+          isPlayed: Number(s.IsPlayed),
+          isRequest: Number(s.IsRequest),
+          title: s.SongTitle,
+          artistNames: s.ArtistNames || '-'
+        })),
+        guests: (gig.Guests || []).map(g => ({
+          gigGuestId: Number(g.GigGuestID),
+          guestId: Number(g.GuestID),
+          tableName: g.TableName || '',
+          fullName: g.FullName || ''
+        })),
+        createdAt: gig.CreatedAt,
+        updatedAt: gig.UpdatedAt
+      }));
+
       // Önbelleğe kaydet
       const dataToCache = {
         artists: this.artists,
         guests: this.guests,
         songs: this.songs,
         song_artists: this.song_artists,
-        requests: this.requests
+        requests: this.requests,
+        gigs: this.gigs
       };
       try {
         localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
@@ -2002,11 +2052,13 @@ function editRequest(id) {
 // Sidebar üzerindeki menü kayıt sayılarını güncelle
 function updateSidebarCounts() {
   const reqBtn = document.querySelector('#navMenu button[data-target="requests"]');
+  const gigsBtn = document.querySelector('#navMenu button[data-target="gigs"]');
   const songsBtn = document.querySelector('#navMenu button[data-target="songs"]');
   const artistsBtn = document.querySelector('#navMenu button[data-target="artists"]');
   const guestsBtn = document.querySelector('#navMenu button[data-target="guests"]');
 
   if (reqBtn) reqBtn.innerText = `İstekler (${DB.requests.length})`;
+  if (gigsBtn) gigsBtn.innerText = `Sahneler (${DB.gigs.length})`;
   if (songsBtn) songsBtn.innerText = `Şarkılar (${DB.songs.length})`;
   if (artistsBtn) artistsBtn.innerText = `Sanatçılar (${DB.artists.length})`;
   if (guestsBtn) guestsBtn.innerText = `Misafirler (${DB.guests.length})`;
@@ -2019,6 +2071,7 @@ function renderAllTables() {
   renderSongs();
   populateFilterDropdowns();
   renderRequests();
+  renderGigs();
   updateSidebarCounts();
 }
 
@@ -3394,5 +3447,895 @@ window.clearVanillaSongChordImage = clearVanillaSongChordImage;
 window.openChordImageModal = openChordImageModal;
 window.closeChordImageModal = closeChordImageModal;
 window.toggleVanillaViewerMode = toggleVanillaViewerMode;
+
+// Gigs exports
+window.openGigModal = openGigModal;
+window.saveGig = saveGig;
+window.deleteGig = deleteGig;
+window.handleGigFilterChange = handleGigFilterChange;
+window.clearGigFilters = clearGigFilters;
+window.sortGigs = sortGigs;
+window.searchSongsForGig = searchSongsForGig;
+window.searchGuestsForGig = searchGuestsForGig;
+window.addSongToGigList = addSongToGigList;
+window.removeSongFromGigList = removeSongFromGigList;
+window.addGuestToGigList = addGuestToGigList;
+window.removeGuestFromGigList = removeGuestFromGigList;
+window.changeSongSortOrder = changeSongSortOrder;
+window.moveSongGigOrderArrow = moveSongGigOrderArrow;
+window.updateGuestTableVanilla = updateGuestTableVanilla;
+window.relateGroupGuestsVanilla = relateGroupGuestsVanilla;
+window.handleGigPhotoUpload = handleGigPhotoUpload;
+window.removeGigPhoto = removeGigPhoto;
+window.addGigVideoLink = addGigVideoLink;
+window.removeGigVideo = removeGigVideo;
+window.startLiveGig = startLiveGig;
+window.closeLiveGig = closeLiveGig;
+window.adjustLiveFontSize = adjustLiveFontSize;
+window.toggleLiveTheme = toggleLiveTheme;
+window.goToLivePrevSong = goToLivePrevSong;
+window.goToLiveNextSong = goToLiveNextSong;
+window.searchLiveRequestSongs = searchLiveRequestSongs;
+window.selectLiveRequestSong = selectLiveRequestSong;
+window.toggleLiveSongPlayedFromCheckbox = toggleLiveSongPlayedFromCheckbox;
+
+// ==========================================
+// SAHNELER (GIGS) KODLARI (VANILLA JS)
+// ==========================================
+
+function renderGigs() {
+  const tableBody = document.querySelector('#gigsTable tbody');
+  if (!tableBody) return;
+  tableBody.innerHTML = '';
+
+  // Filter Gigs
+  const filtered = DB.gigs.filter(gig => {
+    // 1. Serbest Arama
+    if (gigFilterSearch) {
+      const term = gigFilterSearch.toLocaleLowerCase('tr-TR');
+      const venueMatch = (gig.venueName || '').toLocaleLowerCase('tr-TR').includes(term);
+      const notesMatch = (gig.notes || '').toLocaleLowerCase('tr-TR').includes(term);
+      if (!venueMatch && !notesMatch) return false;
+    }
+
+    // 2. Mekan Filtresi
+    if (gigFilterVenue && gig.venueName !== gigFilterVenue) return false;
+
+    // 3. Tarih Filtreleri
+    if (gigFilterStartDate && gig.gigDate < gigFilterStartDate) return false;
+    if (gigFilterEndDate && gig.gigDate > gigFilterEndDate) return false;
+
+    return true;
+  });
+
+  // Sort Gigs
+  filtered.sort((a, b) => {
+    let comp = 0;
+    if (gigsSortKey === 'date') {
+      comp = new Date(a.gigDate) - new Date(b.gigDate);
+    } else if (gigsSortKey === 'venue') {
+      comp = (a.venueName || '').toLocaleLowerCase('tr-TR').localeCompare((b.venueName || '').toLocaleLowerCase('tr-TR'), 'tr');
+    }
+    return gigsSortDirection === 'asc' ? comp : -comp;
+  });
+
+  // Populate Dropdown venues filter
+  const venueFilterSelect = document.getElementById('filterGigVenue');
+  if (venueFilterSelect) {
+    const currentVal = venueFilterSelect.value;
+    const uniqueVenues = Array.from(new Set(DB.gigs.map(g => g.venueName).filter(Boolean))).sort((a, b) =>
+      a.toLocaleLowerCase('tr-TR').localeCompare(b.toLocaleLowerCase('tr-TR'), 'tr')
+    );
+    venueFilterSelect.innerHTML = '<option value="">Tüm Mekânlar</option>' +
+      uniqueVenues.map(v => `<option value="${v}" ${v === currentVal ? 'selected' : ''}>${v}</option>`).join('');
+  }
+
+  // Populate Table Rows
+  filtered.forEach(gig => {
+    const tr = document.createElement('tr');
+    const formattedDate = new Date(gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const songsCount = gig.songs ? gig.songs.length : 0;
+    const playedCount = gig.songs ? gig.songs.filter(s => s.isPlayed).length : 0;
+    const guestsCount = gig.guests ? gig.guests.length : 0;
+
+    tr.innerHTML = `
+      <td data-label="Tarih">${formattedDate}</td>
+      <td data-label="Mekân">${gig.venueName}</td>
+      <td data-label="Şarkı Sayısı" style="text-align: center;"><span style="font-weight: 600;">${playedCount}</span> / ${songsCount}</td>
+      <td data-label="Misafir Sayısı" style="text-align: center;">${guestsCount}</td>
+      <td data-label="Notlar" style="font-size: 0.82rem; color: var(--text-muted);">${gig.notes || '-'}</td>
+      <td data-label="İşlemler">
+        <div class="action-btns">
+          <button class="btn btn-sm btn-outline btn-added-style" onclick="startLiveGig(${gig.id})">Sahnem 🎤</button>
+          <button class="btn btn-sm btn-outline" onclick="openGigModal(${gig.id})">Düzenle</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteGig(${gig.id})">Sil</button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+  }
+}
+
+function handleGigFilterChange() {
+  gigFilterSearch = document.getElementById('filterGigSearch').value;
+  gigFilterVenue = document.getElementById('filterGigVenue').value;
+  gigFilterStartDate = document.getElementById('filterGigStartDate').value;
+  gigFilterEndDate = document.getElementById('filterGigEndDate').value;
+  renderGigs();
+}
+
+function clearGigFilters() {
+  document.getElementById('filterGigSearch').value = '';
+  document.getElementById('filterGigVenue').value = '';
+  document.getElementById('filterGigStartDate').value = '';
+  document.getElementById('filterGigEndDate').value = '';
+  gigFilterSearch = '';
+  gigFilterVenue = '';
+  gigFilterStartDate = '';
+  gigFilterEndDate = '';
+  renderGigs();
+}
+
+function sortGigs(key) {
+  if (gigsSortKey === key) {
+    gigsSortDirection = gigsSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    gigsSortKey = key;
+    gigsSortDirection = 'asc';
+  }
+
+  const dateIcon = document.getElementById('sortIconGigDate');
+  const venueIcon = document.getElementById('sortIconGigVenue');
+  if (dateIcon) dateIcon.innerText = gigsSortKey === 'date' ? (gigsSortDirection === 'asc' ? ' ⇅' : ' ⇅') : ' ⇅';
+  if (venueIcon) venueIcon.innerText = gigsSortKey === 'venue' ? (gigsSortDirection === 'asc' ? ' ⇅' : ' ⇅') : ' ⇅';
+
+  renderGigs();
+}
+
+function openGigModal(gigId = null) {
+  const modal = document.getElementById('gigModal');
+  const title = document.getElementById('gigModalTitle');
+  const form = document.getElementById('gigForm');
+  
+  form.reset();
+  
+  if (gigId === null) {
+    title.innerText = 'Yeni Sahne Gecesi Ekle';
+    document.getElementById('gigID').value = '';
+    document.getElementById('gigDate').value = new Date().toISOString().split('T')[0];
+    editorGigSongs = [];
+    editorGigGuests = [];
+    editorGigPhotos = [];
+    editorGigVideos = [];
+  } else {
+    title.innerText = 'Sahne Gecesi Düzenle';
+    const gig = DB.gigs.find(g => g.id === gigId);
+    if (!gig) return;
+
+    document.getElementById('gigID').value = gig.id;
+    document.getElementById('gigVenueName').value = gig.venueName;
+    document.getElementById('gigDate').value = gig.gigDate;
+    document.getElementById('gigNotes').value = gig.notes || '';
+
+    editorGigSongs = (gig.songs || []).map(s => ({
+      songId: s.songId,
+      sortOrder: s.sortOrder,
+      isPlayed: s.isPlayed,
+      isRequest: s.isRequest,
+      title: s.title,
+      artistNames: s.artistNames
+    }));
+
+    editorGigGuests = (gig.guests || []).map(g => ({
+      guestId: g.guestId,
+      tableName: g.tableName || 'Masa 1',
+      fullName: g.fullName
+    }));
+
+    editorGigPhotos = [...(gig.photos || [])];
+    editorGigVideos = [...(gig.videos || [])];
+  }
+
+  document.getElementById('gigSongSearch').value = '';
+  document.getElementById('gigSongAutocomplete').style.display = 'none';
+  document.getElementById('gigGuestSearch').value = '';
+  document.getElementById('gigGuestAutocomplete').style.display = 'none';
+
+  renderEditorGigSongs();
+  renderEditorGigGuests();
+  renderEditorGigMedia();
+
+  modal.style.display = 'flex';
+}
+
+function renderEditorGigSongs() {
+  const container = document.getElementById('gigSongsList');
+  document.getElementById('gigSongsCount').innerText = editorGigSongs.length;
+  container.innerHTML = '';
+
+  editorGigSongs.sort((a, b) => a.sortOrder - b.sortOrder);
+
+  editorGigSongs.forEach((song, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem;';
+    
+    div.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0;">
+        <span style="font-weight: bold; color: var(--text-muted); width: 20px;">${song.sortOrder}.</span>
+        <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${song.title}">
+          ${song.title}
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.25rem;">
+        <input type="number" min="1" max="${editorGigSongs.length}" value="${song.sortOrder}" 
+               onchange="changeSongSortOrder(${idx}, this.value)" 
+               style="width: 45px; padding: 2px 4px; text-align: center; font-size: 0.8rem; height: 24px; margin: 0;">
+        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 24px;" onclick="moveSongGigOrderArrow(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 24px;" onclick="moveSongGigOrderArrow(${idx}, 1)" ${idx === editorGigSongs.length - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="btn btn-sm btn-danger" style="padding: 2px 6px; font-size: 0.75rem; height: 24px; border-radius: 4px;" onclick="removeSongFromGigList(${song.songId})">&times;</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  if (editorGigSongs.length === 0) {
+    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Henüz şarkı eklenmedi.</div>';
+  }
+}
+
+function renderEditorGigGuests() {
+  const container = document.getElementById('gigGuestsList');
+  document.getElementById('gigGuestsCount').innerText = editorGigGuests.length;
+  container.innerHTML = '';
+
+  const groups = {};
+  editorGigGuests.forEach(guest => {
+    const tName = guest.tableName || 'Masasız';
+    if (!groups[tName]) groups[tName] = [];
+    groups[tName].push(guest);
+  });
+
+  Object.keys(groups).forEach(tName => {
+    const groupDiv = document.createElement('div');
+    groupDiv.style.cssText = 'margin-bottom: 1rem; border: 1px solid var(--border-soft); border-radius: 6px; padding: 0.5rem; background: #f8fafc;';
+    
+    groupDiv.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-bottom: 0.4rem;">
+        <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName}</span>
+        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 22px;" onclick="relateGroupGuestsVanilla('${tName}')">🔗 Seçilenleri İlişkilendir</button>
+      </div>
+    `;
+
+    const listDiv = document.createElement('div');
+    groups[tName].forEach(guest => {
+      const gRow = document.createElement('div');
+      gRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; font-size: 0.85rem;';
+      gRow.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" class="vanilla-group-guest-cb" data-guest-id="${guest.guestId}" style="margin: 0;">
+          <span>${guest.fullName}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="text" value="${guest.tableName}" onchange="updateGuestTableVanilla(${guest.guestId}, this.value)" placeholder="Masa değiştir..." style="width: 90px; padding: 2px 4px; font-size: 0.78rem; height: 22px; margin: 0;">
+          <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigList(${guest.guestId})">&times;</button>
+        </div>
+      `;
+      listDiv.appendChild(gRow);
+    });
+
+    groupDiv.appendChild(listDiv);
+    container.appendChild(groupDiv);
+  });
+
+  if (editorGigGuests.length === 0) {
+    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Henüz misafir eklenmedi.</div>';
+  }
+}
+
+function renderEditorGigMedia() {
+  const photoGallery = document.getElementById('gigPhotosGallery');
+  photoGallery.innerHTML = '';
+  editorGigPhotos.forEach((photo, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'position: relative; width: 60px; height: 60px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border);';
+    div.innerHTML = `
+      <img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;">
+      <button type="button" class="profile-img-delete-badge" style="padding: 0; font-size: 0.9rem; width: 16px; height: 16px; border: none; background: rgba(0,0,0,0.6);" onclick="removeGigPhoto(${idx})">&times;</button>
+    `;
+    photoGallery.appendChild(div);
+  });
+
+  const videosList = document.getElementById('gigVideosList');
+  videosList.innerHTML = '';
+  editorGigVideos.forEach((video, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.8rem;';
+    div.innerHTML = `
+      <a href="${video}" target="_blank" rel="noreferrer" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 85%; color: var(--primary-color);">🔗 ${video}</a>
+      <button type="button" style="background: none; border: none; color: #ef4444; cursor: pointer; font-weight: bold; font-size: 0.9rem;" onclick="removeGigVideo(${idx})">&times;</button>
+    `;
+    videosList.appendChild(div);
+  });
+}
+
+async function handleGigPhotoUpload(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  
+  for (const file of files) {
+    try {
+      const compressed = await compressVanillaImage(file, 800, 800, 0.75);
+      editorGigPhotos.push(compressed);
+    } catch (err) {
+      console.warn("Fotoğraf yükleme hatası:", err);
+    }
+  }
+  renderEditorGigMedia();
+  event.target.value = '';
+}
+
+function removeGigPhoto(idx) {
+  editorGigPhotos.splice(idx, 1);
+  renderEditorGigMedia();
+}
+
+function addGigVideoLink() {
+  const input = document.getElementById('gigNewVideoUrl');
+  const url = input.value.trim();
+  if (!url) return;
+  editorGigVideos.push(url);
+  input.value = '';
+  renderEditorGigMedia();
+}
+
+function removeGigVideo(idx) {
+  editorGigVideos.splice(idx, 1);
+  renderEditorGigMedia();
+}
+
+function changeSongSortOrder(currentIndex, targetOrderVal) {
+  const targetOrder = parseInt(targetOrderVal);
+  if (isNaN(targetOrder) || targetOrder < 1 || targetOrder > editorGigSongs.length) return;
+  const targetIdx = targetOrder - 1;
+  if (currentIndex === targetIdx) return;
+
+  const [moved] = editorGigSongs.splice(currentIndex, 1);
+  editorGigSongs.splice(targetIdx, 0, moved);
+
+  editorGigSongs.forEach((s, i) => s.sortOrder = i + 1);
+  renderEditorGigSongs();
+}
+
+function moveSongGigOrderArrow(idx, dir) {
+  const targetIdx = idx + dir;
+  if (targetIdx < 0 || targetIdx >= editorGigSongs.length) return;
+  const temp = editorGigSongs[idx];
+  editorGigSongs[idx] = editorGigSongs[targetIdx];
+  editorGigSongs[targetIdx] = temp;
+
+  editorGigSongs.forEach((s, i) => s.sortOrder = i + 1);
+  renderEditorGigSongs();
+}
+
+function removeSongFromGigList(songId) {
+  editorGigSongs = editorGigSongs.filter(s => s.songId !== songId);
+  editorGigSongs.forEach((s, i) => s.sortOrder = i + 1);
+  renderEditorGigSongs();
+}
+
+function updateGuestTableVanilla(guestId, tableName) {
+  const guest = editorGigGuests.find(g => g.guestId === guestId);
+  if (guest) {
+    guest.tableName = tableName || 'Masa 1';
+  }
+  renderEditorGigGuests();
+}
+
+function removeGuestFromGigList(guestId) {
+  editorGigGuests = editorGigGuests.filter(g => g.guestId !== guestId);
+  renderEditorGigGuests();
+}
+
+function searchSongsForGig() {
+  const input = document.getElementById('gigSongSearch');
+  const autocomplete = document.getElementById('gigSongAutocomplete');
+  const query = input.value.trim().toLocaleLowerCase('tr-TR');
+
+  if (!query) {
+    autocomplete.style.display = 'none';
+    return;
+  }
+
+  const matches = DB.songs.filter(song => {
+    const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
+    const artists = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ') || '-';
+    song.artistNames = artists;
+    return song.title.toLocaleLowerCase('tr-TR').includes(query) || artists.toLocaleLowerCase('tr-TR').includes(query);
+  });
+
+  if (matches.length === 0) {
+    autocomplete.style.display = 'none';
+    return;
+  }
+
+  autocomplete.innerHTML = matches.slice(0, 10).map(song => `
+    <div style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border-soft); font-size: 0.85rem;" 
+         onclick="addSongToGigList(${song.id}, '${song.title.replace(/'/g, "\\'")}', '${song.artistNames.replace(/'/g, "\\'")}')"
+         class="autocomplete-item-hover">
+      ${song.title} (${song.artistNames})
+    </div>
+  `).join('');
+  autocomplete.style.display = 'block';
+}
+
+function addSongToGigList(songId, title, artistNames) {
+  if (editorGigSongs.some(s => s.songId === songId)) {
+    alert('Bu şarkı listede zaten ekli.');
+    return;
+  }
+
+  editorGigSongs.push({
+    songId,
+    sortOrder: editorGigSongs.length + 1,
+    isPlayed: 0,
+    isRequest: 0,
+    title,
+    artistNames
+  });
+
+  document.getElementById('gigSongSearch').value = '';
+  document.getElementById('gigSongAutocomplete').style.display = 'none';
+  renderEditorGigSongs();
+}
+
+function searchGuestsForGig() {
+  const input = document.getElementById('gigGuestSearch');
+  const autocomplete = document.getElementById('gigGuestAutocomplete');
+  const query = input.value.trim().toLocaleLowerCase('tr-TR');
+
+  if (!query) {
+    autocomplete.style.display = 'none';
+    return;
+  }
+
+  const matches = DB.guests.filter(g => g.fullName.toLocaleLowerCase('tr-TR').includes(query));
+
+  if (matches.length === 0) {
+    autocomplete.style.display = 'none';
+    return;
+  }
+
+  autocomplete.innerHTML = matches.slice(0, 10).map(g => `
+    <div style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border-soft); font-size: 0.85rem;" 
+         onclick="addGuestToGigList(${g.id}, '${g.fullName.replace(/'/g, "\\'")}')"
+         class="autocomplete-item-hover">
+      ${g.fullName}
+    </div>
+  `).join('');
+  autocomplete.style.display = 'block';
+}
+
+function addGuestToGigList(guestId, fullName) {
+  if (editorGigGuests.some(g => g.guestId === guestId)) {
+    alert('Bu misafir zaten ekli.');
+    return;
+  }
+
+  editorGigGuests.push({
+    guestId,
+    tableName: 'Masa 1',
+    fullName
+  });
+
+  document.getElementById('gigGuestSearch').value = '';
+  document.getElementById('gigGuestAutocomplete').style.display = 'none';
+  renderEditorGigGuests();
+}
+
+async function relateGroupGuestsVanilla(tableName) {
+  const container = document.getElementById('gigGuestsList');
+  const checkedBoxes = container.querySelectorAll('.vanilla-group-guest-cb:checked');
+  const selectedIds = Array.from(checkedBoxes).map(cb => Number(cb.dataset.guestId));
+
+  if (selectedIds.length < 2) {
+    alert('Lütfen ilişkilendirmek için aynı masadan en az 2 kişi seçin.');
+    return;
+  }
+
+  try {
+    for (const currentId of selectedIds) {
+      const guestObj = DB.guests.find(g => g.id === currentId);
+      if (!guestObj) continue;
+      const otherIds = selectedIds.filter(id => id !== currentId);
+      const existingRels = guestObj.relatedGuestIDs || [];
+      const newRels = Array.from(new Set([...existingRels, ...otherIds]));
+
+      await apiRequest(`/guests/${currentId}`, 'PUT', {
+        FirstName: guestObj.firstName,
+        LastName: guestObj.lastName,
+        PhoneNumber: guestObj.phone,
+        InstagramLink: guestObj.instagram,
+        Notes: guestObj.notes,
+        ProfilePicture: guestObj.profilePicture,
+        BirthDateDay: guestObj.birthDateDay,
+        BirthDateMonth: guestObj.birthDateMonth,
+        BirthDateYear: guestObj.birthDateYear,
+        Photos: guestObj.photos,
+        RelatedGuestIDs: newRels,
+        IsMusician: guestObj.isMusician ? 1 : 0
+      });
+    }
+
+    await DB.loadFromFirestore(true);
+    renderAllTables();
+    alert('Seçilen misafirler birbiriyle kalıcı olarak ilişkilendirildi.');
+  } catch (err) {
+    alert('İlişkilendirme hatası: ' + err.message);
+  }
+}
+
+async function saveGig(event) {
+  event.preventDefault();
+  const gigIdVal = document.getElementById('gigID').value;
+  const venue = document.getElementById('gigVenueName').value.trim();
+  const date = document.getElementById('gigDate').value;
+  const notes = document.getElementById('gigNotes').value;
+
+  if (!venue || !date) {
+    alert('Lütfen gerekli alanları doldurun.');
+    return;
+  }
+
+  const payload = {
+    VenueName: venue,
+    GigDate: date,
+    Notes: notes,
+    Photos: editorGigPhotos,
+    Videos: editorGigVideos,
+    Songs: editorGigSongs.map(s => ({
+      SongID: s.songId,
+      SortOrder: s.sortOrder,
+      IsPlayed: s.isPlayed || 0,
+      IsRequest: s.isRequest || 0
+    })),
+    Guests: editorGigGuests.map(g => ({
+      GuestID: g.guestId,
+      TableName: g.tableName
+    }))
+  };
+
+  try {
+    if (!gigIdVal) {
+      await apiRequest('/gigs', 'POST', payload);
+    } else {
+      await apiRequest(`/gigs/${gigIdVal}`, 'PUT', payload);
+    }
+
+    await DB.loadFromFirestore(true);
+    renderAllTables();
+    closeModal('gigModal');
+  } catch (err) {
+    alert('Kaydetme hatası: ' + err.message);
+  }
+}
+
+async function deleteGig(gigId) {
+  if (!confirm('Bu sahne kaydını silmek istediğinize emin misiniz?')) return;
+  try {
+    await apiRequest(`/gigs/${gigId}`, 'DELETE');
+    await DB.loadFromFirestore(true);
+    renderAllTables();
+  } catch (err) {
+    alert('Silme hatası: ' + err.message);
+  }
+}
+
+function startLiveGig(gigId) {
+  const gig = DB.gigs.find(g => g.id === gigId);
+  if (!gig) return;
+
+  liveGigObj = gig;
+  liveGigSongIndex = gig.songs && gig.songs.length > 0 ? 0 : -1;
+  liveGigFontSize = 1.1;
+  liveGigTheme = 'dark';
+
+  document.getElementById('gigLiveTitle').innerText = `🎙️ Sahnem: ${gig.venueName}`;
+  document.getElementById('gigLiveDate').innerText = new Date(gig.gigDate).toLocaleDateString('tr-TR');
+  
+  const modal = document.getElementById('gigLiveModal');
+  modal.className = 'chord-fullscreen-overlay';
+  modal.style.background = '#0f172a';
+  modal.style.color = '#f1f5f9';
+  document.getElementById('gigLiveThemeLabel').innerText = 'Koyu';
+
+  document.getElementById('gigLiveRequestSearch').value = '';
+  document.getElementById('gigLiveRequestAutocomplete').style.display = 'none';
+
+  let touchStartXCoord = null;
+  let touchEndXCoord = null;
+
+  modal.ontouchstart = (e) => {
+    touchStartXCoord = e.targetTouches[0].clientX;
+  };
+  modal.ontouchmove = (e) => {
+    touchEndXCoord = e.targetTouches[0].clientX;
+  };
+  modal.ontouchend = () => {
+    if (!touchStartXCoord || !touchEndXCoord) return;
+    const diff = touchStartXCoord - touchEndXCoord;
+    if (diff > 60) {
+      goToLiveNextSong();
+    } else if (diff < -60) {
+      goToLivePrevSong();
+    }
+    touchStartXCoord = null;
+    touchEndXCoord = null;
+  };
+
+  renderLiveGigPlaylist();
+  renderLiveGigSong();
+
+  modal.style.display = 'flex';
+}
+
+function closeLiveGig() {
+  document.getElementById('gigLiveModal').style.display = 'none';
+  DB.loadFromFirestore(true).then(() => {
+    renderAllTables();
+  });
+}
+
+function renderLiveGigPlaylist() {
+  const container = document.getElementById('gigLivePlaylist');
+  if (!container) return;
+  container.innerHTML = '';
+
+  liveGigObj.songs.sort((a, b) => a.sortOrder - b.sortOrder);
+
+  liveGigObj.songs.forEach((song, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = `padding: 0.6rem 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.82rem;`;
+    if (idx === liveGigSongIndex) {
+      div.style.background = 'rgba(255,255,255,0.1)';
+    }
+
+    const titleSpan = document.createElement('span');
+    titleSpan.style.cssText = 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap;';
+    if (song.isPlayed) {
+      titleSpan.style.textDecoration = 'line-through';
+      titleSpan.style.color = '#059669';
+    }
+    titleSpan.innerText = `${song.sortOrder}. ${song.title}`;
+
+    const leftGroup = document.createElement('div');
+    leftGroup.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; min-width: 0;';
+    leftGroup.appendChild(titleSpan);
+
+    div.appendChild(leftGroup);
+
+    if (song.isRequest) {
+      const badge = document.createElement('span');
+      badge.style.cssText = 'font-size: 0.7rem; padding: 1px 4px; background: #38bdf8; color: white; border-radius: 3px; font-weight: bold;';
+      badge.innerText = 'İst.';
+      div.appendChild(badge);
+    }
+
+    div.onclick = () => {
+      liveGigSongIndex = idx;
+      renderLiveGigPlaylist();
+      renderLiveGigSong();
+    };
+
+    container.appendChild(div);
+  });
+}
+
+function renderLiveGigSong() {
+  const title = document.getElementById('gigLiveSongTitle');
+  const artist = document.getElementById('gigLiveSongArtist');
+  const counter = document.getElementById('gigLiveSongCounter');
+  const checkbox = document.getElementById('gigLivePlayedCheckbox');
+  const playedLabel = document.getElementById('gigLivePlayedLabel');
+  const chordContent = document.getElementById('gigLiveChordContent');
+
+  if (liveGigSongIndex === -1 || !liveGigObj.songs || liveGigObj.songs.length === 0) {
+    title.innerText = '-';
+    artist.innerText = '-';
+    counter.innerText = '- / -';
+    checkbox.checked = false;
+    playedLabel.innerText = 'Çalınmadı';
+    playedLabel.style.color = 'inherit';
+    chordContent.innerHTML = '<div style="text-align: center; margin-top: 3rem; color: var(--text-muted);">Lütfen bir şarkı seçin.</div>';
+    return;
+  }
+
+  const gigSong = liveGigObj.songs[liveGigSongIndex];
+  title.innerText = gigSong.title;
+  artist.innerText = gigSong.artistNames || '-';
+  counter.innerText = `${liveGigSongIndex + 1} / ${liveGigObj.songs.length}`;
+
+  checkbox.checked = !!gigSong.isPlayed;
+  playedLabel.innerText = gigSong.isPlayed ? '✓ Çalındı' : 'Çalınmadı';
+  playedLabel.style.color = gigSong.isPlayed ? '#059669' : 'inherit';
+
+  const fullSong = DB.songs.find(s => s.id === gigSong.songId);
+  chordContent.style.fontSize = `${liveGigFontSize}rem`;
+  chordContent.style.fontFamily = 'monospace';
+
+  if (fullSong && fullSong.lyrics) {
+    const cleanLyrics = fullSong.lyrics.replace(/<[^>]*>/g, '').trim();
+    if (cleanLyrics && cleanLyrics.length > 5) {
+      chordContent.innerHTML = fullSong.lyrics;
+    } else if (fullSong.chordImagePath) {
+      chordContent.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted);">
+          <span>Bu şarkının akor görseli mevcuttur:</span>
+          <img src="${fullSong.chordImagePath}" style="max-width: 100%; max-height: 60vh; object-fit: contain;">
+        </div>
+      `;
+    } else {
+      chordContent.innerText = 'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.';
+    }
+  } else {
+    chordContent.innerText = 'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.';
+  }
+}
+
+async function toggleLiveSongPlayedFromCheckbox() {
+  if (liveGigSongIndex === -1 || !liveGigObj.songs || !liveGigObj.songs[liveGigSongIndex]) return;
+  const cb = document.getElementById('gigLivePlayedCheckbox');
+  const targetSong = liveGigObj.songs[liveGigSongIndex];
+  
+  targetSong.isPlayed = cb.checked ? 1 : 0;
+  
+  const payload = {
+    VenueName: liveGigObj.venueName,
+    GigDate: liveGigObj.gigDate,
+    Notes: liveGigObj.notes,
+    Photos: liveGigObj.photos,
+    Videos: liveGigObj.videos,
+    Songs: liveGigObj.songs.map(s => ({
+      SongID: s.songId,
+      SortOrder: s.sortOrder,
+      IsPlayed: s.isPlayed,
+      IsRequest: s.isRequest
+    })),
+    Guests: liveGigObj.guests.map(g => ({
+      GuestID: g.guestId,
+      TableName: g.tableName
+    }))
+  };
+
+  try {
+    await apiRequest(`/gigs/${liveGigObj.id}`, 'PUT', payload);
+    renderLiveGigPlaylist();
+    renderLiveGigSong();
+  } catch (err) {
+    alert('Hata: ' + err.message);
+  }
+}
+
+function goToLiveNextSong() {
+  if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
+  liveGigSongIndex = (liveGigSongIndex + 1) % liveGigObj.songs.length;
+  renderLiveGigPlaylist();
+  renderLiveGigSong();
+}
+
+function goToLivePrevSong() {
+  if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
+  liveGigSongIndex = (liveGigSongIndex - 1 + liveGigObj.songs.length) % liveGigObj.songs.length;
+  renderLiveGigPlaylist();
+  renderLiveGigSong();
+}
+
+function adjustLiveFontSize(dir) {
+  liveGigFontSize = Math.max(0.6, Math.min(2.5, liveGigFontSize + (dir * 0.1)));
+  renderLiveGigSong();
+}
+
+function toggleLiveTheme() {
+  const modal = document.getElementById('gigLiveModal');
+  const label = document.getElementById('gigLiveThemeLabel');
+  
+  if (liveGigTheme === 'dark') {
+    liveGigTheme = 'light';
+    modal.style.background = '#ffffff';
+    modal.style.color = '#1e293b';
+    label.innerText = 'Aydınlık';
+  } else {
+    liveGigTheme = 'dark';
+    modal.style.background = '#0f172a';
+    modal.style.color = '#f1f5f9';
+    label.innerText = 'Koyu';
+  }
+}
+
+function searchLiveRequestSongs() {
+  const input = document.getElementById('gigLiveRequestSearch');
+  const autocomplete = document.getElementById('gigLiveRequestAutocomplete');
+  const query = input.value.trim().toLocaleLowerCase('tr-TR');
+
+  if (!query) {
+    autocomplete.style.display = 'none';
+    return;
+  }
+
+  const matches = DB.songs.filter(song => {
+    const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
+    const artists = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ') || '-';
+    song.artistNames = artists;
+    return song.title.toLocaleLowerCase('tr-TR').includes(query) || artists.toLocaleLowerCase('tr-TR').includes(query);
+  });
+
+  if (matches.length === 0) {
+    autocomplete.style.display = 'none';
+    return;
+  }
+
+  autocomplete.innerHTML = matches.slice(0, 10).map(s => `
+    <div style="padding: 0.4rem 0.6rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.78rem;" 
+         onclick="selectLiveRequestSong(${s.id}, '${s.title.replace(/'/g, "\\'")}', '${s.artistNames.replace(/'/g, "\\'")}')" 
+         class="autocomplete-item-hover">
+      ${s.title} (${s.artistNames})
+    </div>
+  `).join('');
+  autocomplete.style.display = 'block';
+}
+
+async function selectLiveRequestSong(songId, title, artistNames) {
+  let existingIdx = liveGigObj.songs.findIndex(s => s.songId === songId);
+  
+  if (existingIdx !== -1) {
+    liveGigSongIndex = existingIdx;
+    renderLiveGigPlaylist();
+    renderLiveGigSong();
+  } else {
+    const newSong = {
+      songId,
+      sortOrder: liveGigObj.songs.length + 1,
+      isPlayed: 1,
+      isRequest: 1,
+      title,
+      artistNames
+    };
+
+    const newSongsList = [...liveGigObj.songs, newSong];
+    const payload = {
+      VenueName: liveGigObj.venueName,
+      GigDate: liveGigObj.gigDate,
+      Notes: liveGigObj.notes,
+      Photos: liveGigObj.photos,
+      Videos: liveGigObj.videos,
+      Songs: newSongsList.map(s => ({
+        SongID: s.songId,
+        SortOrder: s.sortOrder,
+        IsPlayed: s.isPlayed,
+        IsRequest: s.isRequest
+      })),
+      Guests: liveGigObj.guests.map(g => ({
+        GuestID: g.guestId,
+        TableName: g.tableName
+      }))
+    };
+
+    try {
+      await apiRequest(`/gigs/${liveGigObj.id}`, 'PUT', payload);
+      liveGigObj.songs = newSongsList;
+      liveGigSongIndex = newSongsList.length - 1;
+      renderLiveGigPlaylist();
+      renderLiveGigSong();
+    } catch (err) {
+      alert('İstek ekleme hatası: ' + err.message);
+    }
+  }
+
+  document.getElementById('gigLiveRequestSearch').value = '';
+  document.getElementById('gigLiveRequestAutocomplete').style.display = 'none';
+}
 
 

@@ -14,6 +14,7 @@ let _guests  = [];
 let _requests = [];
 let _statuses = [];
 let _venues  = [];
+let _gigs    = [];
 let _loaded  = false;
 
 // ─── Yardımcı: sanatçı adlarını listeden çöz ────────────────────────────────
@@ -54,7 +55,8 @@ function _notify() {
       guests: _guests,
       requests: _requests,
       statuses: _statuses,
-      venues: _venues
+      venues: _venues,
+      gigs: _gigs
     };
     localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
     localStorage.setItem(cacheTimeKey, Date.now().toString());
@@ -77,6 +79,7 @@ const store = {
   get requests() { return _requests; },
   get statuses() { return _statuses; },
   get venues()   { return _venues; },
+  get gigs()     { return _gigs; },
   get isLoaded() { return _loaded; },
 
   // ── Tek seferlik yükleme ─────────────────────────────────────────────────
@@ -107,6 +110,7 @@ const store = {
             _requests = parsed.requests || [];
             _statuses = parsed.statuses || [];
             _venues = parsed.venues || [];
+            _gigs = parsed.gigs || [];
             _loaded = true;
             _notify();
             return;
@@ -117,13 +121,14 @@ const store = {
       }
     }
 
-    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList] = await Promise.all([
+    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList] = await Promise.all([
       api.getArtists(),
       api.getSongs(),
       api.getGuests(),
       api.getRequests(),
       api.getStatuses(),
-      api.getVenues()
+      api.getVenues(),
+      api.getGigs()
     ]);
 
     // 1. Sanatçıları yükle
@@ -213,6 +218,33 @@ const store = {
       (a.VenueName || '').toLocaleLowerCase('tr-TR')
         .localeCompare((b.VenueName || '').toLocaleLowerCase('tr-TR'), 'tr')
     );
+    
+    // 7. Sahneleri yükle
+    _gigs = gigsList.map(gig => ({
+      GigID: Number(gig.GigID),
+      VenueName: gig.VenueName,
+      GigDate: gig.GigDate,
+      Notes: gig.Notes || '',
+      Photos: gig.Photos || [],
+      Videos: gig.Videos || [],
+      Songs: (gig.Songs || []).map(s => ({
+        GigSongID: Number(s.GigSongID),
+        SongID: Number(s.SongID),
+        SortOrder: Number(s.SortOrder),
+        IsPlayed: Number(s.IsPlayed),
+        IsRequest: Number(s.IsRequest),
+        SongTitle: s.SongTitle,
+        ArtistNames: s.ArtistNames || '-'
+      })),
+      Guests: (gig.Guests || []).map(g => ({
+        GigGuestID: Number(g.GigGuestID),
+        GuestID: Number(g.GuestID),
+        TableName: g.TableName || '',
+        FullName: g.FullName || ''
+      })),
+      CreatedAt: gig.CreatedAt,
+      UpdatedAt: gig.UpdatedAt
+    }));
 
     _loaded = true;
     _notify();
@@ -429,6 +461,27 @@ const store = {
 
   removeVenue(id) {
     _venues = _venues.filter(v => v.VenueID !== id);
+    _notify();
+  },
+
+  // ── Sahne mutasyonları ───────────────────────────────────────────────────
+  addGig(gig) {
+    _gigs.unshift(gig);
+    _gigs.sort((a, b) => new Date(b.GigDate) - new Date(a.GigDate));
+    _notify();
+  },
+
+  updateGig(id, data) {
+    const idx = _gigs.findIndex(g => g.GigID === id);
+    if (idx !== -1) {
+      _gigs[idx] = { ..._gigs[idx], ...data };
+      _gigs.sort((a, b) => new Date(b.GigDate) - new Date(a.GigDate));
+    }
+    _notify();
+  },
+
+  removeGig(id) {
+    _gigs = _gigs.filter(g => g.GigID !== id);
     _notify();
   }
 };

@@ -785,6 +785,179 @@ app.delete('/api/venues/:id', (req, res) => {
     }
 });
 
+// ========================
+// GIGS API
+// ========================
+app.get('/api/gigs', (req, res) => {
+    try {
+        const gigs = db.prepare('SELECT * FROM Gigs ORDER BY GigDate DESC, GigID DESC').all();
+        
+        const formattedGigs = gigs.map(gig => {
+            const songs = db.prepare(`
+                SELECT gs.GigSongID, gs.SongID, gs.SortOrder, gs.IsPlayed, gs.IsRequest, s.SongTitle,
+                       (
+                           SELECT GROUP_CONCAT(a.ArtistName, ', ')
+                           FROM Song_Artists sa
+                           JOIN Artists a ON sa.ArtistID = a.ArtistID
+                           WHERE sa.SongID = s.SongID
+                       ) as ArtistNames
+                FROM Gig_Songs gs
+                JOIN Songs s ON gs.SongID = s.SongID
+                WHERE gs.GigID = ?
+                ORDER BY gs.SortOrder ASC
+            `).all(gig.GigID).map(s => ({
+                GigSongID: Number(s.GigSongID),
+                SongID: Number(s.SongID),
+                SortOrder: Number(s.SortOrder),
+                IsPlayed: Number(s.IsPlayed),
+                IsRequest: Number(s.IsRequest),
+                SongTitle: s.SongTitle,
+                ArtistNames: s.ArtistNames || '-'
+            }));
+
+            const guests = db.prepare(`
+                SELECT gg.GigGuestID, gg.GuestID, gg.TableName, g.FirstName, g.LastName
+                FROM Gig_Guests gg
+                JOIN Guests g ON gg.GuestID = g.GuestID
+                WHERE gg.GigID = ?
+            `).all(gig.GigID).map(g => ({
+                GigGuestID: Number(g.GigGuestID),
+                GuestID: Number(g.GuestID),
+                TableName: g.TableName || '',
+                FullName: `${g.FirstName} ${g.LastName}`.trim()
+            }));
+
+            return {
+                GigID: Number(gig.GigID),
+                VenueName: gig.VenueName,
+                GigDate: gig.GigDate,
+                Notes: gig.Notes || '',
+                Photos: gig.Photos ? JSON.parse(gig.Photos) : [],
+                Videos: gig.Videos ? JSON.parse(gig.Videos) : [],
+                Songs: songs,
+                Guests: guests,
+                CreatedAt: gig.CreatedAt,
+                UpdatedAt: gig.UpdatedAt
+            };
+        });
+
+        res.json(formattedGigs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/gigs', (req, res) => {
+    const { VenueName, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
+    if (!VenueName || !VenueName.trim() || !GigDate) {
+        return res.status(400).json({ error: 'Mekân adı ve tarih alanları boş bırakılamaz!' });
+    }
+
+    try {
+        const createTransaction = db.transaction(() => {
+            const gigInfo = db.prepare(`
+                INSERT INTO Gigs (VenueName, GigDate, Notes, Photos, Videos)
+                VALUES (?, ?, ?, ?, ?)
+            `).run(
+                VenueName.trim(),
+                GigDate,
+                Notes || '',
+                Photos ? JSON.stringify(Photos) : '[]',
+                Videos ? JSON.stringify(Videos) : '[]'
+            );
+            const gigId = gigInfo.lastInsertRowid;
+
+            if (Songs && Array.isArray(Songs)) {
+                const insertSong = db.prepare(`
+                    INSERT INTO Gig_Songs (GigID, SongID, SortOrder, IsPlayed, IsRequest)
+                    VALUES (?, ?, ?, ?, ?)
+                `);
+                Songs.forEach(song => {
+                    insertSong.run(gigId, Number(song.SongID), Number(song.SortOrder), Number(song.IsPlayed || 0), Number(song.IsRequest || 0));
+                });
+            }
+
+            if (Guests && Array.isArray(Guests)) {
+                const insertGuest = db.prepare(`
+                    INSERT INTO Gig_Guests (GigID, GuestID, TableName)
+                    VALUES (?, ?, ?)
+                `);
+                Guests.forEach(guest => {
+                    insertGuest.run(gigId, Number(guest.GuestID), guest.TableName || '');
+                });
+            }
+
+            return gigId;
+        });
+
+        const gigId = createTransaction();
+        res.status(201).json({ id: gigId, message: 'Sahne kaydı oluşturuldu.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/gigs/:id', (req, res) => {
+    const gigId = req.params.id;
+    const { VenueName, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
+    if (!VenueName || !VenueName.trim() || !GigDate) {
+        return res.status(400).json({ error: 'Mekân adı ve tarih alanları boş bırakılamaz!' });
+    }
+
+    try {
+        const updateTransaction = db.transaction(() => {
+            db.prepare(`
+                UPDATE Gigs
+                SET VenueName = ?, GigDate = ?, Notes = ?, Photos = ?, Videos = ?, UpdatedAt = CURRENT_TIMESTAMP
+                WHERE GigID = ?
+            `).run(
+                VenueName.trim(),
+                GigDate,
+                Notes || '',
+                Photos ? JSON.stringify(Photos) : '[]',
+                Videos ? JSON.stringify(Videos) : '[]',
+                gigId
+            );
+
+            db.prepare('DELETE FROM Gig_Songs WHERE GigID = ?').run(gigId);
+            if (Songs && Array.isArray(Songs)) {
+                const insertSong = db.prepare(`
+                    INSERT INTO Gig_Songs (GigID, SongID, SortOrder, IsPlayed, IsRequest)
+                    VALUES (?, ?, ?, ?, ?)
+                `);
+                Songs.forEach(song => {
+                    insertSong.run(gigId, Number(song.SongID), Number(song.SortOrder), Number(song.IsPlayed || 0), Number(song.IsRequest || 0));
+                });
+            }
+
+            db.prepare('DELETE FROM Gig_Guests WHERE GigID = ?').run(gigId);
+            if (Guests && Array.isArray(Guests)) {
+                const insertGuest = db.prepare(`
+                    INSERT INTO Gig_Guests (GigID, GuestID, TableName)
+                    VALUES (?, ?, ?)
+                `);
+                Guests.forEach(guest => {
+                    insertGuest.run(gigId, Number(guest.GuestID), guest.TableName || '');
+                });
+            }
+        });
+
+        updateTransaction();
+        res.json({ message: 'Sahne kaydı güncellendi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/gigs/:id', (req, res) => {
+    try {
+        db.prepare('DELETE FROM Gigs WHERE GigID = ?').run(req.params.id);
+        res.json({ message: 'Sahne kaydı silindi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Fallback for React Router (Single Page Application routing)
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/vanilla')) {

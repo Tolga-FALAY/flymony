@@ -3,6 +3,7 @@ import Artists from './components/Artists';
 import Songs from './components/Songs';
 import Guests from './components/Guests';
 import Requests from './components/Requests';
+import Gigs from './components/Gigs';
 import OtherOperations from './components/OtherOperations';
 import Parameters from './components/Parameters';
 import store from './store';
@@ -17,6 +18,18 @@ const NAV_ITEMS = [
         <path d="M9 18V5l12-2v13" />
         <circle cx="6" cy="18" r="3" />
         <circle cx="18" cy="16" r="3" />
+      </svg>
+    )
+  },
+  {
+    key: 'gigs',
+    label: 'Sahneler',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8" y1="2" x2="8" y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
       </svg>
     )
   },
@@ -93,14 +106,15 @@ function App() {
 
   // Kayıt sayaçları — store'daki listelerin length'inden okunur.
   // Firestore'a ekstra okuma yapılmaz.
-  const [counts, setCounts] = useState({ requests: 0, songs: 0, artists: 0, guests: 0 });
+  const [counts, setCounts] = useState({ requests: 0, songs: 0, artists: 0, guests: 0, gigs: 0 });
 
   const updateCounts = () => {
     setCounts({
       requests: store.requests.length,
       songs:    store.songs.length,
       artists:  store.artists.length,
-      guests:   store.guests.length
+      guests:   store.guests.length,
+      gigs:     store.gigs.length
     });
   };
 
@@ -165,6 +179,7 @@ function App() {
         </button>
         <div className="content-panel">
           <div style={{ display: activeTab === 'requests' ? 'block' : 'none' }}><Requests /></div>
+          <div style={{ display: activeTab === 'gigs' ? 'block' : 'none' }}><Gigs /></div>
           <div style={{ display: activeTab === 'songs' ? 'block' : 'none' }}><Songs /></div>
           <div style={{ display: activeTab === 'artists' ? 'block' : 'none' }}><Artists /></div>
           <div style={{ display: activeTab === 'guests' ? 'block' : 'none' }}><Guests /></div>

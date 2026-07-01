@@ -75,6 +75,37 @@ export const initializeDB = () => {
             ContactPhone TEXT,
             InstagramLink TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS Gigs (
+            GigID INTEGER PRIMARY KEY AUTOINCREMENT,
+            VenueName TEXT NOT NULL,
+            GigDate TEXT NOT NULL,
+            Notes TEXT,
+            Photos TEXT,
+            Videos TEXT,
+            CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS Gig_Songs (
+            GigSongID INTEGER PRIMARY KEY AUTOINCREMENT,
+            GigID INTEGER NOT NULL,
+            SongID INTEGER NOT NULL,
+            SortOrder INTEGER NOT NULL,
+            IsPlayed INTEGER DEFAULT 0,
+            IsRequest INTEGER DEFAULT 0,
+            FOREIGN KEY (GigID) REFERENCES Gigs(GigID) ON DELETE CASCADE,
+            FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS Gig_Guests (
+            GigGuestID INTEGER PRIMARY KEY AUTOINCREMENT,
+            GigID INTEGER NOT NULL,
+            GuestID INTEGER NOT NULL,
+            TableName TEXT,
+            FOREIGN KEY (GigID) REFERENCES Gigs(GigID) ON DELETE CASCADE,
+            FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
+        );
     `);
 
     // Check if Requests table exists and has GuestID column

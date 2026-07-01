@@ -203,5 +203,50 @@ export const api = {
 
   deleteVenue: async (id) => {
     return request(`/venues/${id}`, 'DELETE');
+  },
+
+  // ========================
+  // GIGS API
+  // ========================
+  getGigs: async () => {
+    const list = await request('/gigs');
+    return list.map(gig => ({
+      GigID: Number(gig.GigID),
+      VenueName: gig.VenueName,
+      GigDate: gig.GigDate,
+      Notes: gig.Notes || '',
+      Photos: gig.Photos || [],
+      Videos: gig.Videos || [],
+      Songs: (gig.Songs || []).map(s => ({
+        GigSongID: Number(s.GigSongID),
+        SongID: Number(s.SongID),
+        SortOrder: Number(s.SortOrder),
+        IsPlayed: Number(s.IsPlayed),
+        IsRequest: Number(s.IsRequest),
+        SongTitle: s.SongTitle,
+        ArtistNames: s.ArtistNames || '-'
+      })),
+      Guests: (gig.Guests || []).map(g => ({
+        GigGuestID: Number(g.GigGuestID),
+        GuestID: Number(g.GuestID),
+        TableName: g.TableName || '',
+        FullName: g.FullName || ''
+      })),
+      CreatedAt: gig.CreatedAt,
+      UpdatedAt: gig.UpdatedAt
+    }));
+  },
+
+  createGig: async (data) => {
+    const result = await request('/gigs', 'POST', data);
+    return { GigID: Number(result.id), message: result.message };
+  },
+
+  updateGig: async (id, data) => {
+    return request(`/gigs/${id}`, 'PUT', data);
+  },
+
+  deleteGig: async (id) => {
+    return request(`/gigs/${id}`, 'DELETE');
   }
 };
