@@ -259,7 +259,7 @@ export default function Parameters() {
       </div>
 
       {/* Sub tabs navigation */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
         <button
           className={`btn ${subTab === 'statuses' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setSubTab('statuses')}
