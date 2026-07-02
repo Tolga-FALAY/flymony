@@ -229,7 +229,8 @@ const store = {
       CityName: v.CityName || '-',
       ContactPerson: v.ContactPerson || '',
       ContactPhone: v.ContactPhone || '',
-      InstagramLink: v.InstagramLink || ''
+      InstagramLink: v.InstagramLink || '',
+      Notes: v.Notes || ''
     }));
     _venues.sort((a, b) =>
       (a.VenueName || '').toLocaleLowerCase('tr-TR')

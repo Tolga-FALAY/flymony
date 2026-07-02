@@ -73,7 +73,8 @@ export const initializeDB = () => {
             VenueName TEXT NOT NULL UNIQUE,
             ContactPerson TEXT,
             ContactPhone TEXT,
-            InstagramLink TEXT
+            InstagramLink TEXT,
+            Notes TEXT
         );
 
         CREATE TABLE IF NOT EXISTS Gigs (
@@ -441,14 +442,15 @@ export const initializeDB = () => {
                         ContactPerson TEXT,
                         ContactPhone TEXT,
                         InstagramLink TEXT,
+                        Notes TEXT,
                         FOREIGN KEY (CityID) REFERENCES Cities(CityID)
                     );
                 `);
 
                 // Copy old records to new table with default city
                 db.prepare(`
-                    INSERT INTO Venues (VenueID, VenueName, CityID, ContactPerson, ContactPhone, InstagramLink)
-                    SELECT VenueID, VenueName, ?, ContactPerson, ContactPhone, InstagramLink FROM Venues_old;
+                    INSERT INTO Venues (VenueID, VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes)
+                    SELECT VenueID, VenueName, ?, ContactPerson, ContactPhone, InstagramLink, NULL FROM Venues_old;
                 `).run(defaultCityID);
 
                 // Drop old table
@@ -503,7 +505,7 @@ export const initializeDB = () => {
                     
                     if (!venue) {
                         // Create a new venue entry with the default city
-                        const ins = db.prepare("INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink) VALUES (?, ?, '', '', '')").run(venueName, defaultCityID);
+                        const ins = db.prepare("INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes) VALUES (?, ?, '', '', '', '')").run(venueName, defaultCityID);
                         venue = { VenueID: ins.lastInsertRowid };
                         console.log(`Auto-created parametric venue: ${venueName} (İstanbul)`);
                     }
@@ -584,6 +586,21 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while repairing Gig_Songs/Gig_Guests tables:", e);
+    }
+
+    // ----------------------------------------------------
+    // VENUES TABLE MIGRATION (Add Notes)
+    // ----------------------------------------------------
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Venues)").all();
+        const hasNotes = tableInfo.some(col => col.name === 'Notes');
+        if (!hasNotes) {
+            console.log("Migrating Venues table: Adding Notes column...");
+            db.exec("ALTER TABLE Venues ADD COLUMN Notes TEXT;");
+            console.log("Venues table migration complete (Notes column added).");
+        }
+    } catch (e) {
+        console.error("Migration error while adding Notes column to Venues table:", e);
     }
 
     console.log("Database tables initialized.");

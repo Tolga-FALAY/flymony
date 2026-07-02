@@ -31,7 +31,8 @@ export default function Parameters() {
     CityID: '',
     ContactPerson: '',
     ContactPhone: '',
-    InstagramLink: ''
+    InstagramLink: '',
+    Notes: ''
   });
 
   const [isCityModalOpen, setIsCityModalOpen] = useState(false);
@@ -115,7 +116,8 @@ export default function Parameters() {
         CityID: venue.CityID || '',
         ContactPerson: venue.ContactPerson || '',
         ContactPhone: venue.ContactPhone || '',
-        InstagramLink: venue.InstagramLink || ''
+        InstagramLink: venue.InstagramLink || '',
+        Notes: venue.Notes || ''
       });
     } else {
       setEditingVenue(null);
@@ -124,7 +126,8 @@ export default function Parameters() {
         CityID: store.cities.length > 0 ? store.cities[0].CityID : '',
         ContactPerson: '',
         ContactPhone: '',
-        InstagramLink: ''
+        InstagramLink: '',
+        Notes: ''
       });
     }
     setIsVenueModalOpen(true);
@@ -162,7 +165,8 @@ export default function Parameters() {
           CityName: result.CityName,
           ContactPerson: result.ContactPerson,
           ContactPhone: result.ContactPhone,
-          InstagramLink: result.InstagramLink
+          InstagramLink: result.InstagramLink,
+          Notes: result.Notes
         });
       }
       closeVenueModal();
@@ -353,6 +357,7 @@ export default function Parameters() {
                   <th>İrtibat Kişisi</th>
                   <th>İrtibat Telefonu</th>
                   <th>Instagram</th>
+                  <th>Notlar</th>
                   <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
                 </tr>
               </thead>
@@ -375,6 +380,7 @@ export default function Parameters() {
                         </a>
                       ) : '-'}
                     </td>
+                    <td data-label="Notlar" style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{v.Notes || '-'}</td>
                     <td data-label="İşlemler">
                       <div className="action-btns">
                         <button className="btn btn-sm btn-outline" onClick={() => openVenueModal(v)}>Düzenle</button>
@@ -384,7 +390,7 @@ export default function Parameters() {
                   </tr>
                 ))}
                 {venues.length === 0 && (
-                  <tr><td colSpan="6" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+                  <tr><td colSpan="7" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
               </tbody>
             </table>
@@ -584,6 +590,17 @@ export default function Parameters() {
                   value={venueForm.InstagramLink}
                   onChange={e => setVenueForm({ ...venueForm, InstagramLink: e.target.value })}
                   placeholder="https://instagram.com/..."
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Notlar</label>
+                <textarea
+                  value={venueForm.Notes || ''}
+                  onChange={e => setVenueForm({ ...venueForm, Notes: e.target.value })}
+                  placeholder="Mekan hakkında notlar..."
+                  rows={2}
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 

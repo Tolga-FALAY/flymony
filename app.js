@@ -208,7 +208,8 @@ const DB = {
         cityName: v.CityName || '-',
         contactPerson: v.ContactPerson || '',
         contactPhone: v.ContactPhone || '',
-        instagramLink: v.InstagramLink || ''
+        instagramLink: v.InstagramLink || '',
+        notes: v.Notes || ''
       }));
       this.statuses = statusesList.map(s => ({ id: Number(s.StatusID), name: s.StatusName, color: s.Color }));
 
@@ -4438,6 +4439,7 @@ function renderParameters() {
         <td data-label="Instagram">
           ${v.instagramLink ? `<a href="${v.instagramLink}" target="_blank" class="instagram-link-badge">Instagram ↗</a>` : '-'}
         </td>
+        <td data-label="Notlar" style="font-size: 0.82rem; color: var(--text-muted);">${v.notes || '-'}</td>
         <td data-label="İşlemler">
           <div class="action-btns">
             <button class="btn btn-sm btn-outline" onclick="openVanillaVenueModal(${v.id})">Düzenle</button>
@@ -4447,7 +4449,7 @@ function renderParameters() {
       </tr>
     `).join('');
     if (DB.venues.length === 0) {
-      venuesBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+      venuesBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
     }
   }
 
@@ -4558,6 +4560,7 @@ function openVanillaVenueModal(venueId = null) {
     title.innerText = 'Yeni Mekan Ekle';
     document.getElementById('vanillaVenueID').value = '';
     document.getElementById('vanillaVenueCityID').value = DB.cities.length > 0 ? DB.cities[0].id : '';
+    document.getElementById('vanillaVenueNotes').value = '';
   } else {
     title.innerText = 'Mekanı Düzenle';
     const venue = DB.venues.find(v => v.id === venueId);
@@ -4568,6 +4571,7 @@ function openVanillaVenueModal(venueId = null) {
     document.getElementById('vanillaVenueContactPerson').value = venue.contactPerson || '';
     document.getElementById('vanillaVenueContactPhone').value = venue.contactPhone || '';
     document.getElementById('vanillaVenueInstagramLink').value = venue.instagramLink || '';
+    document.getElementById('vanillaVenueNotes').value = venue.notes || '';
   }
   openModal('vanillaVenueModal');
 }
@@ -4580,6 +4584,7 @@ async function saveVanillaVenue(event) {
   const contactPerson = document.getElementById('vanillaVenueContactPerson').value.trim();
   const contactPhone = document.getElementById('vanillaVenueContactPhone').value.trim();
   const instagram = document.getElementById('vanillaVenueInstagramLink').value.trim();
+  const notes = document.getElementById('vanillaVenueNotes').value.trim();
 
   if (!name) {
     alert("Mekan ismi boş bırakılamaz!");
@@ -4595,7 +4600,8 @@ async function saveVanillaVenue(event) {
     CityID: Number(cityId),
     ContactPerson: contactPerson,
     ContactPhone: contactPhone,
-    InstagramLink: instagram
+    InstagramLink: instagram,
+    Notes: notes
   };
 
   try {
