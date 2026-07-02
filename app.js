@@ -209,7 +209,8 @@ const DB = {
         contactPerson: v.ContactPerson || '',
         contactPhone: v.ContactPhone || '',
         instagramLink: v.InstagramLink || '',
-        notes: v.Notes || ''
+        notes: v.Notes || '',
+        googleMapsLink: v.GoogleMapsLink || ''
       }));
       this.statuses = statusesList.map(s => ({ id: Number(s.StatusID), name: s.StatusName, color: s.Color }));
 
@@ -4439,6 +4440,9 @@ function renderParameters() {
         <td data-label="Instagram">
           ${v.instagramLink ? `<a href="${v.instagramLink}" target="_blank" class="instagram-link-badge">Instagram ↗</a>` : '-'}
         </td>
+        <td data-label="Konum">
+          ${v.googleMapsLink ? `<button type="button" class="btn btn-sm btn-outline" onclick="copyVanillaVenueLink(this, '${v.googleMapsLink}')" title="Google Harita Konumunu Kopyala" style="padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.2s ease;">🗺️ Konum</button>` : '-'}
+        </td>
         <td data-label="Notlar" style="font-size: 0.82rem; color: var(--text-muted);">${v.notes || '-'}</td>
         <td data-label="İşlemler">
           <div class="action-btns">
@@ -4449,7 +4453,7 @@ function renderParameters() {
       </tr>
     `).join('');
     if (DB.venues.length === 0) {
-      venuesBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+      venuesBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
     }
   }
 
@@ -4561,6 +4565,7 @@ function openVanillaVenueModal(venueId = null) {
     document.getElementById('vanillaVenueID').value = '';
     document.getElementById('vanillaVenueCityID').value = DB.cities.length > 0 ? DB.cities[0].id : '';
     document.getElementById('vanillaVenueNotes').value = '';
+    document.getElementById('vanillaVenueGoogleMapsLink').value = '';
   } else {
     title.innerText = 'Mekanı Düzenle';
     const venue = DB.venues.find(v => v.id === venueId);
@@ -4572,6 +4577,7 @@ function openVanillaVenueModal(venueId = null) {
     document.getElementById('vanillaVenueContactPhone').value = venue.contactPhone || '';
     document.getElementById('vanillaVenueInstagramLink').value = venue.instagramLink || '';
     document.getElementById('vanillaVenueNotes').value = venue.notes || '';
+    document.getElementById('vanillaVenueGoogleMapsLink').value = venue.googleMapsLink || '';
   }
   openModal('vanillaVenueModal');
 }
@@ -4585,6 +4591,7 @@ async function saveVanillaVenue(event) {
   const contactPhone = document.getElementById('vanillaVenueContactPhone').value.trim();
   const instagram = document.getElementById('vanillaVenueInstagramLink').value.trim();
   const notes = document.getElementById('vanillaVenueNotes').value.trim();
+  const googleMaps = document.getElementById('vanillaVenueGoogleMapsLink').value.trim();
 
   if (!name) {
     alert("Mekan ismi boş bırakılamaz!");
@@ -4601,7 +4608,8 @@ async function saveVanillaVenue(event) {
     ContactPerson: contactPerson,
     ContactPhone: contactPhone,
     InstagramLink: instagram,
-    Notes: notes
+    Notes: notes,
+    GoogleMapsLink: googleMaps
   };
 
   try {
@@ -4695,6 +4703,26 @@ async function deleteVanillaCity(cityId) {
   }
 }
 
+function copyVanillaVenueLink(buttonElement, link) {
+  navigator.clipboard.writeText(link);
+  const originalHtml = buttonElement.innerHTML;
+  const originalBg = buttonElement.style.backgroundColor;
+  const originalBorder = buttonElement.style.borderColor;
+  const originalColor = buttonElement.style.color;
+
+  buttonElement.innerHTML = '✅ Kopyalandı';
+  buttonElement.style.backgroundColor = '#d1fae5';
+  buttonElement.style.borderColor = '#34d399';
+  buttonElement.style.color = '#065f46';
+
+  setTimeout(() => {
+    buttonElement.innerHTML = originalHtml;
+    buttonElement.style.backgroundColor = originalBg;
+    buttonElement.style.borderColor = originalBorder;
+    buttonElement.style.color = originalColor;
+  }, 1500);
+}
+
 // Window Exports
 window.setVanillaSubTab = setVanillaSubTab;
 window.renderParameters = renderParameters;
@@ -4708,5 +4736,6 @@ window.deleteVanillaVenue = deleteVanillaVenue;
 window.openVanillaCityModal = openVanillaCityModal;
 window.saveVanillaCity = saveVanillaCity;
 window.deleteVanillaCity = deleteVanillaCity;
+window.copyVanillaVenueLink = copyVanillaVenueLink;
 
 

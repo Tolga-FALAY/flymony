@@ -798,7 +798,8 @@ app.get('/api/venues', (req, res) => {
             ContactPerson: v.ContactPerson || '',
             ContactPhone: v.ContactPhone || '',
             InstagramLink: v.InstagramLink || '',
-            Notes: v.Notes || ''
+            Notes: v.Notes || '',
+            GoogleMapsLink: v.GoogleMapsLink || ''
         })));
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -807,7 +808,7 @@ app.get('/api/venues', (req, res) => {
 
 app.post('/api/venues', (req, res) => {
     try {
-        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes } = req.body;
+        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink } = req.body;
         if (!VenueName || !VenueName.trim()) {
             return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
         }
@@ -819,9 +820,9 @@ app.post('/api/venues', (req, res) => {
             return res.status(400).json({ error: 'Bu mekan zaten tanımlı!' });
         }
         const info = db.prepare(`
-            INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '');
+            INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '');
         
         const cityName = db.prepare('SELECT CityName FROM Cities WHERE CityID = ?').get(CityID)?.CityName || '-';
         
@@ -833,7 +834,8 @@ app.post('/api/venues', (req, res) => {
             ContactPerson: ContactPerson ? ContactPerson.trim() : '', 
             ContactPhone: ContactPhone ? ContactPhone.trim() : '', 
             InstagramLink: InstagramLink ? InstagramLink.trim() : '',
-            Notes: Notes ? Notes.trim() : ''
+            Notes: Notes ? Notes.trim() : '',
+            GoogleMapsLink: GoogleMapsLink ? GoogleMapsLink.trim() : ''
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -842,7 +844,7 @@ app.post('/api/venues', (req, res) => {
 
 app.put('/api/venues/:id', (req, res) => {
     try {
-        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes } = req.body;
+        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink } = req.body;
         const venueId = req.params.id;
         if (!VenueName || !VenueName.trim()) {
             return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
@@ -856,9 +858,9 @@ app.put('/api/venues/:id', (req, res) => {
         }
         db.prepare(`
             UPDATE Venues 
-            SET VenueName = ?, CityID = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ?, Notes = ? 
+            SET VenueName = ?, CityID = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ?, Notes = ?, GoogleMapsLink = ? 
             WHERE VenueID = ?
-        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', venueId);
+        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '', venueId);
         res.json({ message: 'Venue updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });

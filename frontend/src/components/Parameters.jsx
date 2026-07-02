@@ -18,6 +18,7 @@ export default function Parameters() {
   const [statuses, setStatuses] = useState([]);
   const [venues, setVenues] = useState([]);
   const [cities, setCities] = useState([]);
+  const [copiedVenueId, setCopiedVenueId] = useState(null);
 
   // Modal states
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -32,7 +33,8 @@ export default function Parameters() {
     ContactPerson: '',
     ContactPhone: '',
     InstagramLink: '',
-    Notes: ''
+    Notes: '',
+    GoogleMapsLink: ''
   });
 
   const [isCityModalOpen, setIsCityModalOpen] = useState(false);
@@ -117,7 +119,8 @@ export default function Parameters() {
         ContactPerson: venue.ContactPerson || '',
         ContactPhone: venue.ContactPhone || '',
         InstagramLink: venue.InstagramLink || '',
-        Notes: venue.Notes || ''
+        Notes: venue.Notes || '',
+        GoogleMapsLink: venue.GoogleMapsLink || ''
       });
     } else {
       setEditingVenue(null);
@@ -127,7 +130,8 @@ export default function Parameters() {
         ContactPerson: '',
         ContactPhone: '',
         InstagramLink: '',
-        Notes: ''
+        Notes: '',
+        GoogleMapsLink: ''
       });
     }
     setIsVenueModalOpen(true);
@@ -136,6 +140,12 @@ export default function Parameters() {
   const closeVenueModal = () => {
     setIsVenueModalOpen(false);
     setEditingVenue(null);
+  };
+
+  const handleCopyLink = (venueId, link) => {
+    navigator.clipboard.writeText(link);
+    setCopiedVenueId(venueId);
+    setTimeout(() => setCopiedVenueId(null), 1500);
   };
 
   const handleVenueSubmit = async (e) => {
@@ -166,7 +176,8 @@ export default function Parameters() {
           ContactPerson: result.ContactPerson,
           ContactPhone: result.ContactPhone,
           InstagramLink: result.InstagramLink,
-          Notes: result.Notes
+          Notes: result.Notes,
+          GoogleMapsLink: result.GoogleMapsLink
         });
       }
       closeVenueModal();
@@ -357,6 +368,7 @@ export default function Parameters() {
                   <th>İrtibat Kişisi</th>
                   <th>İrtibat Telefonu</th>
                   <th>Instagram</th>
+                  <th>Konum</th>
                   <th>Notlar</th>
                   <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
                 </tr>
@@ -380,6 +392,32 @@ export default function Parameters() {
                         </a>
                       ) : '-'}
                     </td>
+                    <td data-label="Konum">
+                      {v.GoogleMapsLink ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => handleCopyLink(v.VenueID, v.GoogleMapsLink)}
+                          title="Google Harita Konumunu Kopyala"
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: '8px',
+                            fontSize: '0.82rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            cursor: 'pointer',
+                            backgroundColor: copiedVenueId === v.VenueID ? '#d1fae5' : 'transparent',
+                            borderColor: copiedVenueId === v.VenueID ? '#34d399' : 'var(--border-strong)',
+                            color: copiedVenueId === v.VenueID ? '#065f46' : 'var(--text-main)',
+                            transition: 'all 0.2s ease',
+                            fontWeight: '600'
+                          }}
+                        >
+                          {copiedVenueId === v.VenueID ? '✅ Kopyalandı' : '🗺️ Konum'}
+                        </button>
+                      ) : '-'}
+                    </td>
                     <td data-label="Notlar" style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{v.Notes || '-'}</td>
                     <td data-label="İşlemler">
                       <div className="action-btns">
@@ -390,7 +428,7 @@ export default function Parameters() {
                   </tr>
                 ))}
                 {venues.length === 0 && (
-                  <tr><td colSpan="7" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
               </tbody>
             </table>
@@ -590,6 +628,16 @@ export default function Parameters() {
                   value={venueForm.InstagramLink}
                   onChange={e => setVenueForm({ ...venueForm, InstagramLink: e.target.value })}
                   placeholder="https://instagram.com/..."
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Google Harita (Konum) Linki</label>
+                <input
+                  type="url"
+                  value={venueForm.GoogleMapsLink || ''}
+                  onChange={e => setVenueForm({ ...venueForm, GoogleMapsLink: e.target.value })}
+                  placeholder="https://maps.google.com/..."
                 />
               </div>
 

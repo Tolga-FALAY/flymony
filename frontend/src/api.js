@@ -212,7 +212,8 @@ export const api = {
       ContactPerson: v.ContactPerson || '',
       ContactPhone: v.ContactPhone || '',
       InstagramLink: v.InstagramLink || '',
-      Notes: v.Notes || ''
+      Notes: v.Notes || '',
+      GoogleMapsLink: v.GoogleMapsLink || ''
     }));
   },
 
@@ -226,7 +227,8 @@ export const api = {
       ContactPerson: result.ContactPerson,
       ContactPhone: result.ContactPhone,
       InstagramLink: result.InstagramLink,
-      Notes: result.Notes || ''
+      Notes: result.Notes || '',
+      GoogleMapsLink: result.GoogleMapsLink || ''
     };
   },
 

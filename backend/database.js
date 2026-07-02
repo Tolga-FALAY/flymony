@@ -74,7 +74,8 @@ export const initializeDB = () => {
             ContactPerson TEXT,
             ContactPhone TEXT,
             InstagramLink TEXT,
-            Notes TEXT
+            Notes TEXT,
+            GoogleMapsLink TEXT
         );
 
         CREATE TABLE IF NOT EXISTS Gigs (
@@ -443,14 +444,15 @@ export const initializeDB = () => {
                         ContactPhone TEXT,
                         InstagramLink TEXT,
                         Notes TEXT,
+                        GoogleMapsLink TEXT,
                         FOREIGN KEY (CityID) REFERENCES Cities(CityID)
                     );
                 `);
 
                 // Copy old records to new table with default city
                 db.prepare(`
-                    INSERT INTO Venues (VenueID, VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes)
-                    SELECT VenueID, VenueName, ?, ContactPerson, ContactPhone, InstagramLink, NULL FROM Venues_old;
+                    INSERT INTO Venues (VenueID, VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink)
+                    SELECT VenueID, VenueName, ?, ContactPerson, ContactPhone, InstagramLink, NULL, NULL FROM Venues_old;
                 `).run(defaultCityID);
 
                 // Drop old table
@@ -505,7 +507,7 @@ export const initializeDB = () => {
                     
                     if (!venue) {
                         // Create a new venue entry with the default city
-                        const ins = db.prepare("INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes) VALUES (?, ?, '', '', '', '')").run(venueName, defaultCityID);
+                        const ins = db.prepare("INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink) VALUES (?, ?, '', '', '', '', '')").run(venueName, defaultCityID);
                         venue = { VenueID: ins.lastInsertRowid };
                         console.log(`Auto-created parametric venue: ${venueName} (İstanbul)`);
                     }
@@ -601,6 +603,21 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while adding Notes column to Venues table:", e);
+    }
+
+    // ----------------------------------------------------
+    // VENUES TABLE MIGRATION (Add GoogleMapsLink)
+    // ----------------------------------------------------
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Venues)").all();
+        const hasGoogleMaps = tableInfo.some(col => col.name === 'GoogleMapsLink');
+        if (!hasGoogleMaps) {
+            console.log("Migrating Venues table: Adding GoogleMapsLink column...");
+            db.exec("ALTER TABLE Venues ADD COLUMN GoogleMapsLink TEXT;");
+            console.log("Venues table migration complete (GoogleMapsLink column added).");
+        }
+    } catch (e) {
+        console.error("Migration error while adding GoogleMapsLink column to Venues table:", e);
     }
 
     console.log("Database tables initialized.");
