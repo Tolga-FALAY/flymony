@@ -731,7 +731,7 @@ function renderGuests() {
     
     const initials = getInitials(guest.firstName, guest.lastName);
     const avatarHtml = guest.profilePicture
-      ? `<img src="${guest.profilePicture}" alt="${guest.fullName}" class="guest-avatar-img">`
+      ? `<img src="${guest.profilePicture}" alt="${guest.fullName}" class="guest-avatar-img" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${guest.profilePicture}')">`
       : `<div class="guest-avatar-initials">${initials}</div>`;
 
     // Birth Date Formatter
@@ -751,7 +751,7 @@ function renderGuests() {
       <td data-label="Misafir" class="td-guest-profile">
         <div class="guest-profile-content">
           <div class="guest-avatar-wrapper">${avatarHtml}</div>
-          <span class="guest-name-text">${guest.firstName} ${guest.lastName}</span>
+          <span class="guest-name-text" style="cursor: pointer;" onclick="editGuest(${guest.id})">${guest.firstName} ${guest.lastName}</span>
         </div>
       </td>
       <td data-label="Telefon">
@@ -861,7 +861,7 @@ function renderVanillaProfilePreview() {
   if (base64) {
     container.className = "profile-img-preview-wrapper";
     container.innerHTML = `
-      <img src="${base64}" alt="Profil Önizleme">
+      <img src="${base64}" alt="Profil Önizleme" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${base64}')">
       <button type="button" class="profile-img-delete-badge" onclick="removeVanillaProfilePicture()" title="Resmi Sil">&times;</button>
     `;
   } else {
@@ -1055,7 +1055,7 @@ function renderVanillaGalleryPreviews() {
   if (currentPhotos.length > 0) {
     container.innerHTML = currentPhotos.map((photo, index) => `
       <div class="gallery-preview-item">
-        <img src="${photo}" alt="Galeri Görsel ${index + 1}">
+        <img src="${photo}" alt="Galeri Görsel ${index + 1}" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${photo}')">
         <button type="button" class="gallery-preview-delete-badge" onclick="removeVanillaGalleryPhoto(${index})" title="Sil">&times;</button>
       </div>
     `).join('');
@@ -4750,6 +4750,22 @@ function copyVanillaVenueLink(buttonElement, link) {
   });
 }
 
+function viewVanillaFullscreenImage(src) {
+  const modal = document.getElementById('vanillaImageFullscreenModal');
+  const img = document.getElementById('vanillaFullscreenImageEl');
+  if (modal && img) {
+    img.src = src;
+    modal.style.display = 'flex';
+  }
+}
+
+function closeVanillaFullscreenImage() {
+  const modal = document.getElementById('vanillaImageFullscreenModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
 // Window Exports
 window.setVanillaSubTab = setVanillaSubTab;
 window.renderParameters = renderParameters;
@@ -4764,5 +4780,7 @@ window.openVanillaCityModal = openVanillaCityModal;
 window.saveVanillaCity = saveVanillaCity;
 window.deleteVanillaCity = deleteVanillaCity;
 window.copyVanillaVenueLink = copyVanillaVenueLink;
+window.viewVanillaFullscreenImage = viewVanillaFullscreenImage;
+window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
 
 

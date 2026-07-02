@@ -1188,6 +1188,14 @@
     <button type="button" onclick="closeGlobalAudio()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 1; display: flex; align-items: center; justify-content: center;">&times;</button>
   </div>
 
+  <!-- Vanilla Image Fullscreen Modal -->
+  <div id="vanillaImageFullscreenModal" class="modal-overlay" style="display: none; z-index: 2000; background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); align-items: center; justify-content: center;" onclick="closeVanillaFullscreenImage()">
+    <div style="position: relative; max-width: 90vw; max-height: 90vh;" onclick="event.stopPropagation()">
+      <button type="button" class="close-btn" onclick="closeVanillaFullscreenImage()" style="position: absolute; top: -40px; right: 0; font-size: 1.75rem; color: #fff; background: rgba(255,255,255,0.15); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">&times;</button>
+      <img id="vanillaFullscreenImageEl" src="" alt="Tam Ekran" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+    </div>
+  </div>
+
   <script src="app.js?v=4"></script>
 </body>
 </html>

@@ -25,6 +25,7 @@ export default function Guests() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState(null);
   const [contactGuest, setContactGuest] = useState(null);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
 
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
@@ -623,7 +624,15 @@ export default function Guests() {
               <tr key={guest.GuestID}>
                 <td data-label="Misafir" className="td-guest-profile">
                   <div className="guest-profile-content">
-                    <div className="guest-avatar-wrapper">
+                    <div 
+                      className="guest-avatar-wrapper"
+                      style={guest.ProfilePicture ? { cursor: 'pointer' } : {}}
+                      onClick={() => {
+                        if (guest.ProfilePicture) {
+                          setFullscreenImage(guest.ProfilePicture);
+                        }
+                      }}
+                    >
                       {guest.ProfilePicture ? (
                         <img src={guest.ProfilePicture} alt={guest.FullName} className="guest-avatar-img" />
                       ) : (
@@ -632,7 +641,13 @@ export default function Guests() {
                         </div>
                       )}
                     </div>
-                     <span className="guest-name-text">
+                     <span 
+                       className="guest-name-text"
+                       onClick={() => openModal(guest)}
+                       style={{ cursor: 'pointer', textDecoration: 'none' }}
+                       onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                       onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                     >
                       {guest.FullName}
                       {guest.IsMusician && (
                         <span 
@@ -698,7 +713,12 @@ export default function Guests() {
                   <div className="profile-preview-container">
                     {formData.ProfilePicture ? (
                       <div className="profile-img-preview-wrapper">
-                        <img src={formData.ProfilePicture} alt="Profil Önizleme" />
+                        <img 
+                          src={formData.ProfilePicture} 
+                          alt="Profil Önizleme" 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setFullscreenImage(formData.ProfilePicture)}
+                        />
                         <button type="button" className="profile-img-delete-badge" onClick={removeProfilePicture} title="Resmi Sil">&times;</button>
                       </div>
                     ) : (
@@ -861,7 +881,12 @@ export default function Guests() {
                 <div className="gallery-previews-grid">
                   {formData.Photos && formData.Photos.map((photo, index) => (
                     <div key={index} className="gallery-preview-item">
-                      <img src={photo} alt={`Galeri Önizleme ${index + 1}`} />
+                      <img 
+                        src={photo} 
+                        alt={`Galeri Önizleme ${index + 1}`} 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setFullscreenImage(photo)}
+                      />
                       <button type="button" className="gallery-preview-delete-badge" onClick={() => removeGalleryPhoto(index)} title="Fotoğrafı Sil">&times;</button>
                     </div>
                   ))}
@@ -1099,6 +1124,69 @@ export default function Guests() {
           </div>
         );
       })()}
+      {fullscreenImage && createPortal(
+        <div 
+          className="modal-overlay" 
+          style={{ 
+            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+            zIndex: 2000, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(8px)'
+          }}
+          onClick={() => setFullscreenImage(null)}
+        >
+          <div 
+            style={{ 
+              position: 'relative', 
+              maxWidth: '90vw', 
+              maxHeight: '90vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              type="button"
+              className="close-btn"
+              onClick={() => setFullscreenImage(null)}
+              style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '0px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: 'none',
+                color: '#fff',
+                fontSize: '1.75rem',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1
+              }}
+            >
+              &times;
+            </button>
+            <img 
+              src={fullscreenImage} 
+              alt="Tam Ekran Görünüm" 
+              style={{ 
+                maxWidth: '100%', 
+                maxHeight: '85vh', 
+                objectFit: 'contain',
+                borderRadius: '12px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+              }} 
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
