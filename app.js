@@ -4704,23 +4704,50 @@ async function deleteVanillaCity(cityId) {
 }
 
 function copyVanillaVenueLink(buttonElement, link) {
-  navigator.clipboard.writeText(link);
-  const originalHtml = buttonElement.innerHTML;
-  const originalBg = buttonElement.style.backgroundColor;
-  const originalBorder = buttonElement.style.borderColor;
-  const originalColor = buttonElement.style.color;
+  let copyPromise;
+  if (navigator.clipboard && window.isSecureContext) {
+    copyPromise = navigator.clipboard.writeText(link);
+  } else {
+    // Fallback for non-HTTPS (e.g. HTTP testing on mobile/local network)
+    const textArea = document.createElement("textarea");
+    textArea.value = link;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      copyPromise = Promise.resolve();
+    } catch (err) {
+      copyPromise = Promise.reject(err);
+    }
+    document.body.removeChild(textArea);
+  }
 
-  buttonElement.innerHTML = '✅ Kopyalandı';
-  buttonElement.style.backgroundColor = '#d1fae5';
-  buttonElement.style.borderColor = '#34d399';
-  buttonElement.style.color = '#065f46';
+  copyPromise.then(() => {
+    const originalHtml = buttonElement.innerHTML;
+    const originalBg = buttonElement.style.backgroundColor;
+    const originalBorder = buttonElement.style.borderColor;
+    const originalColor = buttonElement.style.color;
 
-  setTimeout(() => {
-    buttonElement.innerHTML = originalHtml;
-    buttonElement.style.backgroundColor = originalBg;
-    buttonElement.style.borderColor = originalBorder;
-    buttonElement.style.color = originalColor;
-  }, 1500);
+    buttonElement.innerHTML = '✅ Kopyalandı';
+    buttonElement.style.backgroundColor = '#d1fae5';
+    buttonElement.style.borderColor = '#34d399';
+    buttonElement.style.color = '#065f46';
+
+    setTimeout(() => {
+      buttonElement.innerHTML = originalHtml;
+      buttonElement.style.backgroundColor = originalBg;
+      buttonElement.style.borderColor = originalBorder;
+      buttonElement.style.color = originalColor;
+    }, 1500);
+  }).catch(err => {
+    console.error("Copy failed:", err);
+    // Silent fail or alert depending on preference, let's just make it do alert for visibility
+    alert("Kopyalama başarısız oldu.");
+  });
 }
 
 // Window Exports

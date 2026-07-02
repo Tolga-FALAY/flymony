@@ -143,9 +143,35 @@ export default function Parameters() {
   };
 
   const handleCopyLink = (venueId, link) => {
-    navigator.clipboard.writeText(link);
-    setCopiedVenueId(venueId);
-    setTimeout(() => setCopiedVenueId(null), 1500);
+    let copyPromise;
+    if (navigator.clipboard && window.isSecureContext) {
+      copyPromise = navigator.clipboard.writeText(link);
+    } else {
+      // Fallback for non-HTTPS (e.g. HTTP testing on mobile/local network)
+      const textArea = document.createElement("textarea");
+      textArea.value = link;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        copyPromise = Promise.resolve();
+      } catch (err) {
+        copyPromise = Promise.reject(err);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    copyPromise.then(() => {
+      setCopiedVenueId(venueId);
+      setTimeout(() => setCopiedVenueId(null), 1500);
+    }).catch(err => {
+      console.error("Copy failed:", err);
+      alert("Kopyalama başarısız oldu.");
+    });
   };
 
   const handleVenueSubmit = async (e) => {
