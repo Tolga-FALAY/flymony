@@ -16,6 +16,7 @@ let _statuses = [];
 let _venues  = [];
 let _gigs    = [];
 let _cities  = [];
+let _languages = [];
 let _loaded  = false;
 
 // ─── Yardımcı: sanatçı adlarını listeden çöz ────────────────────────────────
@@ -58,7 +59,8 @@ function _notify() {
       statuses: _statuses,
       venues: _venues,
       gigs: _gigs,
-      cities: _cities
+      cities: _cities,
+      languages: _languages
     };
     localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
     localStorage.setItem(cacheTimeKey, Date.now().toString());
@@ -83,6 +85,7 @@ const store = {
   get venues()   { return _venues; },
   get gigs()     { return _gigs; },
   get cities()   { return _cities; },
+  get languages() { return _languages; },
   get isLoaded() { return _loaded; },
 
   // ── Tek seferlik yükleme ─────────────────────────────────────────────────
@@ -115,6 +118,7 @@ const store = {
             _venues = parsed.venues || [];
             _gigs = parsed.gigs || [];
             _cities = parsed.cities || [];
+            _languages = parsed.languages || [];
             _loaded = true;
             _notify();
             return;
@@ -125,7 +129,7 @@ const store = {
       }
     }
 
-    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList] = await Promise.all([
+    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList, languagesList] = await Promise.all([
       api.getArtists(),
       api.getSongs(),
       api.getGuests(),
@@ -133,7 +137,8 @@ const store = {
       api.getStatuses(),
       api.getVenues(),
       api.getGigs(),
-      api.getCities()
+      api.getCities(),
+      api.getLanguages()
     ]);
 
     // 1. Sanatçıları yükle
@@ -156,7 +161,9 @@ const store = {
         OriginalKey: s.OriginalKey || '',
         ChordImagePath: s.ChordImagePath || '',
         ArtistIDs: artistIds,
-        ArtistNames: artistNames
+        ArtistNames: artistNames,
+        LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
+        LanguageName: s.LanguageName || ''
       };
     });
 
@@ -266,6 +273,16 @@ const store = {
       CreatedAt: gig.CreatedAt,
       UpdatedAt: gig.UpdatedAt
     }));
+
+    // 9. Dilleri yükle
+    _languages = languagesList.map(l => ({
+      LanguageID: Number(l.LanguageID),
+      LanguageName: l.LanguageName
+    }));
+    _languages.sort((a, b) =>
+      (a.LanguageName || '').toLocaleLowerCase('tr-TR')
+        .localeCompare((b.LanguageName || '').toLocaleLowerCase('tr-TR'), 'tr')
+    );
 
     _loaded = true;
     _notify();
@@ -531,6 +548,35 @@ const store = {
 
   removeCity(id) {
     _cities = _cities.filter(c => c.CityID !== id);
+    _notify();
+  },
+
+  // ── Dil mutasyonları ─────────────────────────────────────────────────────
+  addLanguage(lang) {
+    _languages.push(lang);
+    _languages.sort((a, b) =>
+      (a.LanguageName || '').toLocaleLowerCase('tr-TR')
+        .localeCompare((b.LanguageName || '').toLocaleLowerCase('tr-TR'), 'tr')
+    );
+    _notify();
+  },
+
+  updateLanguage(id, data) {
+    const idx = _languages.findIndex(l => l.LanguageID === id);
+    if (idx !== -1) {
+      _languages[idx] = { ..._languages[idx], ...data };
+      _languages.sort((a, b) =>
+        (a.LanguageName || '').toLocaleLowerCase('tr-TR')
+          .localeCompare((b.LanguageName || '').toLocaleLowerCase('tr-TR'), 'tr')
+      );
+      // Bellekteki şarkıların dil adını güncelle
+      _songs = _songs.map(s => s.LanguageID === id ? { ...s, LanguageName: data.LanguageName } : s);
+    }
+    _notify();
+  },
+
+  removeLanguage(id) {
+    _languages = _languages.filter(l => l.LanguageID !== id);
     _notify();
   }
 };

@@ -8,6 +8,7 @@ import { hasLyricsContent, getUploadsUrl } from '../utils/chordUtils';
 export default function Songs() {
   const [songs, setSongs] = useState([]);
   const [artists, setArtists] = useState([]);
+  const [languages, setLanguages] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
 
@@ -20,6 +21,7 @@ export default function Songs() {
   const [filterLyricsSearch, setFilterLyricsSearch] = useState('');
   const [filterMinYear, setFilterMinYear] = useState('');
   const [filterMaxYear, setFilterMaxYear] = useState('');
+  const [filterLanguage, setFilterLanguage] = useState('');
 
   // Audio Preview & Live Recording States
   const [audioPreviewUrl, setAudioPreviewUrl] = useState('');
@@ -44,6 +46,7 @@ export default function Songs() {
     setFilterLyricsSearch('');
     setFilterMinYear('');
     setFilterMaxYear('');
+    setFilterLanguage('');
   };
 
   const [formData, setFormData] = useState({
@@ -56,7 +59,8 @@ export default function Songs() {
     OriginalKey: '',
     ChordImagePath: '',
     ChordImageData: '',
-    ArtistIDs: []
+    ArtistIDs: [],
+    LanguageID: ''
   });
 
   const [artistSearch, setArtistSearch] = useState('');
@@ -68,6 +72,7 @@ export default function Songs() {
     const syncFromStore = () => {
       setSongs([...store.songs]);
       setArtists([...store.artists]);
+      setLanguages([...store.languages]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -192,7 +197,8 @@ export default function Songs() {
         OriginalKey: song.OriginalKey || '',
         ChordImagePath: song.ChordImagePath || '',
         ChordImageData: '',
-        ArtistIDs: (song.ArtistIDs || []).map(String)
+        ArtistIDs: (song.ArtistIDs || []).map(String),
+        LanguageID: song.LanguageID ? String(song.LanguageID) : ''
       });
       if (song.AudioPath) {
         setAudioPreviewUrl(getUploadsUrl(song.AudioPath));
@@ -211,7 +217,9 @@ export default function Songs() {
       }, 50);
     } else {
       setEditingSong(null);
-      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [] });
+      const turkishLang = store.languages.find(l => l.LanguageName === 'Türkçe');
+      const defaultLangId = turkishLang ? String(turkishLang.LanguageID) : '';
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId });
       setAudioPreviewUrl('');
       setChordImagePreviewUrl('');
       setTimeout(() => {
@@ -553,7 +561,8 @@ export default function Songs() {
       OriginalKey: formData.OriginalKey || '',
       ChordImagePath: formData.ChordImagePath || '',
       ChordImageData: formData.ChordImageData || '',
-      ArtistIDs: formData.ArtistIDs.map(Number)
+      ArtistIDs: formData.ArtistIDs.map(Number),
+      LanguageID: formData.LanguageID ? Number(formData.LanguageID) : null
     };
 
     try {
@@ -634,6 +643,9 @@ export default function Songs() {
       const artistsVal = (song.ArtistNames || '').toLocaleLowerCase('tr-TR');
       if (!artistsVal.includes(searchArtist)) return false;
     }
+    if (filterLanguage) {
+      if (String(song.LanguageID) !== filterLanguage) return false;
+    }
     const songYearNum = song.SongYear ? parseInt(song.SongYear) : null;
     if (filterMinYear || filterMaxYear) {
       if (songYearNum === null || isNaN(songYearNum)) return false;
@@ -697,6 +709,27 @@ export default function Songs() {
               onChange={(e) => setFilterArtist(e.target.value)}
             />
           </div>
+          <div className="filter-item" style={{ flex: '0 1 150px' }}>
+            <label htmlFor="filterSongLanguageReact">Dil</label>
+            <select
+              id="filterSongLanguageReact"
+              value={filterLanguage}
+              onChange={(e) => setFilterLanguage(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.65rem 0.5rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--surface)',
+                color: 'var(--text)'
+              }}
+            >
+              <option value="">Tüm Diller</option>
+              {languages.map(l => (
+                <option key={l.LanguageID} value={String(l.LanguageID)}>{l.LanguageName}</option>
+              ))}
+            </select>
+          </div>
           <div className="filter-item" style={{ flex: '0 1 120px' }}>
             <label htmlFor="filterSongMinYearReact">Min Yıl</label>
             <input 
@@ -747,6 +780,7 @@ export default function Songs() {
                   {renderSortArrow('SongYear')}
                 </span>
               </th>
+              <th>Dil</th>
               <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
@@ -771,6 +805,7 @@ export default function Songs() {
                 </td>
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
                 <td data-label="Yıl">{song.SongYear || '-'}</td>
+                <td data-label="Dil">{song.LanguageName || '-'}</td>
                 <td data-label="İşlemler" className="action-btns">
                   {(() => {
                     const hasChord = !!song.ChordImagePath;
@@ -796,7 +831,7 @@ export default function Songs() {
               </tr>
             ))}
             {filteredSongs.length === 0 && (
-              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
@@ -947,6 +982,28 @@ export default function Songs() {
                   <option value="A#m">A#m</option>
                   <option value="B">B</option>
                   <option value="Bm">Bm</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Şarkı Dili</label>
+                <select
+                  name="LanguageID"
+                  value={formData.LanguageID || ''}
+                  onChange={handleChange}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '1rem',
+                    outline: 'none',
+                    backgroundColor: 'white'
+                  }}
+                  required
+                >
+                  <option value="">Dil Seçin...</option>
+                  {languages.map(l => (
+                    <option key={l.LanguageID} value={String(l.LanguageID)}>{l.LanguageName}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">

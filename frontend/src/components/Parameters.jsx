@@ -14,10 +14,11 @@ const COLOR_PRESETS = [
 ];
 
 export default function Parameters() {
-  const [subTab, setSubTab] = useState('statuses'); // 'statuses', 'venues', or 'cities'
+  const [subTab, setSubTab] = useState('statuses'); // 'statuses', 'venues', 'cities', or 'languages'
   const [statuses, setStatuses] = useState([]);
   const [venues, setVenues] = useState([]);
   const [cities, setCities] = useState([]);
+  const [languages, setLanguages] = useState([]);
   const [copiedVenueId, setCopiedVenueId] = useState(null);
 
   // Modal states
@@ -41,11 +42,16 @@ export default function Parameters() {
   const [editingCity, setEditingCity] = useState(null);
   const [cityForm, setCityForm] = useState({ CityName: '' });
 
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
+  const [editingLanguage, setEditingLanguage] = useState(null);
+  const [languageForm, setLanguageForm] = useState({ LanguageName: '' });
+
   useEffect(() => {
     const syncFromStore = () => {
       setStatuses([...store.statuses]);
       setVenues([...store.venues]);
       setCities([...store.cities]);
+      setLanguages([...store.languages]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -275,6 +281,58 @@ export default function Parameters() {
     }
   };
 
+  // Language handlers
+  const openLanguageModal = (lang = null) => {
+    if (lang) {
+      setEditingLanguage(lang);
+      setLanguageForm({ LanguageName: lang.LanguageName });
+    } else {
+      setEditingLanguage(null);
+      setLanguageForm({ LanguageName: '' });
+    }
+    setIsLanguageModalOpen(true);
+  };
+
+  const closeLanguageModal = () => {
+    setIsLanguageModalOpen(false);
+    setEditingLanguage(null);
+  };
+
+  const handleLanguageSubmit = async (e) => {
+    e.preventDefault();
+    if (!languageForm.LanguageName.trim()) {
+      alert("Dil adı boş bırakılamaz.");
+      return;
+    }
+
+    try {
+      if (editingLanguage) {
+        await api.updateLanguage(editingLanguage.LanguageID, languageForm);
+        store.updateLanguage(editingLanguage.LanguageID, languageForm);
+      } else {
+        const result = await api.createLanguage(languageForm);
+        store.addLanguage({
+          LanguageID: result.LanguageID,
+          LanguageName: result.LanguageName
+        });
+      }
+      closeLanguageModal();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleLanguageDelete = async (lang) => {
+    if (window.confirm(`"${lang.LanguageName}" dil parametresini silmek istediğinize emin misiniz?`)) {
+      try {
+        await api.deleteLanguage(lang.LanguageID);
+        store.removeLanguage(lang.LanguageID);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
   // Helper to draw status badge preview
   const getStatusBadgeStyle = (color) => {
     const hex = color.replace('#', '');
@@ -321,6 +379,13 @@ export default function Parameters() {
           style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
         >
           🏙️ Şehir Tanımları
+        </button>
+        <button
+          className={`btn ${subTab === 'languages' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setSubTab('languages')}
+          style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
+        >
+          🌐 Dil Tanımları
         </button>
       </div>
 
@@ -495,6 +560,47 @@ export default function Parameters() {
                   </tr>
                 ))}
                 {cities.length === 0 && (
+                  <tr><td colSpan="2" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* --- LANGUAGES VIEW --- */}
+      {subTab === 'languages' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-muted)' }}>
+              Şarkıların ve isteklerin dillerini yönetin.
+            </p>
+            <button className="btn btn-primary btn-sm" onClick={() => openLanguageModal()}>
+              + Yeni Dil Ekle
+            </button>
+          </div>
+
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Dil Adı</th>
+                  <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {languages.map(l => (
+                  <tr key={l.LanguageID}>
+                    <td data-label="Dil Adı" style={{ fontWeight: 600 }}>{l.LanguageName}</td>
+                    <td data-label="İşlemler">
+                      <div className="action-btns">
+                        <button className="btn btn-sm btn-outline" onClick={() => openLanguageModal(l)}>Düzenle</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleLanguageDelete(l)}>Sil</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {languages.length === 0 && (
                   <tr><td colSpan="2" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
               </tbody>
@@ -709,6 +815,35 @@ export default function Parameters() {
 
               <div className="modal-actions">
                 <button type="button" className="btn btn-outline" onClick={closeCityModal}>İptal</button>
+                <button type="submit" className="btn btn-primary">Kaydet</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- LANGUAGE ADD/EDIT MODAL --- */}
+      {isLanguageModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>{editingLanguage ? 'Dili Düzenle' : 'Yeni Dil Ekle'}</h2>
+              <button className="close-btn" onClick={closeLanguageModal}>&times;</button>
+            </div>
+            <form onSubmit={handleLanguageSubmit}>
+              <div className="form-group">
+                <label>Dil Adı</label>
+                <input
+                  type="text"
+                  value={languageForm.LanguageName}
+                  onChange={e => setLanguageForm({ ...languageForm, LanguageName: e.target.value })}
+                  placeholder="Örn: Türkçe, İngilizce..."
+                  required
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={closeLanguageModal}>İptal</button>
                 <button type="submit" className="btn btn-primary">Kaydet</button>
               </div>
             </form>

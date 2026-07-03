@@ -61,7 +61,9 @@ export const api = {
       OriginalKey: s.OriginalKey || '',
       ChordImagePath: s.ChordImagePath || '',
       ArtistIDs: (s.ArtistIDs || []).map(Number),
-      ArtistNames: s.ArtistNames || '-'
+      ArtistNames: s.ArtistNames || '-',
+      LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
+      LanguageName: s.LanguageName || ''
     }));
   },
 
@@ -197,6 +199,33 @@ export const api = {
 
   deleteCity: async (id) => {
     return request(`/cities/${id}`, 'DELETE');
+  },
+
+  // ========================
+  // LANGUAGES API
+  // ========================
+  getLanguages: async () => {
+    const list = await request('/languages');
+    return list.map(l => ({
+      LanguageID: Number(l.LanguageID),
+      LanguageName: l.LanguageName
+    }));
+  },
+
+  createLanguage: async (data) => {
+    const result = await request('/languages', 'POST', data);
+    return {
+      LanguageID: Number(result.LanguageID),
+      LanguageName: result.LanguageName
+    };
+  },
+
+  updateLanguage: async (id, data) => {
+    return request(`/languages/${id}`, 'PUT', data);
+  },
+
+  deleteLanguage: async (id) => {
+    return request(`/languages/${id}`, 'DELETE');
   },
 
   // ========================

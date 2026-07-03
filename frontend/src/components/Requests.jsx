@@ -19,6 +19,8 @@ export default function Requests() {
   const [filterArtist, setFilterArtist] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
+  const [filterLanguage, setFilterLanguage] = useState('');
+  const [languages, setLanguages] = useState([]);
 
   // Default sorting configuration: Sort by RequestDate Descending
   const [sortConfig, setSortConfig] = useState({ key: 'RequestDate', direction: 'desc' });
@@ -49,6 +51,7 @@ export default function Requests() {
       setGuests([...store.guests]);
       setArtists([...store.artists]);
       setStatuses([...store.statuses]);
+      setLanguages([...store.languages]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -310,6 +313,13 @@ export default function Requests() {
       }
     }
 
+    // 6. Language filter
+    if (filterLanguage) {
+      if (!song || String(song.LanguageID) !== filterLanguage) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -319,6 +329,7 @@ export default function Requests() {
     setFilterSong('');
     setFilterArtist('');
     setFilterStatus('');
+    setFilterLanguage('');
   };
 
   // Render sorting arrows next to headers
@@ -418,6 +429,19 @@ export default function Requests() {
               ))}
             </select>
           </div>
+          <div className="filter-item">
+            <label htmlFor="filterRequestLanguageReact">Dil</label>
+            <select
+              id="filterRequestLanguageReact"
+              value={filterLanguage}
+              onChange={(e) => setFilterLanguage(e.target.value)}
+            >
+              <option value="">Tüm Diller</option>
+              {languages.map(l => (
+                <option key={l.LanguageID} value={String(l.LanguageID)}>{l.LanguageName}</option>
+              ))}
+            </select>
+          </div>
           <div className="filter-item filter-actions">
             <button className="btn btn-outline btn-sm" onClick={clearAllFilters}>Temizle</button>
           </div>
@@ -446,6 +470,7 @@ export default function Requests() {
                   {renderSortArrow('SongTitle')}
                 </span>
               </th>
+              <th>Dil</th>
               <th onClick={() => handleSort('Status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 Durum
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'Status' ? 'inherit' : 'var(--text-muted)' }}>
@@ -459,6 +484,7 @@ export default function Requests() {
             {filteredRequests.map(req => {
               const rawDate = req.RequestDate || '';
               const dateObj = new Date(rawDate.endsWith('Z') ? rawDate : (rawDate ? rawDate + 'Z' : Date.now()));
+              const song = songs.find(s => s.SongID === req.SongID);
 
               // Dynamically colored status badge helper
 
@@ -482,6 +508,7 @@ export default function Requests() {
                       )}
                     </span>
                   </td>
+                  <td data-label="Dil">{song?.LanguageName || '-'}</td>
                   <td data-label="Durum">
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                       <span className="status-badge" style={getStatusStyle(req.Status)}>{req.Status}</span>
@@ -574,7 +601,7 @@ export default function Requests() {
               );
             })}
             {filteredRequests.length === 0 && (
-              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>

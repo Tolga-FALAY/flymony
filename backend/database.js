@@ -25,7 +25,9 @@ export const initializeDB = () => {
             Lyrics TEXT,
             AudioPath TEXT,
             OriginalKey TEXT,
-            ChordImagePath TEXT
+            ChordImagePath TEXT,
+            LanguageID INTEGER,
+            FOREIGN KEY (LanguageID) REFERENCES Languages(LanguageID)
         );
 
         CREATE TABLE IF NOT EXISTS Song_Artists (
@@ -414,6 +416,53 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while initializing Cities table:", e);
+    }
+
+    // ----------------------------------------------------
+    // LANGUAGES TABLE CREATION & MIGRATIONS
+    // ----------------------------------------------------
+    try {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS Languages (
+                LanguageID INTEGER PRIMARY KEY AUTOINCREMENT,
+                LanguageName TEXT NOT NULL UNIQUE
+            );
+        `);
+        
+        // Seed default languages if empty
+        const langCount = db.prepare("SELECT COUNT(*) as count FROM Languages").get().count;
+        if (langCount === 0) {
+            console.log("Seeding default languages: Türkçe, İngilizce...");
+            db.prepare("INSERT INTO Languages (LanguageName) VALUES (?)").run("Türkçe");
+            db.prepare("INSERT INTO Languages (LanguageName) VALUES (?)").run("İngilizce");
+        }
+    } catch (e) {
+        console.error("Migration error while initializing Languages table:", e);
+    }
+
+    // ----------------------------------------------------
+    // SONGS TABLE MIGRATION (Add LanguageID)
+    // ----------------------------------------------------
+    try {
+        const songTableInfo = db.prepare("PRAGMA table_info(Songs)").all();
+        const hasLanguageID = songTableInfo.some(col => col.name === 'LanguageID');
+        if (!hasLanguageID) {
+            console.log("Migrating Songs table: Adding LanguageID column...");
+            
+            // Get default language ID (Türkçe)
+            const defaultLang = db.prepare("SELECT LanguageID FROM Languages WHERE LanguageName = ?").get("Türkçe");
+            const defaultLangID = defaultLang ? defaultLang.LanguageID : 1;
+            
+            db.transaction(() => {
+                // SQLite supports ALTER TABLE Songs ADD COLUMN LanguageID INTEGER REFERENCES Languages(LanguageID)
+                db.exec("ALTER TABLE Songs ADD COLUMN LanguageID INTEGER REFERENCES Languages(LanguageID);");
+                // Update existing records to have the default language
+                db.prepare("UPDATE Songs SET LanguageID = ?").run(defaultLangID);
+            })();
+            console.log("Songs table migration complete.");
+        }
+    } catch (e) {
+        console.error("Migration error while updating Songs table with LanguageID:", e);
     }
 
     // ----------------------------------------------------
