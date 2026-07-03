@@ -1005,14 +1005,19 @@ export default function Songs() {
                   )}
 
                   {!isRecording ? (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <label className="btn btn-outline" style={{ flex: 1, textAlign: 'center', cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
-                        📁 Dosya Seç
-                        <input type="file" accept="audio/*" onChange={handleAudioFileUpload} style={{ display: 'none' }} />
-                      </label>
-                      <button type="button" className="btn btn-outline" onClick={startRecording} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
-                        🎤 Canlı Kaydet
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <label className="btn btn-outline" style={{ flex: 1, textAlign: 'center', cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
+                          📁 Dosya Seç
+                          <input type="file" accept="audio/*, .m4a, .mp3, .wav, .caf, .aac, audio/mp4, audio/x-m4a, audio/mpeg" onChange={handleAudioFileUpload} style={{ display: 'none' }} />
+                        </label>
+                        <button type="button" className="btn btn-outline" onClick={startRecording} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
+                          🎤 Canlı Kaydet
+                        </button>
+                      </div>
+                      <small style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: '1.3', marginTop: '0.2rem' }}>
+                        💡 <strong>iPhone/iPad için:</strong> Sesli Notlarınızı (Voice Memos) yüklemek için; önce Sesli Notlar uygulamasından kaydınızı seçip <strong>"Dosyalara Kaydet"</strong> seçeneğiyle telefonunuza kaydedin. Ardından buradan <strong>"Dosya Seç"</strong> diyerek o dosyayı yükleyebilirsiniz.
+                      </small>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fee2e2', border: '1px solid #fca5a5', padding: '0.5rem', borderRadius: '8px', color: '#dc2626', fontSize: '0.9rem' }}>
