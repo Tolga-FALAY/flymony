@@ -469,14 +469,25 @@ export default function Guests() {
       const bVal = (b.FullName || '').toLocaleLowerCase('tr-TR');
       res = aVal.localeCompare(bVal, 'tr');
     } else if (sortConfig.key === 'InstagramLink') {
-      const aVal = (a.InstagramLink || '').toLocaleLowerCase('tr-TR');
-      const bVal = (b.InstagramLink || '').toLocaleLowerCase('tr-TR');
-      const hasA = !!aVal;
-      const hasB = !!bVal;
-      if (!hasA && !hasB) return 0;
-      if (!hasA) return 1;
-      if (!hasB) return -1;
-      res = aVal.localeCompare(bVal, 'tr');
+      const getIG = (g) => (g.InstagramLink || g.instagram || '').trim().toLocaleLowerCase('tr-TR');
+      const getName = (g) => (g.FullName || `${g.FirstName || ''} ${g.LastName || ''}`).trim().toLocaleLowerCase('tr-TR');
+
+      const igA = getIG(a);
+      const igB = getIG(b);
+      const hasA = igA.length > 0 && igA !== '-' && igA !== 'null';
+      const hasB = igB.length > 0 && igB !== '-' && igB !== 'null';
+
+      if (sortConfig.direction === 'asc') {
+        if (hasA && !hasB) return -1;
+        if (!hasA && hasB) return 1;
+        if (hasA && hasB) return igA.localeCompare(igB, 'tr');
+        return getName(a).localeCompare(getName(b), 'tr');
+      } else {
+        if (!hasA && hasB) return -1;
+        if (hasA && !hasB) return 1;
+        if (!hasA && !hasB) return getName(a).localeCompare(getName(b), 'tr');
+        return igB.localeCompare(igA, 'tr');
+      }
     } else if (sortConfig.key === 'BirthDate') {
       const hasA = a.BirthDateDay && a.BirthDateMonth;
       const hasB = b.BirthDateDay && b.BirthDateMonth;

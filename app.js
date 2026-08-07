@@ -656,14 +656,25 @@ function renderGuests() {
         res = (a.lastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.lastName || "").toLocaleLowerCase('tr-TR'), 'tr');
       }
     } else if (guestsSortKey === 'instagram') {
-      const aVal = (a.instagram || "").toLocaleLowerCase('tr-TR');
-      const bVal = (b.instagram || "").toLocaleLowerCase('tr-TR');
-      const hasA = !!aVal;
-      const hasB = !!bVal;
-      if (!hasA && !hasB) return 0;
-      if (!hasA) return 1;
-      if (!hasB) return -1;
-      res = aVal.localeCompare(bVal, 'tr');
+      const getIG = (g) => (g.instagram || g.InstagramLink || "").trim().toLocaleLowerCase('tr-TR');
+      const getName = (g) => (g.fullName || `${g.firstName || ""} ${g.lastName || ""}`).trim().toLocaleLowerCase('tr-TR');
+
+      const igA = getIG(a);
+      const igB = getIG(b);
+      const hasA = igA.length > 0 && igA !== '-' && igA !== 'null';
+      const hasB = igB.length > 0 && igB !== '-' && igB !== 'null';
+
+      if (guestsSortDirection === 'asc') {
+        if (hasA && !hasB) return -1;
+        if (!hasA && hasB) return 1;
+        if (hasA && hasB) return igA.localeCompare(igB, 'tr');
+        return getName(a).localeCompare(getName(b), 'tr');
+      } else {
+        if (!hasA && hasB) return -1;
+        if (hasA && !hasB) return 1;
+        if (!hasA && !hasB) return getName(a).localeCompare(getName(b), 'tr');
+        return igB.localeCompare(igA, 'tr');
+      }
     } else if (guestsSortKey === 'birthdate') {
       const hasA = a.birthDateDay && a.birthDateMonth;
       const hasB = b.birthDateDay && b.birthDateMonth;
