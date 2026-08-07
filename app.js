@@ -655,6 +655,15 @@ function renderGuests() {
       } else {
         res = (a.lastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.lastName || "").toLocaleLowerCase('tr-TR'), 'tr');
       }
+    } else if (guestsSortKey === 'instagram') {
+      const aVal = (a.instagram || "").toLocaleLowerCase('tr-TR');
+      const bVal = (b.instagram || "").toLocaleLowerCase('tr-TR');
+      const hasA = !!aVal;
+      const hasB = !!bVal;
+      if (!hasA && !hasB) return 0;
+      if (!hasA) return 1;
+      if (!hasB) return -1;
+      res = aVal.localeCompare(bVal, 'tr');
     } else if (guestsSortKey === 'birthdate') {
       const hasA = a.birthDateDay && a.birthDateMonth;
       const hasB = b.birthDateDay && b.birthDateMonth;
@@ -667,6 +676,10 @@ function renderGuests() {
       } else {
         res = Number(a.birthDateDay) - Number(b.birthDateDay);
       }
+    } else if (guestsSortKey === 'createdat') {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : Number(a.id || 0);
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : Number(b.id || 0);
+      res = timeA - timeB;
     }
     return guestsSortDirection === 'asc' ? res : -res;
   });
@@ -706,8 +719,8 @@ function renderGuests() {
   tbody.innerHTML = filteredGuests.length === 0 ? '<tr><td colspan="6" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
 
   // Render header sorting indicators dynamically
-  const keys = ['name', 'birthdate'];
-  const ids = { name: 'sortIconGuestName', birthdate: 'sortIconGuestBirthdate' };
+  const keys = ['name', 'instagram', 'birthdate', 'createdat'];
+  const ids = { name: 'sortIconGuestName', instagram: 'sortIconGuestInstagram', birthdate: 'sortIconGuestBirthdate', createdat: 'sortIconGuestCreatedAt' };
   keys.forEach(k => {
     const iconEl = document.getElementById(ids[k]);
     if (iconEl) {
@@ -1948,7 +1961,7 @@ function sortGuests(key) {
     guestsSortDirection = guestsSortDirection === 'asc' ? 'desc' : 'asc';
   } else {
     guestsSortKey = key;
-    guestsSortDirection = 'asc';
+    guestsSortDirection = key === 'createdat' ? 'desc' : 'asc';
   }
   renderGuests();
 }

@@ -456,6 +456,8 @@ export default function Guests() {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
+    } else if (sortConfig.key !== key && key === 'CreatedAt') {
+      direction = 'desc';
     }
     setSortConfig({ key, direction });
   };
@@ -465,6 +467,15 @@ export default function Guests() {
     if (sortConfig.key === 'FullName') {
       const aVal = (a.FullName || '').toLocaleLowerCase('tr-TR');
       const bVal = (b.FullName || '').toLocaleLowerCase('tr-TR');
+      res = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'InstagramLink') {
+      const aVal = (a.InstagramLink || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.InstagramLink || '').toLocaleLowerCase('tr-TR');
+      const hasA = !!aVal;
+      const hasB = !!bVal;
+      if (!hasA && !hasB) return 0;
+      if (!hasA) return 1;
+      if (!hasB) return -1;
       res = aVal.localeCompare(bVal, 'tr');
     } else if (sortConfig.key === 'BirthDate') {
       const hasA = a.BirthDateDay && a.BirthDateMonth;
@@ -478,6 +489,10 @@ export default function Guests() {
       } else {
         res = Number(a.BirthDateDay) - Number(b.BirthDateDay);
       }
+    } else if (sortConfig.key === 'CreatedAt') {
+      const timeA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : Number(a.GuestID || 0);
+      const timeB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : Number(b.GuestID || 0);
+      res = timeA - timeB;
     }
     return sortConfig.direction === 'asc' ? res : -res;
   });
@@ -608,7 +623,12 @@ export default function Guests() {
                 </span>
               </th>
               <th>Telefon</th>
-              <th>Instagram</th>
+              <th onClick={() => handleSort('InstagramLink')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Instagram
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'InstagramLink' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('InstagramLink')}
+                </span>
+              </th>
               <th onClick={() => handleSort('BirthDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 Doğum Tarihi
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'BirthDate' ? 'inherit' : 'var(--text-muted)' }}>
@@ -616,7 +636,12 @@ export default function Guests() {
                 </span>
               </th>
               <th>Notlar</th>
-              <th style={{width: '150px', textAlign: 'right'}}>İşlemler</th>
+              <th onClick={() => handleSort('CreatedAt')} style={{ width: '150px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }} title="Kayıt Tarihine Göre Sırala">
+                Kayıt Tarihi
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('CreatedAt')}
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
