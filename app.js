@@ -642,6 +642,12 @@ async function deleteArtist(id) {
   }
 }
 
+function getGuestGigCount(guestId) {
+  const targetId = Number(guestId);
+  if (!DB.gigs || DB.gigs.length === 0) return 0;
+  return DB.gigs.filter(gig => (gig.guests || []).some(g => Number(g.guestId) === targetId)).length;
+}
+
 // ----------------- GUESTS -----------------
 function renderGuests() {
   const tbody = document.querySelector('#guestsTable tbody');
@@ -655,6 +661,10 @@ function renderGuests() {
       } else {
         res = (a.lastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.lastName || "").toLocaleLowerCase('tr-TR'), 'tr');
       }
+    } else if (guestsSortKey === 'gigcount') {
+      const countA = getGuestGigCount(a.id);
+      const countB = getGuestGigCount(b.id);
+      res = countA - countB;
     } else if (guestsSortKey === 'instagram') {
       const getIG = (g) => (g.instagram || g.InstagramLink || "").trim().toLocaleLowerCase('tr-TR');
       const getName = (g) => (g.fullName || `${g.firstName || ""} ${g.lastName || ""}`).trim().toLocaleLowerCase('tr-TR');
@@ -727,11 +737,11 @@ function renderGuests() {
   if (guestsTitleEl) {
     guestsTitleEl.innerText = `Misafirler (${filteredGuests.length})`;
   }
-  tbody.innerHTML = filteredGuests.length === 0 ? '<tr><td colspan="6" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
+  tbody.innerHTML = filteredGuests.length === 0 ? '<tr><td colspan="7" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
 
   // Render header sorting indicators dynamically
-  const keys = ['name', 'instagram', 'birthdate', 'createdat'];
-  const ids = { name: 'sortIconGuestName', instagram: 'sortIconGuestInstagram', birthdate: 'sortIconGuestBirthdate', createdat: 'sortIconGuestCreatedAt' };
+  const keys = ['name', 'gigcount', 'instagram', 'birthdate', 'createdat'];
+  const ids = { name: 'sortIconGuestName', gigcount: 'sortIconGuestGigCount', instagram: 'sortIconGuestInstagram', birthdate: 'sortIconGuestBirthdate', createdat: 'sortIconGuestCreatedAt' };
   keys.forEach(k => {
     const iconEl = document.getElementById(ids[k]);
     if (iconEl) {
@@ -770,6 +780,11 @@ function renderGuests() {
     };
     const birthDateStr = formatBirthDate(guest.birthDateDay, guest.birthDateMonth, guest.birthDateYear);
 
+    const gigCount = getGuestGigCount(guest.id);
+    const gigCountHtml = gigCount > 0 
+      ? `<span style="font-weight: 700; color: #0284c7; background: rgba(14, 165, 233, 0.12); padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.82rem; border: 1px solid rgba(14, 165, 233, 0.25); display: inline-block; cursor: pointer;" onclick="openGuestGigsModal(${guest.id})" title="Katıldığı sahneleri göster">${gigCount}</span>`
+      : `<span style="color: var(--text-muted); font-size: 0.85rem;">0</span>`;
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="Misafir" class="td-guest-profile">
@@ -777,6 +792,9 @@ function renderGuests() {
           <div class="guest-avatar-wrapper">${avatarHtml}</div>
           <span class="guest-name-text" style="cursor: pointer;" onclick="editGuest(${guest.id})">${guest.firstName} ${guest.lastName}</span>
         </div>
+      </td>
+      <td data-label="Sahne Sayısı" style="text-align: center;">
+        ${gigCountHtml}
       </td>
       <td data-label="Telefon">
         ${guest.phone ? `<span style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="openGuestContactModal(${guest.id})">${guest.phone}</span>` : '-'}
@@ -1245,6 +1263,98 @@ function addVanillaGuestRelationById(guestId) {
     renderVanillaGuestRelationsList();
     populateVanillaGuestRelationDropdown();
   }
+}
+
+function formatGigRelativeTime(gigDateStr) {
+  if (!gigDateStr) return '';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const gigDate = new Date(gigDateStr);
+  gigDate.setHours(0, 0, 0, 0);
+
+  const diffTime = today - gigDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) {
+    return ' (Bugün)';
+  } else if (diffDays < 60) {
+    return ` (${diffDays} Gün)`;
+  } else if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    const days = diffDays % 30;
+    if (days > 0) {
+      return ` (${months} Ay, ${days} Gün)`;
+    } else {
+      return ` (${months} Ay)`;
+    }
+  } else {
+    const years = Math.floor(diffDays / 365);
+    const remDays = diffDays % 365;
+    const months = Math.floor(remDays / 30);
+    const days = remDays % 30;
+
+    let parts = [`${years} Yıl`];
+    if (months > 0) parts.push(`${months} Ay`);
+    if (days > 0) parts.push(`${days} Gün`);
+
+    return ` (${parts.join(', ')})`;
+  }
+}
+
+function openGuestGigsModal(guestId) {
+  const guest = DB.guests.find(g => Number(g.id) === Number(guestId));
+  if (!guest) return;
+
+  const targetId = Number(guestId);
+  const guestGigs = DB.gigs.filter(gig => 
+    (gig.guests || []).some(g => Number(g.guestId) === targetId)
+  );
+
+  // Sort DESCENDING by gigDate (newest gig first)
+  guestGigs.sort((a, b) => new Date(b.gigDate).getTime() - new Date(a.gigDate).getTime());
+
+  const modalTitle = document.getElementById('guestGigsModalTitle');
+  if (modalTitle) {
+    modalTitle.innerText = `📍 ${guest.firstName} ${guest.lastName} - Katıldığı Sahneler (${guestGigs.length})`;
+  }
+
+  const container = document.getElementById('guestGigsModalBody');
+  if (!container) return;
+
+  if (guestGigs.length === 0) {
+    container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">Henüz katıldığı bir sahne kaydı bulunmuyor.</div>`;
+  } else {
+    container.innerHTML = guestGigs.map(gig => {
+      const dateFormatted = new Date(gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+      const relativeTime = formatGigRelativeTime(gig.gigDate);
+      const venueStr = `${gig.venueName}${gig.cityName && gig.cityName !== '-' ? ' (' + gig.cityName + ')' : ''}`;
+
+      return `
+        <div class="guest-gig-card-item" onclick="selectGuestGigItem(${gig.id})" style="padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; transition: all 0.2s ease;" onmouseenter="this.style.borderColor='var(--primary-color)'; this.style.background='#f0f9ff';" onmouseleave="this.style.borderColor='var(--border-soft)'; this.style.background='#f8fafc';">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 700; font-size: 0.95rem; color: #1e293b;">📍 ${venueStr}</div>
+              <div style="font-size: 0.82rem; color: #64748b; margin-top: 0.25rem;">
+                📅 ${dateFormatted} <span style="color: var(--primary-color); font-weight: 600;">${relativeTime}</span>
+              </div>
+            </div>
+            <span style="color: var(--primary-color); font-size: 1.1rem; font-weight: bold; padding-left: 0.5rem;">↗</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  openModal('guestGigsModal');
+}
+
+function selectGuestGigItem(gigId) {
+  closeModal('guestGigsModal');
+  const gigsNavBtn = document.querySelector('#navMenu button[data-target="gigs"]');
+  if (gigsNavBtn) {
+    gigsNavBtn.click();
+  }
+  openGigModal(gigId);
 }
 
 function openGuestContactModal(guestId) {
@@ -1972,7 +2082,7 @@ function sortGuests(key) {
     guestsSortDirection = guestsSortDirection === 'asc' ? 'desc' : 'asc';
   } else {
     guestsSortKey = key;
-    guestsSortDirection = key === 'createdat' ? 'desc' : 'asc';
+    guestsSortDirection = (key === 'createdat' || key === 'gigcount') ? 'desc' : 'asc';
   }
   renderGuests();
 }
@@ -2725,6 +2835,9 @@ window.removeVanillaGalleryPhoto = removeVanillaGalleryPhoto;
 window.populateBirthdateDropdowns = populateBirthdateDropdowns;
 window.addVanillaGuestRelationById = addVanillaGuestRelationById;
 window.openGuestContactModal = openGuestContactModal;
+window.openGuestGigsModal = openGuestGigsModal;
+window.selectGuestGigItem = selectGuestGigItem;
+window.formatGigRelativeTime = formatGigRelativeTime;
 window.filterVanillaGuestRelations = filterVanillaGuestRelations;
 window.addVanillaGuestRelation = addVanillaGuestRelation;
 window.removeVanillaGuestRelation = removeVanillaGuestRelation;

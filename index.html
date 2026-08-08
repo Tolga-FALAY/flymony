@@ -268,6 +268,7 @@
             <thead>
                 <tr>
                   <th onclick="sortGuests('name')" style="cursor: pointer; user-select: none;">Misafir <span id="sortIconGuestName" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('gigcount')" style="cursor: pointer; user-select: none; text-align: center;" title="Sahne Katılım Sayısına Göre Sırala">🎸 <span id="sortIconGuestGigCount" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
                   <th>Telefon</th>
                   <th onclick="sortGuests('instagram')" style="cursor: pointer; user-select: none;">Instagram <span id="sortIconGuestInstagram" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
                   <th onclick="sortGuests('birthdate')" style="cursor: pointer; user-select: none;">Doğum Tarihi <span id="sortIconGuestBirthdate" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
@@ -861,6 +862,19 @@
         <button type="button" class="close-btn" onclick="closeModal('guestContactModal')">&times;</button>
       </div>
       <div style="display: flex; flex-direction: column; gap: 0.75rem;" id="guestContactOptionsBody">
+        <!-- Dinamik doldurulacak -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Misafir Katıldığı Sahneler Modalı -->
+  <div id="guestGigsModal" class="modal-overlay" style="display: none; z-index: 1350;">
+    <div class="modal-content" style="max-width: 480px; padding: 1.5rem; border-radius: 12px; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="margin-bottom: 1rem; flex-shrink: 0;">
+        <h2 id="guestGigsModalTitle" style="font-size: 1.15rem; margin: 0;">Katıldığı Sahneler</h2>
+        <button type="button" class="close-btn" onclick="closeModal('guestGigsModal')">&times;</button>
+      </div>
+      <div id="guestGigsModalBody" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.6rem; padding-right: 0.2rem;">
         <!-- Dinamik doldurulacak -->
       </div>
     </div>

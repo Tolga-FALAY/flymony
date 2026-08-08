@@ -25,6 +25,7 @@ export default function Guests() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState(null);
   const [contactGuest, setContactGuest] = useState(null);
+  const [gigsModalGuest, setGigsModalGuest] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
 
   // Sorting configuration
@@ -452,11 +453,28 @@ export default function Guests() {
     years.push(y);
   }
 
+  const getGuestGigCount = (guestId) => {
+    const targetId = Number(guestId);
+    if (!store.gigs || store.gigs.length === 0) return 0;
+    return store.gigs.filter(gig => 
+      (gig.Guests || []).some(g => Number(g.GuestID || g.guestId) === targetId)
+    ).length;
+  };
+
+  const getGuestAttendedGigs = (guestId) => {
+    const targetId = Number(guestId);
+    if (!store.gigs || store.gigs.length === 0) return [];
+    const list = store.gigs.filter(gig => 
+      (gig.Guests || []).some(g => Number(g.GuestID || g.guestId) === targetId)
+    );
+    return list.sort((a, b) => new Date(b.GigDate || b.gigDate).getTime() - new Date(a.GigDate || a.gigDate).getTime());
+  };
+
   const handleSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
-    } else if (sortConfig.key !== key && key === 'CreatedAt') {
+    } else if (sortConfig.key !== key && (key === 'CreatedAt' || key === 'GigCount')) {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
@@ -500,6 +518,10 @@ export default function Guests() {
       } else {
         res = Number(a.BirthDateDay) - Number(b.BirthDateDay);
       }
+    } else if (sortConfig.key === 'GigCount') {
+      const countA = getGuestGigCount(a.GuestID);
+      const countB = getGuestGigCount(b.GuestID);
+      res = countA - countB;
     } else if (sortConfig.key === 'CreatedAt') {
       const timeA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : Number(a.GuestID || 0);
       const timeB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : Number(b.GuestID || 0);
@@ -633,6 +655,12 @@ export default function Guests() {
                   {renderSortArrow('FullName')}
                 </span>
               </th>
+              <th onClick={() => handleSort('GigCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center' }} title="Sahne Katılım Sayısına Göre Sırala">
+                🎸
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'GigCount' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('GigCount')}
+                </span>
+              </th>
               <th>Telefon</th>
               <th onClick={() => handleSort('InstagramLink')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 Instagram
@@ -695,6 +723,19 @@ export default function Guests() {
                       )}
                     </span>
                   </div>
+                </td>
+                <td data-label="Sahne Sayısı" style={{ textAlign: 'center' }}>
+                  {getGuestGigCount(guest.GuestID) > 0 ? (
+                    <span 
+                      style={{ fontWeight: 700, color: 'var(--primary)', background: 'rgba(14, 165, 233, 0.12)', padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.82rem', border: '1px solid rgba(14, 165, 233, 0.25)', display: 'inline-block', cursor: 'pointer' }}
+                      onClick={() => setGigsModalGuest(guest)}
+                      title="Katıldığı sahneleri göster"
+                    >
+                      {getGuestGigCount(guest.GuestID)}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>0</span>
+                  )}
                 </td>
                 <td data-label="Telefon">
                   {guest.PhoneNumber ? (
@@ -1219,6 +1260,60 @@ export default function Guests() {
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
               }} 
             />
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Guest Attended Gigs Modal */}
+      {gigsModalGuest && createPortal(
+        <div className="modal-overlay" style={{ display: 'flex', zIndex: 1350 }} onClick={() => setGigsModalGuest(null)}>
+          <div className="modal-content" style={{ maxWidth: '480px', padding: '1.5rem', borderRadius: '12px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: '1rem', flexShrink: 0 }}>
+              <h2 style={{ fontSize: '1.15rem', margin: 0 }}>
+                📍 {gigsModalGuest.FullName} - Katıldığı Sahneler ({getGuestAttendedGigs(gigsModalGuest.GuestID).length})
+              </h2>
+              <button type="button" className="close-btn" onClick={() => setGigsModalGuest(null)}>&times;</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingRight: '0.2rem' }}>
+              {getGuestAttendedGigs(gigsModalGuest.GuestID).length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 1rem' }}>
+                  Henüz katıldığı bir sahne kaydı bulunmuyor.
+                </div>
+              ) : (
+                getGuestAttendedGigs(gigsModalGuest.GuestID).map(gig => {
+                  const dateFormatted = new Date(gig.GigDate || gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+                  const relativeTime = formatGigRelativeTime(gig.GigDate || gig.gigDate);
+                  const venueStr = `${gig.VenueName || gig.venueName}${gig.CityName && gig.CityName !== '-' ? ' (' + gig.CityName + ')' : ''}`;
+
+                  return (
+                    <div 
+                      key={gig.GigID || gig.id} 
+                      className="guest-gig-card-item"
+                      onClick={() => {
+                        setGigsModalGuest(null);
+                        const gigsNavBtn = document.querySelector('button.nav-btn[data-target="gigs"]');
+                        if (gigsNavBtn) gigsNavBtn.click();
+                        if (window.openGigModal) {
+                          window.openGigModal(gig.GigID || gig.id);
+                        }
+                      }}
+                      style={{ padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>📍 {venueStr}</div>
+                          <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '0.25rem' }}>
+                            📅 {dateFormatted} <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{relativeTime}</span>
+                          </div>
+                        </div>
+                        <span style={{ color: 'var(--primary)', fontSize: '1.1rem', fontWeight: 'bold', paddingLeft: '0.5rem' }}>↗</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>,
         document.body
