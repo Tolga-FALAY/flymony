@@ -271,12 +271,12 @@
             <thead>
                 <tr>
                   <th onclick="sortGuests('name')" style="cursor: pointer; user-select: none;">MISAFIR <span id="sortIconGuestName" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th onclick="sortGuests('gigcount')" style="cursor: pointer; user-select: none; text-align: center; width: 45px;" title="Sahne Katılım Sayısına Göre Sırala">🎸 <span id="sortIconGuestGigCount" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th style="width: 105px;">CEP</th>
-                  <th onclick="sortGuests('instagram')" style="cursor: pointer; user-select: none; text-align: center; width: 70px;">INSTA <span id="sortIconGuestInstagram" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th onclick="sortGuests('birthdate')" style="cursor: pointer; user-select: none; width: 95px;">DOĞUM T. <span id="sortIconGuestBirthdate" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th>Notlar</th>
-                  <th onclick="sortGuests('createdat')" style="width: 130px; text-align: right; cursor: pointer; user-select: none;" title="Kayıt Tarihine Göre Sırala">Kayıt Tarihi <span id="sortIconGuestCreatedAt" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('gigcount')" style="cursor: pointer; user-select: none; text-align: center; width: 36px; padding-left: 2px; padding-right: 2px;" title="Sahne Katılım Sayısına Göre Sırala">🎸 <span id="sortIconGuestGigCount" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th style="width: 58px; text-align: center; padding-left: 2px; padding-right: 2px;">CEP</th>
+                  <th onclick="sortGuests('instagram')" style="cursor: pointer; user-select: none; text-align: center; width: 60px; padding-left: 2px; padding-right: 2px;">INSTA <span id="sortIconGuestInstagram" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('birthdate')" style="cursor: pointer; user-select: none; width: 105px; padding-left: 2px; padding-right: 2px;">DOĞUM T. <span id="sortIconGuestBirthdate" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('createdat')" style="width: 110px; text-align: right; cursor: pointer; user-select: none; padding-left: 2px; padding-right: 2px;" title="Kayıt Tarihine Göre Sırala">Kayıt Tarihi <span id="sortIconGuestCreatedAt" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th style="width: 135px; text-align: right; padding-left: 2px; padding-right: 2px;">İşlemler</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -1216,6 +1216,20 @@
     <div style="position: relative; max-width: 90vw; max-height: 90vh;" onclick="event.stopPropagation()">
       <button type="button" class="close-btn" onclick="closeVanillaFullscreenImage()" style="position: absolute; top: -40px; right: 0; font-size: 1.75rem; color: #fff; background: rgba(255,255,255,0.15); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">&times;</button>
       <img id="vanillaFullscreenImageEl" src="" alt="Tam Ekran" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+    </div>
+  </div>
+
+  <!-- Guest Note Popup Modal -->
+  <div id="guestNoteModal" class="modal-overlay" style="display: none; z-index: 1500; align-items: center; justify-content: center;" onclick="closeModal('guestNoteModal')">
+    <div class="modal-content" style="max-width: 450px; width: 90%; margin: auto;" onclick="event.stopPropagation()">
+      <div class="modal-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
+        <h2 id="guestNoteModalTitle" style="font-size: 1.1rem; margin: 0;">📝 Misafir Notu</h2>
+        <button type="button" class="close-btn" onclick="closeModal('guestNoteModal')">&times;</button>
+      </div>
+      <div id="guestNoteModalBody" style="padding: 1rem; background: var(--canvas); border-radius: 8px; font-size: 0.95rem; white-space: pre-wrap; word-break: break-word; color: var(--text-main); line-height: 1.5; max-height: 60vh; overflow-y: auto;"></div>
+      <div style="margin-top: 1rem; text-align: right;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="closeModal('guestNoteModal')">Kapat</button>
+      </div>
     </div>
   </div>
 

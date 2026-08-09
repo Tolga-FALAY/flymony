@@ -768,7 +768,26 @@ function renderGuests() {
       ? `<img src="${guest.profilePicture}" alt="${guest.fullName}" class="guest-avatar-img" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${guest.profilePicture}')">`
       : `<div class="guest-avatar-initials">${initials}</div>`;
 
-    // Birth Date Formatter (2 lines: Day + Month top, Year bottom)
+    // Age Calculator Helper
+    const calculateAge = (day, month, year) => {
+      if (!day || !month || !year) return null;
+      const d = parseInt(day, 10);
+      const m = parseInt(month, 10);
+      const y = parseInt(year, 10);
+      if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+
+      const today = new Date();
+      let age = today.getFullYear() - y;
+      const currentMonth = today.getMonth() + 1;
+      const currentDay = today.getDate();
+
+      if (currentMonth < m || (currentMonth === m && currentDay < d)) {
+        age--;
+      }
+      return age >= 0 ? age : null;
+    };
+
+    // Birth Date Formatter (2 lines: Day + Month top, Year + Age bottom)
     const formatBirthDate = (day, month, year) => {
       if (!day || !month) return '-';
       const months = [
@@ -776,40 +795,68 @@ function renderGuests() {
         "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
       ];
       const monthName = months[parseInt(month) - 1] || month;
+      const age = calculateAge(day, month, year);
       if (year) {
-        return `<div style="line-height: 1.25;"><div>${day} ${monthName}</div><div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500;">${year}</div></div>`;
+        return `<div style="line-height: 1.2; font-size: 0.85rem;"><div>${day} ${monthName}</div><div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; white-space: nowrap;">${year}${age !== null ? ` (${age} Yaş)` : ''}</div></div>`;
       }
-      return `<div>${day} ${monthName}</div>`;
+      return `<div style="font-size: 0.85rem;">${day} ${monthName}</div>`;
     };
     const birthDateStr = formatBirthDate(guest.birthDateDay, guest.birthDateMonth, guest.birthDateYear);
+
+    // 3-Line Phone Formatter
+    const formatPhone3Lines = (phone) => {
+      if (!phone) return '-';
+      const digits = phone.replace(/\D/g, '');
+      let p1 = '', p2 = '', p3 = '';
+      if (digits.length === 11 && digits.startsWith('0')) {
+        p1 = digits.substring(0, 4);
+        p2 = digits.substring(4, 7);
+        p3 = digits.substring(7, 11);
+      } else if (digits.length === 10 && digits.startsWith('5')) {
+        p1 = '0' + digits.substring(0, 3);
+        p2 = digits.substring(3, 6);
+        p3 = digits.substring(6, 10);
+      } else {
+        const parts = phone.trim().split(/\s+/);
+        if (parts.length >= 3) {
+          p1 = parts[0]; p2 = parts[1]; p3 = parts.slice(2).join(' ');
+        } else {
+          p1 = digits.substring(0, 4); p2 = digits.substring(4, 7); p3 = digits.substring(7);
+        }
+      }
+      return `<div style="line-height: 1.15; font-size: 0.8rem; font-family: monospace; text-align: center;"><div>${p1}</div><div>${p2}</div><div>${p3}</div></div>`;
+    };
 
     const gigCount = getGuestGigCount(guest.id);
     const gigCountHtml = gigCount > 0 
       ? `<span style="font-weight: 700; color: #0284c7; background: rgba(14, 165, 233, 0.12); padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.82rem; border: 1px solid rgba(14, 165, 233, 0.25); display: inline-block; cursor: pointer;" onclick="openGuestGigsModal(${guest.id})" title="Katıldığı sahneleri göster">${gigCount}</span>`
       : `<span style="color: var(--text-muted); font-size: 0.85rem;">0</span>`;
 
+    const hasNotes = guest.notes && guest.notes.trim().length > 0;
+    const noteBtnHtml = hasNotes 
+      ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGuestNoteModal(${guest.id})" title="Notu Oku">📝</button>` 
+      : '';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="MISAFIR" class="td-guest-profile">
+      <td data-label="MISAFIR" class="td-guest-profile" style="padding-left: 4px; padding-right: 4px;">
         <div class="guest-profile-content">
           <div class="guest-avatar-wrapper">${avatarHtml}</div>
           <span class="guest-name-text" style="cursor: pointer;" onclick="editGuest(${guest.id})">${guest.firstName} ${guest.lastName}</span>
         </div>
       </td>
-      <td data-label="Sahne Sayısı" style="text-align: center;">
+      <td data-label="Sahne Sayısı" style="text-align: center; padding-left: 2px; padding-right: 2px;">
         ${gigCountHtml}
       </td>
-      <td data-label="CEP" style="white-space: nowrap;">
-        ${guest.phone ? `<span style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="openGuestContactModal(${guest.id})">${guest.phone}</span>` : '-'}
+      <td data-label="CEP" style="text-align: center; padding-left: 2px; padding-right: 2px;">
+        ${guest.phone ? `<span style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="openGuestContactModal(${guest.id})">${formatPhone3Lines(guest.phone)}</span>` : '-'}
       </td>
-      <td data-label="INSTA" style="text-align: center;">
+      <td data-label="INSTA" style="text-align: center; padding-left: 2px; padding-right: 2px;">
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
-      <td data-label="DOĞUM T.">${birthDateStr}</td>
-      <td data-label="Notlar" class="td-notes-preview" title="${guest.notes || ''}">
-        <span class="notes-text">${guest.notes || '-'}</span>
-      </td>
-      <td data-label="İşlemler" class="action-btns">
+      <td data-label="DOĞUM T." style="padding-left: 2px; padding-right: 2px;">${birthDateStr}</td>
+      <td data-label="İşlemler" class="action-btns" style="padding-left: 2px; padding-right: 2px;">
+        ${noteBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteGuest(${guest.id})">Sil</button>
       </td>
@@ -817,6 +864,17 @@ function renderGuests() {
     tbody.appendChild(tr);
   });
 }
+
+function openGuestNoteModal(guestId) {
+  const guest = DB.guests.find(g => g.id === guestId);
+  if (!guest) return;
+  const nameEl = document.getElementById('guestNoteModalTitle');
+  const bodyEl = document.getElementById('guestNoteModalBody');
+  if (nameEl) nameEl.innerText = `📝 ${guest.fullName} - Notlar`;
+  if (bodyEl) bodyEl.innerText = guest.notes || 'Herhangi bir not bulunmamaktadır.';
+  openModal('guestNoteModal');
+}
+window.openGuestNoteModal = openGuestNoteModal;
 
 // Populate Birthdate Dropdowns in Vanilla HTML dynamically
 function populateBirthdateDropdowns() {

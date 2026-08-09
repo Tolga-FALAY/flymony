@@ -66,6 +66,7 @@ export default function Guests() {
   const [contactGuest, setContactGuest] = useState(null);
   const [gigsModalGuest, setGigsModalGuest] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [noteModalGuest, setNoteModalGuest] = useState(null);
 
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
@@ -468,11 +469,23 @@ export default function Guests() {
     }
   };
 
-  // Helpers
-  const getInitials = (first, last) => {
-    const f = first ? first.charAt(0).toUpperCase() : '';
-    const l = last ? last.charAt(0).toUpperCase() : '';
-    return `${f}${l}`;
+  // Age Calculator Helper
+  const calculateAge = (day, month, year) => {
+    if (!day || !month || !year) return null;
+    const d = parseInt(day, 10);
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+    if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - y;
+    const currentMonth = today.getMonth() + 1;
+    const currentDay = today.getDate();
+
+    if (currentMonth < m || (currentMonth === m && currentDay < d)) {
+      age--;
+    }
+    return age >= 0 ? age : null;
   };
 
   const formatBirthDate = (day, month, year) => {
@@ -482,10 +495,41 @@ export default function Guests() {
       "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
     ];
     const monthName = months[parseInt(month) - 1] || month;
+    const age = calculateAge(day, month, year);
     return (
-      <div style={{ lineHeight: 1.25 }}>
+      <div style={{ lineHeight: 1.2, fontSize: '0.85rem' }}>
         <div>{day} {monthName}</div>
-        {year && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 500 }}>{year}</div>}
+        {year && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>{year}{age !== null ? ` (${age} Yaş)` : ''}</div>}
+      </div>
+    );
+  };
+
+  // 3-Line Phone Formatter
+  const renderPhone3Lines = (phone) => {
+    if (!phone) return '-';
+    const digits = phone.replace(/\D/g, '');
+    let p1 = '', p2 = '', p3 = '';
+    if (digits.length === 11 && digits.startsWith('0')) {
+      p1 = digits.substring(0, 4);
+      p2 = digits.substring(4, 7);
+      p3 = digits.substring(7, 11);
+    } else if (digits.length === 10 && digits.startsWith('5')) {
+      p1 = '0' + digits.substring(0, 3);
+      p2 = digits.substring(3, 6);
+      p3 = digits.substring(6, 10);
+    } else {
+      const parts = phone.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        p1 = parts[0]; p2 = parts[1]; p3 = parts.slice(2).join(' ');
+      } else {
+        p1 = digits.substring(0, 4); p2 = digits.substring(4, 7); p3 = digits.substring(7);
+      }
+    }
+    return (
+      <div style={{ lineHeight: 1.15, fontSize: '0.8rem', fontFamily: 'monospace', textAlign: 'center' }}>
+        <div>{p1}</div>
+        <div>{p2}</div>
+        <div>{p3}</div>
       </div>
     );
   };
@@ -699,38 +743,38 @@ export default function Guests() {
                   {renderSortArrow('FullName')}
                 </span>
               </th>
-              <th onClick={() => handleSort('GigCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '45px' }} title="Sahne Katılım Sayısına Göre Sırala">
+              <th onClick={() => handleSort('GigCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '36px', paddingLeft: '2px', paddingRight: '2px' }} title="Sahne Katılım Sayısına Göre Sırala">
                 🎸
-                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'GigCount' ? 'inherit' : 'var(--text-muted)' }}>
+                <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'GigCount' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('GigCount')}
                 </span>
               </th>
-              <th style={{ width: '105px' }}>CEP</th>
-              <th onClick={() => handleSort('InstagramLink')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '70px' }}>
+              <th style={{ width: '58px', textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>CEP</th>
+              <th onClick={() => handleSort('InstagramLink')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '60px', paddingLeft: '2px', paddingRight: '2px' }}>
                 INSTA
-                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'InstagramLink' ? 'inherit' : 'var(--text-muted)' }}>
+                <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'InstagramLink' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('InstagramLink')}
                 </span>
               </th>
-              <th onClick={() => handleSort('BirthDate')} style={{ cursor: 'pointer', userSelect: 'none', width: '95px' }}>
+              <th onClick={() => handleSort('BirthDate')} style={{ cursor: 'pointer', userSelect: 'none', width: '105px', paddingLeft: '2px', paddingRight: '2px' }}>
                 DOĞUM T.
-                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'BirthDate' ? 'inherit' : 'var(--text-muted)' }}>
+                <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'BirthDate' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('BirthDate')}
                 </span>
               </th>
-              <th>Notlar</th>
-              <th onClick={() => handleSort('CreatedAt')} style={{ width: '130px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }} title="Kayıt Tarihine Göre Sırala">
+              <th onClick={() => handleSort('CreatedAt')} style={{ width: '110px', textAlign: 'right', cursor: 'pointer', userSelect: 'none', paddingLeft: '2px', paddingRight: '2px' }} title="Kayıt Tarihine Göre Sırala">
                 Kayıt Tarihi
-                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
+                <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('CreatedAt')}
                 </span>
               </th>
+              <th style={{ width: '135px', textAlign: 'right', paddingLeft: '2px', paddingRight: '2px' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {filteredGuests.map(guest => (
               <tr key={guest.GuestID}>
-                <td data-label="MISAFIR" className="td-guest-profile">
+                <td data-label="MISAFIR" className="td-guest-profile" style={{ paddingLeft: '4px', paddingRight: '4px' }}>
                   <div className="guest-profile-content">
                     <div 
                       className="guest-avatar-wrapper"
@@ -768,7 +812,7 @@ export default function Guests() {
                     </span>
                   </div>
                 </td>
-                <td data-label="Sahne Sayısı" style={{ textAlign: 'center' }}>
+                <td data-label="Sahne Sayısı" style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
                   {getGuestGigCount(guest.GuestID) > 0 ? (
                     <span 
                       style={{ fontWeight: 700, color: 'var(--primary)', background: 'rgba(14, 165, 233, 0.12)', padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.82rem', border: '1px solid rgba(14, 165, 233, 0.25)', display: 'inline-block', cursor: 'pointer' }}
@@ -781,31 +825,38 @@ export default function Guests() {
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>0</span>
                   )}
                 </td>
-                <td data-label="CEP" style={{ whiteSpace: 'nowrap' }}>
+                <td data-label="CEP" style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
                   {guest.PhoneNumber ? (
                     <span
                       style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
                       onClick={() => setContactGuest(guest)}
                     >
-                      {guest.PhoneNumber}
+                      {renderPhone3Lines(guest.PhoneNumber)}
                     </span>
                   ) : (
                     '-'
                   )}
                 </td>
-                <td data-label="INSTA" style={{ textAlign: 'center' }}>
+                <td data-label="INSTA" style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
                   {guest.InstagramLink ? (
                     <a href={guest.InstagramLink} target="_blank" rel="noreferrer" className="instagram-link-badge">Profil</a>
                   ) : '-'}
                 </td>
-                <td data-label="DOĞUM T.">
+                <td data-label="DOĞUM T." style={{ paddingLeft: '2px', paddingRight: '2px' }}>
                   {formatBirthDate(guest.BirthDateDay, guest.BirthDateMonth, guest.BirthDateYear)}
                 </td>
-                <td data-label="Notlar" className="td-notes-preview" title={guest.Notes}>
-                  <span className="notes-text">{guest.Notes || '-'}</span>
-                </td>
-                <td data-label="İşlemler">
+                <td data-label="İşlemler" style={{ paddingLeft: '2px', paddingRight: '2px' }}>
                   <div className="action-btns">
+                    {guest.Notes && guest.Notes.trim().length > 0 && (
+                      <button 
+                        className="btn btn-sm" 
+                        style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
+                        onClick={() => setNoteModalGuest(guest)}
+                        title="Notu Oku"
+                      >
+                        📝
+                      </button>
+                    )}
                     <button className="btn btn-sm btn-outline" onClick={() => openModal(guest)}>Düzenle</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(guest.GuestID)}>Sil</button>
                   </div>
@@ -1362,6 +1413,25 @@ export default function Guests() {
                   );
                 })
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Note Popup Modal */}
+      {noteModalGuest && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setNoteModalGuest(null)}>
+          <div className="modal-content" style={{ maxWidth: '450px', width: '90%', margin: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: '0.75rem', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>📝 {noteModalGuest.FullName} - Notlar</h2>
+              <button className="close-btn" onClick={() => setNoteModalGuest(null)}>&times;</button>
+            </div>
+            <div style={{ padding: '1rem', background: 'var(--surface-muted)', borderRadius: '8px', fontSize: '0.95rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: 1.5, maxHeight: '60vh', overflowY: 'auto' }}>
+              {noteModalGuest.Notes || 'Herhangi bir not bulunmamaktadır.'}
+            </div>
+            <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setNoteModalGuest(null)}>Kapat</button>
             </div>
           </div>
         </div>,

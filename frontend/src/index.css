@@ -396,7 +396,7 @@ table {
 }
 
 th, td {
-  padding: 0.95rem 1.4rem;
+  padding: 0.55rem 0.35rem;
   border-bottom: 1px solid var(--border);
 }
 
