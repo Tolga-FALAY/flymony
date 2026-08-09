@@ -20,6 +20,45 @@ const getInstagramUsername = (url) => {
   return match ? match[1] : '';
 };
 
+const formatGigRelativeTime = (gigDateStr) => {
+  if (!gigDateStr) return '';
+  const dateObj = new Date(gigDateStr);
+  if (isNaN(dateObj.getTime())) return '';
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const gigDate = new Date(dateObj);
+  gigDate.setHours(0, 0, 0, 0);
+
+  const diffTime = today - gigDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) {
+    return ' (Bugün)';
+  } else if (diffDays < 60) {
+    return ` (${diffDays} Gün)`;
+  } else if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    const days = diffDays % 30;
+    if (days > 0) {
+      return ` (${months} Ay, ${days} Gün)`;
+    } else {
+      return ` (${months} Ay)`;
+    }
+  } else {
+    const years = Math.floor(diffDays / 365);
+    const remDays = diffDays % 365;
+    const months = Math.floor(remDays / 30);
+    const days = remDays % 30;
+
+    let parts = [`${years} Yıl`];
+    if (months > 0) parts.push(`${months} Ay`);
+    if (days > 0) parts.push(`${days} Gün`);
+
+    return ` (${parts.join(', ')})`;
+  }
+};
+
 export default function Guests() {
   const [guests, setGuests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1271,20 +1310,23 @@ export default function Guests() {
           <div className="modal-content" style={{ maxWidth: '480px', padding: '1.5rem', borderRadius: '12px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header" style={{ marginBottom: '1rem', flexShrink: 0 }}>
               <h2 style={{ fontSize: '1.15rem', margin: 0 }}>
-                📍 {gigsModalGuest.FullName} - Katıldığı Sahneler ({getGuestAttendedGigs(gigsModalGuest.GuestID).length})
+                📍 {gigsModalGuest.FullName || `${gigsModalGuest.FirstName || gigsModalGuest.firstName || ''} ${gigsModalGuest.LastName || gigsModalGuest.lastName || ''}`} - Katıldığı Sahneler ({getGuestAttendedGigs(gigsModalGuest.GuestID || gigsModalGuest.id).length})
               </h2>
               <button type="button" className="close-btn" onClick={() => setGigsModalGuest(null)}>&times;</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingRight: '0.2rem' }}>
-              {getGuestAttendedGigs(gigsModalGuest.GuestID).length === 0 ? (
+              {getGuestAttendedGigs(gigsModalGuest.GuestID || gigsModalGuest.id).length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 1rem' }}>
                   Henüz katıldığı bir sahne kaydı bulunmuyor.
                 </div>
               ) : (
-                getGuestAttendedGigs(gigsModalGuest.GuestID).map(gig => {
-                  const dateFormatted = new Date(gig.GigDate || gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-                  const relativeTime = formatGigRelativeTime(gig.GigDate || gig.gigDate);
-                  const venueStr = `${gig.VenueName || gig.venueName}${gig.CityName && gig.CityName !== '-' ? ' (' + gig.CityName + ')' : ''}`;
+                getGuestAttendedGigs(gigsModalGuest.GuestID || gigsModalGuest.id).map(gig => {
+                  const rawDate = gig.GigDate || gig.gigDate;
+                  const dateFormatted = rawDate ? new Date(rawDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+                  const relativeTime = formatGigRelativeTime(rawDate);
+                  const venueName = gig.VenueName || gig.venueName || 'Bilinmeyen Mekân';
+                  const cityName = gig.CityName || gig.cityName;
+                  const venueStr = `${venueName}${cityName && cityName !== '-' ? ' (' + cityName + ')' : ''}`;
 
                   return (
                     <div 
@@ -1292,10 +1334,12 @@ export default function Guests() {
                       className="guest-gig-card-item"
                       onClick={() => {
                         setGigsModalGuest(null);
-                        const gigsNavBtn = document.querySelector('button.nav-btn[data-target="gigs"]');
+                        const gigId = gig.GigID || gig.id;
+                        const gigsNavBtn = document.querySelector('button.nav-btn[data-target="gigs"], #navMenu button[data-target="gigs"]');
                         if (gigsNavBtn) gigsNavBtn.click();
+                        window.dispatchEvent(new CustomEvent('open-gig-from-guest', { detail: { gigId } }));
                         if (window.openGigModal) {
-                          window.openGigModal(gig.GigID || gig.id);
+                          window.openGigModal(gigId);
                         }
                       }}
                       style={{ padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s ease' }}

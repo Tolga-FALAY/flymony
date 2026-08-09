@@ -133,8 +133,17 @@ function App() {
         setActiveTab('songs');
       }
     };
+    const handleOpenGigFromGuest = (e) => {
+      if (e.detail && e.detail.gigId) {
+        setActiveTab('gigs');
+      }
+    };
     window.addEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
-    return () => window.removeEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
+    window.addEventListener('open-gig-from-guest', handleOpenGigFromGuest);
+    return () => {
+      window.removeEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
+      window.removeEventListener('open-gig-from-guest', handleOpenGigFromGuest);
+    };
   }, []);
 
   function handleNavClick(key) {

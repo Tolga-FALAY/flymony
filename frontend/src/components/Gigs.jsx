@@ -61,7 +61,22 @@ export default function Gigs() {
       store.load().then(syncFromStore);
     }
     window.addEventListener('store-updated', syncFromStore);
-    return () => window.removeEventListener('store-updated', syncFromStore);
+
+    const handleExternalOpenGig = (e) => {
+      if (e.detail && e.detail.gigId) {
+        const targetId = Number(e.detail.gigId);
+        const gigToEdit = (store.gigs || []).find(g => Number(g.GigID || g.id) === targetId);
+        if (gigToEdit) {
+          handleEdit(gigToEdit);
+        }
+      }
+    };
+    window.addEventListener('open-gig-from-guest', handleExternalOpenGig);
+
+    return () => {
+      window.removeEventListener('store-updated', syncFromStore);
+      window.removeEventListener('open-gig-from-guest', handleExternalOpenGig);
+    };
   }, []);
 
   // HTML5 Canvas client-side image compression
