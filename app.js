@@ -674,7 +674,16 @@ function renderGuests() {
     } else if (guestsSortKey === 'gigcount') {
       const countA = getGuestGigCount(a.id);
       const countB = getGuestGigCount(b.id);
-      res = countA - countB;
+      if (countA !== countB) {
+        res = countA - countB;
+      } else {
+        const fNameCompare = (a.firstName || "").toLocaleLowerCase('tr-TR').localeCompare((b.firstName || "").toLocaleLowerCase('tr-TR'), 'tr');
+        if (fNameCompare !== 0) {
+          res = fNameCompare;
+        } else {
+          res = (a.lastName || "").toLocaleLowerCase('tr-TR').localeCompare((b.lastName || "").toLocaleLowerCase('tr-TR'), 'tr');
+        }
+      }
     } else if (guestsSortKey === 'instagram') {
       const getIG = (g) => (g.instagram || g.InstagramLink || "").trim().toLocaleLowerCase('tr-TR');
       const getName = (g) => (g.fullName || `${g.firstName || ""} ${g.lastName || ""}`).trim().toLocaleLowerCase('tr-TR');

@@ -657,6 +657,16 @@ export default function Guests() {
       const aVal = (a.FullName || '').toLocaleLowerCase('tr-TR');
       const bVal = (b.FullName || '').toLocaleLowerCase('tr-TR');
       res = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'GigCount') {
+      const countA = getGuestGigCount(a.GuestID);
+      const countB = getGuestGigCount(b.GuestID);
+      if (countA !== countB) {
+        res = countA - countB;
+      } else {
+        const aVal = (a.FullName || '').toLocaleLowerCase('tr-TR');
+        const bVal = (b.FullName || '').toLocaleLowerCase('tr-TR');
+        res = aVal.localeCompare(bVal, 'tr');
+      }
     } else if (sortConfig.key === 'InstagramLink') {
       const getIG = (g) => (g.InstagramLink || g.instagram || '').trim().toLocaleLowerCase('tr-TR');
       const getName = (g) => (g.FullName || `${g.FirstName || ''} ${g.LastName || ''}`).trim().toLocaleLowerCase('tr-TR');
