@@ -365,6 +365,25 @@ tr:hover td {
   background: rgba(255, 255, 255, 0.5);
 }
 
+/* Responsive Guests Table Column Widths */
+.guests-table .th-guest { width: 32%; }
+.guests-table .th-gigcount { width: 6%; }
+.guests-table .th-cep { width: 9%; }
+.guests-table .th-insta { width: 9%; }
+.guests-table .th-birthdate { width: 15%; }
+.guests-table .th-createdat { width: 14%; }
+.guests-table .th-actions { width: 15%; }
+
+@media (max-width: 1024px) {
+  .guests-table .th-guest { width: auto; }
+  .guests-table .th-gigcount { width: 36px; }
+  .guests-table .th-cep { width: 58px; }
+  .guests-table .th-insta { width: 60px; }
+  .guests-table .th-birthdate { width: 105px; }
+  .guests-table .th-createdat { width: 110px; }
+  .guests-table .th-actions { width: 135px; }
+}
+
 .action-btns {
   display: flex;
   gap: 0.5rem;

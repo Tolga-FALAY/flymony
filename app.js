@@ -797,9 +797,9 @@ function renderGuests() {
       const monthName = months[parseInt(month) - 1] || month;
       const age = calculateAge(day, month, year);
       if (year) {
-        return `<div style="line-height: 1.2; font-size: 0.85rem;"><div>${day} ${monthName}</div><div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; white-space: nowrap;">${year}${age !== null ? ` (${age} Yaş)` : ''}</div></div>`;
+        return `<div style="line-height: 1.2; font-size: 0.85rem; text-align: center;"><div>${day} ${monthName}</div><div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; white-space: nowrap;">${year}${age !== null ? ` (${age})` : ''}</div></div>`;
       }
-      return `<div style="font-size: 0.85rem;">${day} ${monthName}</div>`;
+      return `<div style="font-size: 0.85rem; text-align: center;">${day} ${monthName}</div>`;
     };
     const birthDateStr = formatBirthDate(guest.birthDateDay, guest.birthDateMonth, guest.birthDateYear);
 
@@ -837,7 +837,16 @@ function renderGuests() {
       ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGuestNoteModal(${guest.id})" title="Notu Oku">📝</button>` 
       : '';
 
-    const createdAtStr = guest.createdAt ? new Date(guest.createdAt).toLocaleDateString('tr-TR') : '-';
+    const formatDDMMYYYY = (dateVal) => {
+      if (!dateVal) return '-';
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '-';
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+    const createdAtStr = formatDDMMYYYY(guest.createdAt);
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -856,8 +865,8 @@ function renderGuests() {
       <td data-label="INSTA" style="text-align: center; padding-left: 2px; padding-right: 2px;">
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
-      <td data-label="DOĞUM T." style="padding-left: 2px; padding-right: 2px;">${birthDateStr}</td>
-      <td data-label="Kayıt Tarihi" style="text-align: right; font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; padding-left: 2px; padding-right: 2px;">${createdAtStr}</td>
+      <td data-label="DOĞUM T." style="text-align: center; padding-left: 2px; padding-right: 2px;">${birthDateStr}</td>
+      <td data-label="KAYIT TAR." style="text-align: center; font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; padding-left: 2px; padding-right: 2px;">${createdAtStr}</td>
       <td data-label="İşlemler" class="action-btns" style="padding-left: 2px; padding-right: 2px;">
         ${noteBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>

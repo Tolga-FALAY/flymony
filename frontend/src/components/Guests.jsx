@@ -504,11 +504,21 @@ export default function Guests() {
     const monthName = months[parseInt(month) - 1] || month;
     const age = calculateAge(day, month, year);
     return (
-      <div style={{ lineHeight: 1.2, fontSize: '0.85rem' }}>
+      <div style={{ lineHeight: 1.2, fontSize: '0.85rem', textAlign: 'center' }}>
         <div>{day} {monthName}</div>
-        {year && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>{year}{age !== null ? ` (${age} Yaş)` : ''}</div>}
+        {year && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>{year}{age !== null ? ` (${age})` : ''}</div>}
       </div>
     );
+  };
+
+  const formatDDMMYYYY = (dateVal) => {
+    if (!dateVal) return '-';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '-';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}.${month}.${year}`;
   };
 
   // 3-Line Phone Formatter
@@ -741,41 +751,41 @@ export default function Guests() {
       </div>
 
       <div className="table-wrapper">
-        <table>
+        <table className="data-table guests-table">
           <thead>
             <tr>
-              <th onClick={() => handleSort('FullName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('FullName')} className="th-guest" style={{ cursor: 'pointer', userSelect: 'none' }}>
                 MISAFIR
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'FullName' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('FullName')}
                 </span>
               </th>
-              <th onClick={() => handleSort('GigCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '36px', paddingLeft: '2px', paddingRight: '2px' }} title="Sahne Katılım Sayısına Göre Sırala">
+              <th onClick={() => handleSort('GigCount')} className="th-gigcount" style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }} title="Sahne Katılım Sayısına Göre Sırala">
                 🎸
                 <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'GigCount' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('GigCount')}
                 </span>
               </th>
-              <th style={{ width: '58px', textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>CEP</th>
-              <th onClick={() => handleSort('InstagramLink')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '60px', paddingLeft: '2px', paddingRight: '2px' }}>
+              <th className="th-cep" style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>CEP</th>
+              <th onClick={() => handleSort('InstagramLink')} className="th-insta" style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
                 INSTA
                 <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'InstagramLink' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('InstagramLink')}
                 </span>
               </th>
-              <th onClick={() => handleSort('BirthDate')} style={{ cursor: 'pointer', userSelect: 'none', width: '105px', paddingLeft: '2px', paddingRight: '2px' }}>
+              <th onClick={() => handleSort('BirthDate')} className="th-birthdate" style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
                 DOĞUM T.
                 <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'BirthDate' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('BirthDate')}
                 </span>
               </th>
-              <th onClick={() => handleSort('CreatedAt')} style={{ width: '110px', textAlign: 'right', cursor: 'pointer', userSelect: 'none', paddingLeft: '2px', paddingRight: '2px' }} title="Kayıt Tarihine Göre Sırala">
-                Kayıt Tarihi
+              <th onClick={() => handleSort('CreatedAt')} className="th-createdat" style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', paddingLeft: '2px', paddingRight: '2px' }} title="Kayıt Tarihine Göre Sırala">
+                KAYIT TAR.
                 <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('CreatedAt')}
                 </span>
               </th>
-              <th style={{ width: '135px', textAlign: 'right', paddingLeft: '2px', paddingRight: '2px' }}>İşlemler</th>
+              <th className="th-actions" style={{ textAlign: 'right', paddingLeft: '2px', paddingRight: '2px' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -849,11 +859,11 @@ export default function Guests() {
                     <a href={guest.InstagramLink} target="_blank" rel="noreferrer" className="instagram-link-badge">Profil</a>
                   ) : '-'}
                 </td>
-                <td data-label="DOĞUM T." style={{ paddingLeft: '2px', paddingRight: '2px' }}>
+                <td data-label="DOĞUM T." style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
                   {formatBirthDate(guest.BirthDateDay, guest.BirthDateMonth, guest.BirthDateYear)}
                 </td>
-                <td data-label="Kayıt Tarihi" style={{ textAlign: 'right', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', paddingLeft: '2px', paddingRight: '2px' }}>
-                  {guest.CreatedAt ? new Date(guest.CreatedAt).toLocaleDateString('tr-TR') : '-'}
+                <td data-label="KAYIT TAR." style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', paddingLeft: '2px', paddingRight: '2px' }}>
+                  {formatDDMMYYYY(guest.CreatedAt)}
                 </td>
                 <td data-label="İşlemler" style={{ paddingLeft: '2px', paddingRight: '2px' }}>
                   <div className="action-btns">

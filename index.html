@@ -267,16 +267,16 @@
           </div>
         </div>
         <div class="table-wrapper">
-          <table id="guestsTable">
+          <table id="guestsTable" class="data-table guests-table">
             <thead>
                 <tr>
-                  <th onclick="sortGuests('name')" style="cursor: pointer; user-select: none;">MISAFIR <span id="sortIconGuestName" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th onclick="sortGuests('gigcount')" style="cursor: pointer; user-select: none; text-align: center; width: 36px; padding-left: 2px; padding-right: 2px;" title="Sahne Katılım Sayısına Göre Sırala">🎸 <span id="sortIconGuestGigCount" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th style="width: 58px; text-align: center; padding-left: 2px; padding-right: 2px;">CEP</th>
-                  <th onclick="sortGuests('instagram')" style="cursor: pointer; user-select: none; text-align: center; width: 60px; padding-left: 2px; padding-right: 2px;">INSTA <span id="sortIconGuestInstagram" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th onclick="sortGuests('birthdate')" style="cursor: pointer; user-select: none; width: 105px; padding-left: 2px; padding-right: 2px;">DOĞUM T. <span id="sortIconGuestBirthdate" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th onclick="sortGuests('createdat')" style="width: 110px; text-align: right; cursor: pointer; user-select: none; padding-left: 2px; padding-right: 2px;" title="Kayıt Tarihine Göre Sırala">Kayıt Tarihi <span id="sortIconGuestCreatedAt" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th style="width: 135px; text-align: right; padding-left: 2px; padding-right: 2px;">İşlemler</th>
+                  <th onclick="sortGuests('name')" class="th-guest" style="cursor: pointer; user-select: none;">MISAFIR <span id="sortIconGuestName" style="font-size: 0.8rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('gigcount')" class="th-gigcount" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;" title="Sahne Katılım Sayısına Göre Sırala">🎸 <span id="sortIconGuestGigCount" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th class="th-cep" style="text-align: center; padding-left: 2px; padding-right: 2px;">CEP</th>
+                  <th onclick="sortGuests('instagram')" class="th-insta" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">INSTA <span id="sortIconGuestInstagram" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('birthdate')" class="th-birthdate" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">DOĞUM T. <span id="sortIconGuestBirthdate" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('createdat')" class="th-createdat" style="text-align: center; cursor: pointer; user-select: none; padding-left: 2px; padding-right: 2px;" title="Kayıt Tarihine Göre Sırala">KAYIT TAR. <span id="sortIconGuestCreatedAt" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th class="th-actions" style="text-align: right; padding-left: 2px; padding-right: 2px;">İşlemler</th>
                 </tr>
             </thead>
             <tbody></tbody>
