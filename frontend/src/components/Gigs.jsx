@@ -515,6 +515,38 @@ export default function Gigs() {
     }
   };
 
+  const toggleSongPlayed = async (songIndex) => {
+    if (!liveGig || !liveGig.Songs || !liveGig.Songs[songIndex]) return;
+    
+    const updatedSongs = liveGig.Songs.map((s, idx) => 
+      idx === songIndex ? { ...s, IsPlayed: s.IsPlayed ? 0 : 1 } : s
+    );
+
+    const payload = {
+      VenueID: liveGig.VenueID,
+      GigDate: liveGig.GigDate,
+      Notes: liveGig.Notes,
+      Photos: liveGig.Photos,
+      Videos: liveGig.Videos,
+      Songs: updatedSongs,
+      Guests: (liveGig.Guests || []).map(g => ({
+        GuestID: (g.GuestID && Number(g.GuestID) > 0) ? Number(g.GuestID) : null,
+        IsAnonymous: g.IsAnonymous ? 1 : 0,
+        TableName: g.TableName || '',
+        Description: g.Description || '',
+        GuestCount: Number(g.GuestCount || 1),
+        FullName: g.FullName
+      }))
+    };
+
+    try {
+      await api.updateGig(liveGig.GigID, payload);
+      setLiveGig(prev => ({ ...prev, Songs: updatedSongs }));
+    } catch (err) {
+      alert('İşaretleme hatası: ' + err.message);
+    }
+  };
+
   const searchLiveRequests = (text) => {
     setLiveSearchQuery(text);
     if (!text.trim()) {
@@ -539,12 +571,12 @@ export default function Gigs() {
       // Switch to this song index
       setLiveSongIndex(existingIdx);
     } else {
-      // Add as played request at the end of the list
+      // Add as unplayed request at the end of the list
       const newOrder = liveGig.Songs.length + 1;
       const newLiveSong = {
         SongID: song.SongID,
         SortOrder: newOrder,
-        IsPlayed: 1,
+        IsPlayed: 0,
         IsRequest: 1,
         SongTitle: song.SongTitle,
         ArtistNames: song.ArtistNames
@@ -558,7 +590,14 @@ export default function Gigs() {
         Photos: liveGig.Photos,
         Videos: liveGig.Videos,
         Songs: newSongsList,
-        Guests: liveGig.Guests
+        Guests: (liveGig.Guests || []).map(g => ({
+          GuestID: (g.GuestID && Number(g.GuestID) > 0) ? Number(g.GuestID) : null,
+          IsAnonymous: g.IsAnonymous ? 1 : 0,
+          TableName: g.TableName || '',
+          Description: g.Description || '',
+          GuestCount: Number(g.GuestCount || 1),
+          FullName: g.FullName
+        }))
       };
 
       try {

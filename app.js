@@ -4581,9 +4581,12 @@ async function toggleLiveSongPlayedFromCheckbox() {
       IsPlayed: s.isPlayed,
       IsRequest: s.isRequest
     })),
-    Guests: liveGigObj.guests.map(g => ({
-      GuestID: g.guestId,
-      TableName: g.tableName
+    Guests: (liveGigObj.guests || []).map(g => ({
+      GuestID: (g.guestId && Number(g.guestId) > 0) ? Number(g.guestId) : null,
+      IsAnonymous: g.isAnonymous ? 1 : 0,
+      TableName: g.tableName,
+      Description: g.description,
+      GuestCount: g.guestCount
     }))
   };
 
@@ -4675,7 +4678,7 @@ async function selectLiveRequestSong(songId, title, artistNames) {
     const newSong = {
       songId,
       sortOrder: liveGigObj.songs.length + 1,
-      isPlayed: 1,
+      isPlayed: 0,
       isRequest: 1,
       title,
       artistNames
@@ -4694,9 +4697,12 @@ async function selectLiveRequestSong(songId, title, artistNames) {
         IsPlayed: s.isPlayed,
         IsRequest: s.isRequest
       })),
-      Guests: liveGigObj.guests.map(g => ({
-        GuestID: g.guestId,
-        TableName: g.tableName
+      Guests: (liveGigObj.guests || []).map(g => ({
+        GuestID: (g.guestId && Number(g.guestId) > 0) ? Number(g.guestId) : null,
+        IsAnonymous: g.isAnonymous ? 1 : 0,
+        TableName: g.tableName,
+        Description: g.description,
+        GuestCount: g.guestCount
       }))
     };
 
