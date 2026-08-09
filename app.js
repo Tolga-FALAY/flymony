@@ -2868,7 +2868,13 @@ window.handleVanillaBulkPhotoUpload = handleVanillaBulkPhotoUpload;
 window.pasteVanillaBulkPhoto = pasteVanillaBulkPhoto;
 window.removeVanillaBulkPhoto = removeVanillaBulkPhoto;
 window.cancelBulkPhotoProcessing = cancelBulkPhotoProcessing;
-window.saveBulkPhotos = saveBulkPhotos;
+window.addAnonymousGuestGroupToGig = addAnonymousGuestGroupToGig;
+window.updateGuestDescriptionVanilla = updateGuestDescriptionVanilla;
+window.updateGuestCountVanilla = updateGuestCountVanilla;
+window.removeGuestFromGigListByIndex = removeGuestFromGigListByIndex;
+window.pasteVanillaGigPhoto = pasteVanillaGigPhoto;
+window.toggleLiveViewMode = toggleLiveViewMode;
+window.removeLiveGigSong = removeLiveGigSong;
 
 // Durum Değişiklik Tarihi İşlemleri
 function getLocalDatetimeString() {
@@ -3803,9 +3809,12 @@ function openGigModal(gigId = null) {
     }));
 
     editorGigGuests = (gig.guests || []).map(g => ({
-      guestId: g.guestId,
-      tableName: g.tableName || 'Masa 1',
-      fullName: g.fullName
+      guestId: g.guestId !== undefined ? g.guestId : (g.GuestID !== undefined ? g.GuestID : null),
+      isAnonymous: !!g.isAnonymous || !g.guestId,
+      tableName: g.tableName || g.TableName || 'Masa 1',
+      description: g.description || g.Description || '',
+      guestCount: Number(g.guestCount || g.GuestCount || 1),
+      fullName: g.fullName || g.FullName || (g.isAnonymous ? 'Tanımsız Grup' : 'Misafir')
     }));
 
     editorGigPhotos = [...(gig.photos || [])];
@@ -3865,19 +3874,21 @@ function renderEditorGigGuests() {
   container.innerHTML = '';
 
   const groups = {};
-  editorGigGuests.forEach(guest => {
+  editorGigGuests.forEach((guest, index) => {
     const tName = guest.tableName || 'Masasız';
     if (!groups[tName]) groups[tName] = [];
-    groups[tName].push(guest);
+    groups[tName].push({ ...guest, _idx: index });
   });
 
   Object.keys(groups).forEach(tName => {
     const groupDiv = document.createElement('div');
-    groupDiv.style.cssText = 'margin-bottom: 1rem; border: 1px solid var(--border-soft); border-radius: 6px; padding: 0.5rem; background: #f8fafc;';
+    groupDiv.style.cssText = 'margin-bottom: 0.75rem; border: 1px solid var(--border-soft); border-radius: 6px; padding: 0.5rem; background: #f8fafc;';
     
+    const totalCountInGroup = groups[tName].reduce((sum, g) => sum + (g.guestCount || 1), 0);
+
     groupDiv.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-bottom: 0.4rem;">
-        <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName}</span>
+        <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName} (${totalCountInGroup} Kişi)</span>
         <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 22px;" onclick="relateGroupGuestsVanilla('${tName}')">🔗 Seçilenleri İlişkilendir</button>
       </div>
     `;
@@ -3885,17 +3896,43 @@ function renderEditorGigGuests() {
     const listDiv = document.createElement('div');
     groups[tName].forEach(guest => {
       const gRow = document.createElement('div');
-      gRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; font-size: 0.85rem;';
-      gRow.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <input type="checkbox" class="vanilla-group-guest-cb" data-guest-id="${guest.guestId}" style="margin: 0;">
-          <span>${guest.fullName}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <input type="text" value="${guest.tableName}" onchange="updateGuestTableVanilla(${guest.guestId}, this.value)" placeholder="Masa değiştir..." style="width: 90px; padding: 2px 4px; font-size: 0.78rem; height: 22px; margin: 0;">
-          <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigList(${guest.guestId})">&times;</button>
-        </div>
+      gRow.style.cssText = 'display: flex; flex-direction: column; gap: 0.25rem; padding: 0.35rem 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.85rem;';
+      
+      const topRow = document.createElement('div');
+      topRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;';
+      
+      if (guest.isAnonymous || !guest.guestId) {
+        topRow.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+            <span style="color: #0284c7; font-weight: bold; font-size: 0.8rem;">👥 Tanımsız Grup</span>
+            <input type="number" min="1" max="99" value="${guest.guestCount || 1}" onchange="updateGuestCountVanilla(${guest._idx}, this.value)" style="width: 45px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; text-align: center;" title="Kişi Sayısı">
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Kişi</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <input type="text" value="${guest.tableName}" onchange="updateGuestTableVanilla(${guest._idx}, this.value)" placeholder="Masa..." style="width: 80px; padding: 2px 4px; font-size: 0.78rem; height: 22px; margin: 0;">
+            <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigListByIndex(${guest._idx})">&times;</button>
+          </div>
+        `;
+      } else {
+        topRow.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+            <input type="checkbox" class="vanilla-group-guest-cb" data-guest-id="${guest.guestId}" style="margin: 0;">
+            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${guest.fullName}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <input type="text" value="${guest.tableName}" onchange="updateGuestTableVanilla(${guest._idx}, this.value)" placeholder="Masa..." style="width: 80px; padding: 2px 4px; font-size: 0.78rem; height: 22px; margin: 0;">
+            <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigListByIndex(${guest._idx})">&times;</button>
+          </div>
+        `;
+      }
+
+      const descRow = document.createElement('div');
+      descRow.innerHTML = `
+        <input type="text" value="${guest.description || ''}" onchange="updateGuestDescriptionVanilla(${guest._idx}, this.value)" placeholder="Tarif / Açıklama / Not ekle (örn: Ahmet'in yanındaki sarışın çift)..." style="width: 100%; padding: 2px 6px; font-size: 0.78rem; height: 22px; margin: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
       `;
+
+      gRow.appendChild(topRow);
+      gRow.appendChild(descRow);
       listDiv.appendChild(gRow);
     });
 
@@ -3904,8 +3941,45 @@ function renderEditorGigGuests() {
   });
 
   if (editorGigGuests.length === 0) {
-    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Henüz misafir eklenmedi.</div>';
+    container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Henüz misafir veya tanımsız grup eklenmedi.</div>';
   }
+}
+
+function addAnonymousGuestGroupToGig() {
+  editorGigGuests.push({
+    guestId: null,
+    isAnonymous: true,
+    tableName: 'Masa 1',
+    description: 'Tanımsız Grup',
+    guestCount: 2,
+    fullName: 'Tanımsız Grup'
+  });
+  renderEditorGigGuests();
+}
+
+function updateGuestDescriptionVanilla(index, description) {
+  if (editorGigGuests[index]) {
+    editorGigGuests[index].description = description;
+  }
+}
+
+function updateGuestCountVanilla(index, countVal) {
+  if (editorGigGuests[index]) {
+    editorGigGuests[index].guestCount = Math.max(1, parseInt(countVal) || 1);
+  }
+  renderEditorGigGuests();
+}
+
+function updateGuestTableVanilla(index, tableName) {
+  if (editorGigGuests[index]) {
+    editorGigGuests[index].tableName = tableName || 'Masa 1';
+  }
+  renderEditorGigGuests();
+}
+
+function removeGuestFromGigListByIndex(index) {
+  editorGigGuests.splice(index, 1);
+  renderEditorGigGuests();
 }
 
 function renderEditorGigMedia() {
@@ -3948,6 +4022,35 @@ async function handleGigPhotoUpload(event) {
   }
   renderEditorGigMedia();
   event.target.value = '';
+}
+
+async function pasteVanillaGigPhoto() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error("Tarayıcı panodan kopyalama okumasını desteklemiyor.");
+    }
+    const clipboardItems = await navigator.clipboard.read();
+    let found = false;
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const compressed = await compressVanillaImage(blob, 800, 800, 0.75);
+          editorGigPhotos.push(compressed);
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (found) {
+      renderEditorGigMedia();
+    } else {
+      alert("Panoda doğrudan kopyalanmış bir görsel bulunamadı.\n\nLütfen klavyenizden CTRL+V tuşlarına basarak görsel yapıştırın!");
+    }
+  } catch (err) {
+    alert("Pano okuma kısıtlaması nedeniyle doğrudan okunamadı. Lütfen klavyenizden CTRL+V kısayolunu kullanın!");
+  }
 }
 
 function removeGigPhoto(idx) {
@@ -4099,7 +4202,10 @@ function addGuestToGigList(guestId, fullName) {
 
   editorGigGuests.push({
     guestId,
+    isAnonymous: false,
     tableName: 'Masa 1',
+    description: '',
+    guestCount: 1,
     fullName
   });
 
@@ -4176,7 +4282,11 @@ async function saveGig(event) {
     })),
     Guests: editorGigGuests.map(g => ({
       GuestID: g.guestId,
-      TableName: g.tableName
+      IsAnonymous: g.isAnonymous ? 1 : 0,
+      TableName: g.tableName,
+      Description: g.description || '',
+      GuestCount: g.guestCount || 1,
+      FullName: g.fullName
     }))
   };
 
@@ -4261,6 +4371,17 @@ function closeLiveGig() {
   });
 }
 
+let liveGigViewMode = 'chords';
+
+function toggleLiveViewMode() {
+  liveGigViewMode = liveGigViewMode === 'chords' ? 'image' : 'chords';
+  const btn = document.getElementById('btnToggleLiveViewMode');
+  if (btn) {
+    btn.innerText = liveGigViewMode === 'chords' ? '📄 Akor Metni' : '🖼️ Akor Görseli';
+  }
+  renderLiveGigSong();
+}
+
 function renderLiveGigPlaylist() {
   const container = document.getElementById('gigLivePlaylist');
   if (!container) return;
@@ -4284,17 +4405,28 @@ function renderLiveGigPlaylist() {
     titleSpan.innerText = `${song.sortOrder}. ${song.title}`;
 
     const leftGroup = document.createElement('div');
-    leftGroup.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; min-width: 0;';
+    leftGroup.style.cssText = 'display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 1;';
     leftGroup.appendChild(titleSpan);
-
-    div.appendChild(leftGroup);
 
     if (song.isRequest) {
       const badge = document.createElement('span');
-      badge.style.cssText = 'font-size: 0.7rem; padding: 1px 4px; background: #38bdf8; color: white; border-radius: 3px; font-weight: bold;';
+      badge.style.cssText = 'font-size: 0.7rem; padding: 1px 4px; background: #38bdf8; color: white; border-radius: 3px; font-weight: bold; flex-shrink: 0;';
       badge.innerText = 'İst.';
-      div.appendChild(badge);
+      leftGroup.appendChild(badge);
     }
+
+    div.appendChild(leftGroup);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.style.cssText = 'background: none; border: none; color: #ef4444; cursor: pointer; font-weight: bold; font-size: 0.9rem; padding: 0 4px; margin-left: 4px;';
+    deleteBtn.innerHTML = '&times;';
+    deleteBtn.title = 'Şarkıyı Canlı Listeden Sil';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeLiveGigSong(idx);
+    };
+    div.appendChild(deleteBtn);
 
     div.onclick = () => {
       liveGigSongIndex = idx;
@@ -4304,6 +4436,48 @@ function renderLiveGigPlaylist() {
 
     container.appendChild(div);
   });
+}
+
+async function removeLiveGigSong(idx) {
+  if (!liveGigObj || !liveGigObj.songs || !liveGigObj.songs[idx]) return;
+  const targetSong = liveGigObj.songs[idx];
+  if (!confirm(`"${targetSong.title}" şarkısını canlı listeden silmek istediğinize emin misiniz?`)) return;
+
+  liveGigObj.songs.splice(idx, 1);
+  liveGigObj.songs.forEach((s, i) => s.sortOrder = i + 1);
+
+  if (liveGigSongIndex >= liveGigObj.songs.length) {
+    liveGigSongIndex = liveGigObj.songs.length - 1;
+  }
+
+  const payload = {
+    VenueID: liveGigObj.venueId,
+    GigDate: liveGigObj.gigDate,
+    Notes: liveGigObj.notes,
+    Photos: liveGigObj.photos,
+    Videos: liveGigObj.videos,
+    Songs: liveGigObj.songs.map(s => ({
+      SongID: s.songId,
+      SortOrder: s.sortOrder,
+      IsPlayed: s.isPlayed,
+      IsRequest: s.isRequest
+    })),
+    Guests: (liveGigObj.guests || []).map(g => ({
+      GuestID: g.guestId,
+      IsAnonymous: g.isAnonymous ? 1 : 0,
+      TableName: g.tableName,
+      Description: g.description,
+      GuestCount: g.guestCount
+    }))
+  };
+
+  try {
+    await apiRequest(`/gigs/${liveGigObj.id}`, 'PUT', payload);
+    renderLiveGigPlaylist();
+    renderLiveGigSong();
+  } catch (err) {
+    alert('Şarkı silme hatası: ' + err.message);
+  }
 }
 
 function renderLiveGigSong() {
@@ -4338,10 +4512,43 @@ function renderLiveGigSong() {
   chordContent.style.fontSize = `${liveGigFontSize}rem`;
   chordContent.style.fontFamily = 'monospace';
 
-  if (fullSong && fullSong.lyrics) {
-    const cleanLyrics = fullSong.lyrics.replace(/<[^>]*>/g, '').trim();
-    if (cleanLyrics && cleanLyrics.length > 5) {
-      chordContent.innerHTML = fullSong.lyrics;
+  if (!fullSong) {
+    chordContent.innerText = 'Bu şarkının bilgisi bulunmamaktadır.';
+    return;
+  }
+
+  if (liveGigViewMode === 'image') {
+    if (fullSong.chordImagePath) {
+      chordContent.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted); padding: 1rem;">
+          <span style="font-weight: 600; color: #38bdf8;">🖼️ Akor Görseli:</span>
+          <img src="${fullSong.chordImagePath}" style="max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);">
+        </div>
+      `;
+    } else {
+      chordContent.innerHTML = `
+        <div style="text-align: center; margin-top: 3rem; color: #f59e0b; font-weight: 600;">
+          ⚠️ Bu şarkı için henüz akor görseli yüklenmemiş.<br>
+          <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); margin-top: 0.5rem; display: inline-block;">Akor Metni moduna geçebilirsiniz.</span>
+        </div>
+      `;
+    }
+  } else {
+    // Default 'chords' mode
+    if (fullSong.lyrics) {
+      const cleanLyrics = fullSong.lyrics.replace(/<[^>]*>/g, '').trim();
+      if (cleanLyrics && cleanLyrics.length > 5) {
+        chordContent.innerHTML = fullSong.lyrics;
+      } else if (fullSong.chordImagePath) {
+        chordContent.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted);">
+            <span>Bu şarkının akor görseli mevcuttur:</span>
+            <img src="${fullSong.chordImagePath}" style="max-width: 100%; max-height: 60vh; object-fit: contain;">
+          </div>
+        `;
+      } else {
+        chordContent.innerText = 'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.';
+      }
     } else if (fullSong.chordImagePath) {
       chordContent.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted);">
@@ -4352,8 +4559,6 @@ function renderLiveGigSong() {
     } else {
       chordContent.innerText = 'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.';
     }
-  } else {
-    chordContent.innerText = 'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.';
   }
 }
 

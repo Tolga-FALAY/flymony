@@ -42,6 +42,7 @@ export default function Gigs() {
   const [liveSongIndex, setLiveSongIndex] = useState(-1);
   const [liveFontSize, setLiveFontSize] = useState(1.1);
   const [liveTheme, setLiveTheme] = useState('dark');
+  const [liveViewMode, setLiveViewMode] = useState('chords'); // 'chords' vs 'image'
   const [liveSearchQuery, setLiveSearchQuery] = useState('');
   const [liveSearchResults, setLiveSearchResults] = useState([]);
 
@@ -162,8 +163,12 @@ export default function Gigs() {
         IsRequest: Number(s.IsRequest)
       })) : [],
       Guests: gig.Guests ? gig.Guests.map(g => ({
-        GuestID: Number(g.GuestID),
-        TableName: g.TableName || ''
+        GuestID: g.GuestID ? Number(g.GuestID) : null,
+        IsAnonymous: !!g.IsAnonymous || !g.GuestID,
+        TableName: g.TableName || 'Masa 1',
+        Description: g.Description || '',
+        GuestCount: Number(g.GuestCount || 1),
+        FullName: g.FullName || (g.IsAnonymous ? 'Tanımsız Grup' : 'Misafir')
       })) : []
     });
     setSongSearchText('');
@@ -297,7 +302,11 @@ export default function Gigs() {
     }
     const newGuestEntry = {
       GuestID: guest.GuestID,
-      TableName: 'Masa 1' // Default table name
+      IsAnonymous: 0,
+      TableName: 'Masa 1',
+      Description: '',
+      GuestCount: 1,
+      FullName: guest.FullName
     };
     setFormData(prev => ({
       ...prev,
@@ -306,18 +315,79 @@ export default function Gigs() {
     setGuestSearchText('');
   };
 
-  const removeGuestFromGig = (guestId) => {
+  const addAnonymousGuestGroup = () => {
     setFormData(prev => ({
       ...prev,
-      Guests: prev.Guests.filter(g => g.GuestID !== guestId)
+      Guests: [
+        ...prev.Guests,
+        {
+          GuestID: null,
+          IsAnonymous: 1,
+          TableName: 'Masa 1',
+          Description: 'Tanımsız Grup',
+          GuestCount: 2,
+          FullName: 'Tanımsız Grup'
+        }
+      ]
     }));
   };
 
-  const updateGuestTable = (guestId, tableName) => {
+  const removeGuestFromGigByIndex = (indexToRemove) => {
     setFormData(prev => ({
       ...prev,
-      Guests: prev.Guests.map(g => g.GuestID === guestId ? { ...g, TableName: tableName } : g)
+      Guests: prev.Guests.filter((_, idx) => idx !== indexToRemove)
     }));
+  };
+
+  const updateGuestTableByIndex = (index, tableName) => {
+    setFormData(prev => {
+      const newGuests = [...prev.Guests];
+      newGuests[index] = { ...newGuests[index], TableName: tableName || 'Masa 1' };
+      return { ...prev, Guests: newGuests };
+    });
+  };
+
+  const updateGuestDescription = (index, description) => {
+    setFormData(prev => {
+      const newGuests = [...prev.Guests];
+      newGuests[index] = { ...newGuests[index], Description: description };
+      return { ...prev, Guests: newGuests };
+    });
+  };
+
+  const updateGuestCount = (index, countVal) => {
+    setFormData(prev => {
+      const newGuests = [...prev.Guests];
+      newGuests[index] = { ...newGuests[index], GuestCount: Math.max(1, parseInt(countVal) || 1) };
+      return { ...prev, Guests: newGuests };
+    });
+  };
+
+  const pastePhotoFromClipboard = async () => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        throw new Error("Tarayıcı panodan kopyalama okumasını desteklemiyor.");
+      }
+      const clipboardItems = await navigator.clipboard.read();
+      let found = false;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const compressed = await compressImage(blob, 800, 800, 0.75);
+            setFormData(prev => ({ ...prev, Photos: [...prev.Photos, compressed] }));
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (!found) {
+        alert("Panoda kopyalanmış bir görsel bulunamadı. CTRL+V tuşlarını kullanabilirsiniz!");
+      }
+    } catch (err) {
+      alert("Pano okuma engellendi. Lütfen klavyenizden CTRL+V kısayolunu kullanın!");
+    }
   };
 
   const toggleGroupGuestSelect = (tableName, guestId) => {
@@ -403,15 +473,19 @@ export default function Gigs() {
     setLiveSongIndex(prev => (prev - 1 + liveGig.Songs.length) % liveGig.Songs.length);
   };
 
-  const toggleSongPlayed = async (songIndex) => {
+  const handleRemoveLiveSong = async (songIndex) => {
     if (!liveGig || !liveGig.Songs || !liveGig.Songs[songIndex]) return;
-    
-    const updatedSongs = [...liveGig.Songs];
-    const targetSong = updatedSongs[songIndex];
-    targetSong.IsPlayed = targetSong.IsPlayed ? 0 : 1;
+    const targetSong = liveGig.Songs[songIndex];
+    if (!window.confirm(`"${targetSong.SongTitle}" şarkısını canlı listeden silmek istediğinize emin misiniz?`)) return;
+
+    const updatedSongs = liveGig.Songs.filter((_, idx) => idx !== songIndex).map((s, i) => ({ ...s, SortOrder: i + 1 }));
+    let newSongIdx = liveSongIndex;
+    if (newSongIdx >= updatedSongs.length) {
+      newSongIdx = updatedSongs.length - 1;
+    }
 
     const payload = {
-      VenueName: liveGig.VenueName,
+      VenueID: liveGig.VenueID,
       GigDate: liveGig.GigDate,
       Notes: liveGig.Notes,
       Photos: liveGig.Photos,
@@ -423,8 +497,9 @@ export default function Gigs() {
     try {
       await api.updateGig(liveGig.GigID, payload);
       setLiveGig(prev => ({ ...prev, Songs: updatedSongs }));
+      setLiveSongIndex(newSongIdx);
     } catch (err) {
-      alert('İşaretleme hatası: ' + err.message);
+      alert('Şarkı silme hatası: ' + err.message);
     }
   };
 
@@ -539,14 +614,14 @@ export default function Gigs() {
 
   // Grouping guests inside the editor by table
   const guestsByTable = {};
-  formData.Guests.forEach(gEntry => {
+  formData.Guests.forEach((gEntry, index) => {
     const guestObj = guests.find(g => g.GuestID === gEntry.GuestID);
-    if (!guestObj) return;
     const tName = gEntry.TableName || 'Masasız';
     if (!guestsByTable[tName]) guestsByTable[tName] = [];
     guestsByTable[tName].push({
       ...gEntry,
-      FullName: guestObj.FullName
+      _idx: index,
+      FullName: guestObj ? guestObj.FullName : (gEntry.FullName || 'Tanımsız Grup')
     });
   });
 
@@ -779,21 +854,24 @@ export default function Gigs() {
                 </div>
 
                 {/* GUESTS SECTION */}
-                <div>
-                  <h3 style={{ marginBottom: '0.75rem', color: 'var(--text-main)' }}>👥 Ağırlanan Misafirler ({formData.Guests.length})</h3>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0, color: 'var(--text-main)' }}>👥 Ağırlanan Misafirler ({formData.Guests.length})</h3>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestGroup} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>➕ Tanımsız Grup Ekle</button>
+                  </div>
                   
-                  {/* Add guest dropdown search */}
-                  <div className="form-group" style={{ position: 'relative' }}>
+                  <div className="form-group" style={{ position: 'relative', marginBottom: '0.5rem' }}>
                     <input 
                       type="text" 
-                      placeholder="Misafir ara ve listeye ekle..." 
-                      value={guestSearchText}
+                      placeholder="Misafir ara ve ekle..." 
+                      value={guestSearchText} 
                       onChange={e => setGuestSearchText(e.target.value)} 
                     />
                     {guestSearchText.trim() && (
                       <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                         {guests
                           .filter(g => g.FullName.toLocaleLowerCase('tr-TR').includes(guestSearchText.toLocaleLowerCase('tr-TR')))
+                          .slice(0, 10)
                           .map(g => (
                             <div 
                               key={g.GuestID} 
@@ -811,48 +889,75 @@ export default function Gigs() {
 
                   {/* List of gig guests grouped by Table */}
                   <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
-                    {Object.keys(guestsByTable).map(tName => (
-                      <div key={tName} style={{ marginBottom: '1rem', border: '1px solid var(--border-soft)', borderRadius: '6px', padding: '0.5rem', background: '#f8fafc' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>📍 {tName}</span>
-                          <button 
-                            type="button" 
-                            className="btn btn-outline" 
-                            style={{ padding: '2px 6px', fontSize: '0.75rem', height: '22px' }}
-                            onClick={() => makeSelectedGuestsRelated(tName)}
-                          >
-                            🔗 Seçilenleri İlişkilendir
-                          </button>
-                        </div>
-                        {guestsByTable[tName].map(gEntry => (
-                          <div key={gEntry.GuestID} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.85rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={!!(selectedGroupGuests[tName] && selectedGroupGuests[tName].has(gEntry.GuestID))}
-                                onChange={() => toggleGroupGuestSelect(tName, gEntry.GuestID)}
-                                style={{ margin: 0 }}
-                              />
-                              <span>{gEntry.FullName}</span>
-                            </div>
-                            
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              {/* Table Name Input */}
+                    {Object.keys(guestsByTable).map(tName => {
+                      const totalInGroup = guestsByTable[tName].reduce((sum, g) => sum + (g.GuestCount || 1), 0);
+                      return (
+                        <div key={tName} style={{ marginBottom: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '6px', padding: '0.5rem', background: '#f8fafc' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>📍 {tName} ({totalInGroup} Kişi)</span>
+                            <button 
+                              type="button" 
+                              className="btn btn-outline" 
+                              style={{ padding: '2px 6px', fontSize: '0.75rem', height: '22px' }}
+                              onClick={() => makeSelectedGuestsRelated(tName)}
+                            >
+                              🔗 Seçilenleri İlişkilendir
+                            </button>
+                          </div>
+                          {guestsByTable[tName].map(gEntry => (
+                            <div key={gEntry._idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.35rem 0', borderBottom: '1px dashed #e2e8f0', fontSize: '0.85rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                {gEntry.IsAnonymous || !gEntry.GuestID ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
+                                    <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem' }}>👥 Tanımsız Grup</span>
+                                    <input 
+                                      type="number" 
+                                      min="1" 
+                                      max="99" 
+                                      value={gEntry.GuestCount || 1} 
+                                      onChange={e => updateGuestCount(gEntry._idx, e.target.value)} 
+                                      style={{ width: '45px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, textAlign: 'center' }} 
+                                      title="Kişi Sayısı"
+                                    />
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Kişi</span>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
+                                    <input 
+                                      type="checkbox" 
+                                      checked={!!(selectedGroupGuests[tName] && selectedGroupGuests[tName].has(gEntry.GuestID))}
+                                      onChange={() => toggleGroupGuestSelect(tName, gEntry.GuestID)}
+                                      style={{ margin: 0 }}
+                                    />
+                                    <span style={{ fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{gEntry.FullName}</span>
+                                  </div>
+                                )}
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <input 
+                                    type="text" 
+                                    value={gEntry.TableName} 
+                                    onChange={e => updateGuestTableByIndex(gEntry._idx, e.target.value)}
+                                    placeholder="Masa..."
+                                    style={{ width: '80px', padding: '2px 4px', fontSize: '0.78rem', height: '22px', margin: 0 }}
+                                  />
+                                  <button type="button" className="btn btn-sm btn-danger" style={{ padding: '1px 5px', fontSize: '0.7rem', height: '20px' }} onClick={() => removeGuestFromGigByIndex(gEntry._idx)}>&times;</button>
+                                </div>
+                              </div>
                               <input 
                                 type="text" 
-                                value={gEntry.TableName} 
-                                onChange={e => updateGuestTable(gEntry.GuestID, e.target.value)}
-                                placeholder="Masa adını değiştir..."
-                                style={{ width: '90px', padding: '2px 4px', fontSize: '0.78rem', height: '22px', margin: 0 }}
+                                value={gEntry.Description || ''} 
+                                onChange={e => updateGuestDescription(gEntry._idx, e.target.value)} 
+                                placeholder="Tarif / Açıklama / Not ekle (örn: Ahmet'in yanındaki sarışın çift)..." 
+                                style={{ width: '100%', padding: '2px 6px', fontSize: '0.78rem', height: '22px', margin: 0, border: '1px solid #cbd5e1', borderRadius: '4px', background: '#ffffff' }}
                               />
-                              <button type="button" className="btn btn-sm btn-danger" style={{ padding: '1px 5px', fontSize: '0.7rem', height: '20px' }} onClick={() => removeGuestFromGig(gEntry.GuestID)}>&times;</button>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                          ))}
+                        </div>
+                      );
+                    })}
                     {formData.Guests.length === 0 && (
-                      <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Henüz misafir eklenmedi.</div>
+                      <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Henüz misafir veya tanımsız grup eklenmedi.</div>
                     )}
                   </div>
                 </div>
@@ -866,10 +971,13 @@ export default function Gigs() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   {/* Photo upload and gallery */}
                   <div>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', border: '1px dashed var(--primary)', borderRadius: '8px', cursor: 'pointer', color: 'var(--primary)', fontWeight: '600', fontSize: '0.85rem' }}>
-                      🖼️ Fotoğraf Ekle (Çoklu Seçilebilir)
-                      <input type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
-                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.8rem', border: '1px dashed var(--primary)', borderRadius: '8px', cursor: 'pointer', color: 'var(--primary)', fontWeight: '600', fontSize: '0.82rem', margin: 0 }}>
+                        🖼️ Görselden Seç
+                        <input type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+                      </label>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={pastePhotoFromClipboard} style={{ padding: '0.5rem 0.8rem', fontSize: '0.82rem', fontWeight: '600' }}>📋 Panodan Yapıştır (CTRL+V)</button>
+                    </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
                       {formData.Photos.map((photo, index) => (
                         <div key={index} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)' }}>
@@ -885,10 +993,10 @@ export default function Gigs() {
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <input 
                         type="text" 
-                        placeholder="Video URL'si ekle (YouTube, Drive...)" 
+                        placeholder="Video URL'si ekle veya yapıştır (YouTube, Drive...)" 
                         value={newVideoUrl} 
                         onChange={e => setNewVideoUrl(e.target.value)} 
-                        style={{ margin: 0, flex: 1 }}
+                        style={{ margin: 0, flex: 1, fontSize: '0.85rem' }}
                       />
                       <button type="button" className="btn btn-outline" onClick={addVideoLink}>Ekle</button>
                     </div>
@@ -925,7 +1033,14 @@ export default function Gigs() {
               <span style={{ fontSize: '0.8rem', color: liveTheme === 'dark' ? '#94a3b8' : '#64748b' }}>{new Date(liveGig.GigDate).toLocaleDateString('tr-TR')}</span>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button 
+                className="chord-action-btn" 
+                onClick={() => setLiveViewMode(prev => prev === 'chords' ? 'image' : 'chords')}
+                style={{ background: 'rgba(14, 165, 233, 0.2)', border: '1px solid #38bdf8', fontWeight: 700 }}
+              >
+                {liveViewMode === 'chords' ? '📄 Akor Metni' : '🖼️ Akor Görseli'}
+              </button>
               {/* Font controls */}
               <button className="chord-action-btn" onClick={() => setLiveFontSize(prev => Math.max(0.6, prev - 0.1))}>A-</button>
               <button className="chord-action-btn" onClick={() => setLiveFontSize(prev => Math.min(2.5, prev + 0.1))}>A+</button>
@@ -961,15 +1076,23 @@ export default function Gigs() {
                       fontSize: '0.82rem'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flex: 1 }}>
                       <span style={{ fontWeight: 'bold', color: liveTheme === 'dark' ? '#94a3b8' : '#64748b' }}>{gSong.SortOrder}.</span>
                       <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', textDecoration: gSong.IsPlayed ? 'line-through' : 'none', color: gSong.IsPlayed ? '#059669' : 'inherit' }}>
                         {gSong.SongTitle}
                       </span>
+                      {gSong.IsRequest === 1 && (
+                        <span style={{ fontSize: '0.7rem', padding: '1px 4px', background: '#38bdf8', color: 'white', borderRadius: '3px', fontWeight: 'bold', flexShrink: 0 }}>İst.</span>
+                      )}
                     </div>
-                    {gSong.IsRequest === 1 && (
-                      <span style={{ fontSize: '0.7rem', padding: '1px 4px', background: '#38bdf8', color: 'white', borderRadius: '3px', fontWeight: 'bold' }}>İst.</span>
-                    )}
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(idx); }}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', padding: '0 4px', marginLeft: '4px' }}
+                      title="Şarkıyı Canlı Listeden Sil"
+                    >
+                      &times;
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1055,19 +1178,33 @@ export default function Gigs() {
                         color: liveTheme === 'dark' ? '#cbd5e1' : '#1e293b'
                       }}
                     >
-                      {fullSongObj && hasLyricsContent(fullSongObj.Lyrics) ? (
-                        <div dangerouslySetInnerHTML={{ __html: fullSongObj.Lyrics }} />
+                      {liveViewMode === 'image' ? (
+                        fullSongObj && fullSongObj.ChordImagePath ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
+                            <span style={{ fontWeight: 600, color: '#38bdf8' }}>🖼️ Akor Görseli:</span>
+                            <img src={fullSongObj.ChordImagePath} alt="Akor Görseli" style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }} />
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', marginTop: '3rem', color: '#f59e0b', fontWeight: 600 }}>
+                            ⚠️ Bu şarkı için henüz akor görseli yüklenmemiş.<br />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'inline-block' }}>Akor Metni moduna geçebilirsiniz.</span>
+                          </div>
+                        )
                       ) : (
-                        <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--text-muted)' }}>
-                          {fullSongObj && fullSongObj.ChordImagePath ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                              <span>Bu şarkının akor görseli mevcuttur. Performans modunda sadece transpoze metin akorları görüntülenebilir.</span>
-                              <img src={fullSongObj.ChordImagePath} alt="Akor Görseli" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
-                            </div>
-                          ) : (
-                            'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.'
-                          )}
-                        </div>
+                        fullSongObj && hasLyricsContent(fullSongObj.Lyrics) ? (
+                          <div dangerouslySetInnerHTML={{ __html: fullSongObj.Lyrics }} />
+                        ) : (
+                          <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--text-muted)' }}>
+                            {fullSongObj && fullSongObj.ChordImagePath ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                                <span>Bu şarkının akor görseli mevcuttur (🖼️ Akor Görseli butonuna basabilirsiniz):</span>
+                                <img src={fullSongObj.ChordImagePath} alt="Akor Görseli" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+                              </div>
+                            ) : (
+                              'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.'
+                            )}
+                          </div>
+                        )
                       )}
                     </div>
                     
