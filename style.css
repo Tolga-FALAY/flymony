@@ -33,14 +33,14 @@ body {
 }
 
 .container {
-  padding: 1.5rem 1.5rem 1.5rem calc(260px + 1.5rem);
-  max-width: 1400px;
+  padding: 0.75rem 0.85rem 0.85rem calc(260px + 0.85rem);
+  max-width: 100%;
   margin: 0 auto;
   transition: padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.sidebar-is-collapsed .container {
-  padding-left: calc(72px + 1.5rem);
+  padding-left: calc(72px + 0.85rem);
 }
 
 /* Desktop: full-height fixed left rail holding logo + vertical nav as one glass card */
@@ -231,7 +231,7 @@ h1 {
   border-radius: var(--border-radius);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
-  padding: 2rem;
+  padding: 1rem 1.25rem;
   animation: fadeIn 0.4s ease-out;
 }
 
