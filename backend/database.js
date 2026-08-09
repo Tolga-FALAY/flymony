@@ -47,6 +47,7 @@ export const initializeDB = () => {
             InstagramLink TEXT,
             Notes TEXT,
             City TEXT,
+            CityTR TEXT,
             ProfilePicture TEXT,
             BirthDateDay INTEGER,
             BirthDateMonth INTEGER,
@@ -230,6 +231,7 @@ export const initializeDB = () => {
         const newCols = [
             { name: 'Notes', type: 'TEXT' },
             { name: 'City', type: 'TEXT' },
+            { name: 'CityTR', type: 'TEXT' },
             { name: 'ProfilePicture', type: 'TEXT' },
             { name: 'BirthDateDay', type: 'INTEGER' },
             { name: 'BirthDateMonth', type: 'INTEGER' },

@@ -275,7 +275,12 @@
                   <th class="th-cep" style="text-align: center; padding-left: 2px; padding-right: 2px;">CEP</th>
                   <th onclick="sortGuests('instagram')" class="th-insta" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">INSTA <span id="sortIconGuestInstagram" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
                   <th onclick="sortGuests('birthdate')" class="th-birthdate" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">DOĞUM T. <span id="sortIconGuestBirthdate" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th onclick="sortGuests('city')" class="th-city" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">ŞEHİR <span id="sortIconGuestCity" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th class="th-city" style="text-align: center; padding-left: 2px; padding-right: 2px; white-space: nowrap;">
+                    <span onclick="sortGuests('city')" style="cursor: pointer; user-select: none;">ŞEHİR <span id="sortIconGuestCity" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></span>
+                    <label style="font-size: 0.75rem; font-weight: bold; color: var(--primary); margin-left: 4px; cursor: pointer;" onclick="event.stopPropagation();" title="Türkiye / Yurtdışı Şehirlerini Göster">
+                      <input type="checkbox" id="chkShowTRCity" onchange="toggleVanillaTRCity(this.checked)" style="vertical-align: middle; margin-right: 2px; cursor: pointer;">TR
+                    </label>
+                  </th>
                   <th onclick="sortGuests('createdat')" class="th-createdat" style="text-align: right; cursor: pointer; user-select: none; padding-left: 2px; padding-right: 2px;" title="Kayıt Tarihine Göre Sırala">KAYIT TAR. <span id="sortIconGuestCreatedAt" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
                 </tr>
             </thead>
@@ -746,9 +751,15 @@
           <label>Telefon Numarası</label>
           <input type="text" id="guestPhone">
         </div>
-        <div class="form-group">
-          <label>Şehir / Adres (Enter ile alt satıra geçilebilir)</label>
-          <textarea id="guestCity" rows="2" placeholder="Örn: Lefkoşa&#10;KKTC" style="padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none; width: 100%;"></textarea>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <div class="form-group" style="flex: 1 1 200px;">
+            <label>Şehir (Kıbrıs)</label>
+            <textarea id="guestCity" rows="2" placeholder="Güzelyurt&#10;Gemikonağı" style="padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none; width: 100%;"></textarea>
+          </div>
+          <div class="form-group" style="flex: 1 1 200px;">
+            <label>Şehir (Türkiye)</label>
+            <textarea id="guestCityTR" rows="2" placeholder="İzmir&#10;Karşıyaka" style="padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none; width: 100%;"></textarea>
+          </div>
         </div>
         <div class="form-group">
           <label>Instagram Linki</label>

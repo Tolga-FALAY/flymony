@@ -147,6 +147,7 @@ const DB = {
         phone: g.PhoneNumber || "",
         instagram: g.InstagramLink || "",
         city: g.City || "",
+        cityTR: g.CityTR || "",
         notes: g.Notes || "",
         profilePicture: g.ProfilePicture || "",
         birthDateDay: g.BirthDateDay || "",
@@ -347,7 +348,9 @@ function openModal(modalId) {
     if (!document.getElementById('guestID')?.value) {
       vanillaRelatedGuestIDs = [];
       const cityEl = document.getElementById('guestCity');
-      if (cityEl) cityEl.value = '';
+      if (cityEl) cityEl.value = 'Güzelyurt\nGemikonağı';
+      const cityTREl = document.getElementById('guestCityTR');
+      if (cityTREl) cityTREl.value = 'İzmir\nKarşıyaka';
       const metaEl = document.getElementById('guestRegistrationMeta');
       if (metaEl) metaEl.innerText = '';
     }
@@ -702,6 +705,14 @@ function renderGuests() {
       } else {
         res = Number(a.birthDateDay) - Number(b.birthDateDay);
       }
+    } else if (guestsSortKey === 'city') {
+      const cityA = (vanillaShowTRCity ? (a.cityTR || '') : (a.city || '')).trim();
+      const cityB = (vanillaShowTRCity ? (b.cityTR || '') : (b.city || '')).trim();
+      const hasA = cityA.length > 0;
+      const hasB = cityB.length > 0;
+      if (hasA && !hasB) res = -1;
+      else if (!hasA && hasB) res = 1;
+      else res = cityA.toLocaleLowerCase('tr-TR').localeCompare(cityB.toLocaleLowerCase('tr-TR'), 'tr');
     } else if (guestsSortKey === 'createdat') {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : Number(a.id || 0);
       const timeB = b.createdAt ? new Date(b.createdAt).getTime() : Number(b.id || 0);
@@ -745,8 +756,8 @@ function renderGuests() {
   tbody.innerHTML = filteredGuests.length === 0 ? '<tr><td colspan="7" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
 
   // Render header sorting indicators dynamically
-  const keys = ['name', 'gigcount', 'instagram', 'birthdate', 'createdat'];
-  const ids = { name: 'sortIconGuestName', gigcount: 'sortIconGuestGigCount', instagram: 'sortIconGuestInstagram', birthdate: 'sortIconGuestBirthdate', createdat: 'sortIconGuestCreatedAt' };
+  const keys = ['name', 'gigcount', 'instagram', 'birthdate', 'city', 'createdat'];
+  const ids = { name: 'sortIconGuestName', gigcount: 'sortIconGuestGigCount', instagram: 'sortIconGuestInstagram', birthdate: 'sortIconGuestBirthdate', city: 'sortIconGuestCity', createdat: 'sortIconGuestCreatedAt' };
   keys.forEach(k => {
     const iconEl = document.getElementById(ids[k]);
     if (iconEl) {
@@ -870,7 +881,7 @@ function renderGuests() {
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
       <td data-label="DOĞUM T." style="text-align: center; padding-left: 2px; padding-right: 2px;">${birthDateStr}</td>
-      <td data-label="ŞEHİR" style="text-align: center; padding-left: 2px; padding-right: 2px;">${formatCityMultiLine(guest.city)}</td>
+      <td data-label="ŞEHİR" style="text-align: center; padding-left: 2px; padding-right: 2px;">${formatCityMultiLine(vanillaShowTRCity ? guest.cityTR : guest.city)}</td>
       <td data-label="KAYIT TAR." class="action-btns" style="padding-left: 2px; padding-right: 2px; text-align: right;">
         ${noteBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>
@@ -1526,6 +1537,7 @@ async function saveGuest(e) {
   const lastName = document.getElementById('guestLastName').value.trim();
   const phone = document.getElementById('guestPhone').value;
   const city = document.getElementById('guestCity')?.value || '';
+  const cityTR = document.getElementById('guestCityTR')?.value || '';
   const instagram = document.getElementById('guestInstagram').value;
   const notes = document.getElementById('guestNotes').value;
   const profilePicture = document.getElementById('guestProfilePicture').value;
@@ -1586,6 +1598,7 @@ async function saveGuest(e) {
       LastName: lastName,
       PhoneNumber: phone || "",
       City: city || "",
+      CityTR: cityTR || "",
       InstagramLink: instagram || "",
       Notes: notes || "",
       ProfilePicture: profilePicture || "",
@@ -1638,7 +1651,10 @@ function editGuest(id) {
   document.getElementById('guestLastName').value = guest.lastName;
   document.getElementById('guestPhone').value = guest.phone || '';
   if (document.getElementById('guestCity')) {
-    document.getElementById('guestCity').value = guest.city || '';
+    document.getElementById('guestCity').value = guest.city || 'Güzelyurt\nGemikonağı';
+  }
+  if (document.getElementById('guestCityTR')) {
+    document.getElementById('guestCityTR').value = guest.cityTR || 'İzmir\nKarşıyaka';
   }
   document.getElementById('guestInstagram').value = guest.instagram || '';
   document.getElementById('guestNotes').value = guest.notes || '';
@@ -2951,6 +2967,13 @@ window.deleteSong = deleteSong;
 window.saveRequest = saveRequest;
 window.deleteRequest = deleteRequest;
 window.editRequest = editRequest;
+let vanillaShowTRCity = false;
+function toggleVanillaTRCity(checked) {
+  vanillaShowTRCity = checked;
+  renderGuests();
+}
+window.toggleVanillaTRCity = toggleVanillaTRCity;
+
 window.toggleListboxItem = toggleListboxItem;
 window.selectListboxItem = selectListboxItem;
 window.handleVanillaProfileUpload = handleVanillaProfileUpload;

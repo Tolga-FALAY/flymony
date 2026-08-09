@@ -20,6 +20,12 @@ const getInstagramUsername = (url) => {
   return match ? match[1] : '';
 };
 
+const getInitials = (first, last) => {
+  const f = first ? first.charAt(0).toUpperCase() : '';
+  const l = last ? last.charAt(0).toUpperCase() : '';
+  return `${f}${l}`;
+};
+
 const formatGigRelativeTime = (gigDateStr) => {
   if (!gigDateStr) return '';
   const dateObj = new Date(gigDateStr);
@@ -67,6 +73,7 @@ export default function Guests() {
   const [gigsModalGuest, setGigsModalGuest] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [noteModalGuest, setNoteModalGuest] = useState(null);
+  const [showTRCity, setShowTRCity] = useState(false);
 
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
@@ -202,7 +209,8 @@ export default function Guests() {
         FirstName: guest.FirstName,
         LastName: guest.LastName,
         PhoneNumber: guest.PhoneNumber || '',
-        City: guest.City || '',
+        City: guest.City || 'Güzelyurt\nGemikonağı',
+        CityTR: guest.CityTR || 'İzmir\nKarşıyaka',
         InstagramLink: guest.InstagramLink || '',
         Notes: guest.Notes || '',
         ProfilePicture: guest.ProfilePicture || '',
@@ -219,7 +227,8 @@ export default function Guests() {
         FirstName: '',
         LastName: '',
         PhoneNumber: '',
-        City: '',
+        City: 'Güzelyurt\nGemikonağı',
+        CityTR: 'İzmir\nKarşıyaka',
         InstagramLink: '',
         Notes: '',
         ProfilePicture: '',
@@ -680,10 +689,14 @@ export default function Guests() {
       } else {
         res = Number(a.BirthDateDay) - Number(b.BirthDateDay);
       }
-    } else if (sortConfig.key === 'GigCount') {
-      const countA = getGuestGigCount(a.GuestID);
-      const countB = getGuestGigCount(b.GuestID);
-      res = countA - countB;
+    } else if (sortConfig.key === 'City') {
+      const cityA = (showTRCity ? (a.CityTR || '') : (a.City || '')).trim();
+      const cityB = (showTRCity ? (b.CityTR || '') : (b.City || '')).trim();
+      const hasA = cityA.length > 0;
+      const hasB = cityB.length > 0;
+      if (hasA && !hasB) res = -1;
+      else if (!hasA && hasB) res = 1;
+      else res = cityA.toLocaleLowerCase('tr-TR').localeCompare(cityB.toLocaleLowerCase('tr-TR'), 'tr');
     } else if (sortConfig.key === 'CreatedAt') {
       const timeA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : Number(a.GuestID || 0);
       const timeB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : Number(b.GuestID || 0);
@@ -836,11 +849,26 @@ export default function Guests() {
                   {renderSortArrow('BirthDate')}
                 </span>
               </th>
-              <th onClick={() => handleSort('City')} className="th-city" style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
-                ŞEHİR
-                <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'City' ? 'inherit' : 'var(--text-muted)' }}>
-                  {renderSortArrow('City')}
+              <th className="th-city" style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px', whiteSpace: 'nowrap' }}>
+                <span onClick={() => handleSort('City')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  ŞEHİR
+                  <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'City' ? 'inherit' : 'var(--text-muted)' }}>
+                    {renderSortArrow('City')}
+                  </span>
                 </span>
+                <label 
+                  style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--primary)', marginLeft: '4px', cursor: 'pointer' }} 
+                  onClick={(e) => e.stopPropagation()} 
+                  title="Türkiye / Yurtdışı Şehirlerini Göster"
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={showTRCity} 
+                    onChange={(e) => setShowTRCity(e.target.checked)} 
+                    style={{ verticalAlign: 'middle', marginRight: '2px', cursor: 'pointer' }} 
+                  />
+                  TR
+                </label>
               </th>
               <th onClick={() => handleSort('CreatedAt')} className="th-createdat" style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', paddingLeft: '2px', paddingRight: '2px' }} title="Kayıt Tarihine Göre Sırala">
                 KAYIT TAR.
@@ -925,7 +953,7 @@ export default function Guests() {
                   {formatBirthDate(guest.BirthDateDay, guest.BirthDateMonth, guest.BirthDateYear)}
                 </td>
                 <td data-label="ŞEHİR" style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
-                  {renderCityMultiLine(guest.City)}
+                  {renderCityMultiLine(showTRCity ? guest.CityTR : guest.City)}
                 </td>
                 <td data-label="KAYIT TAR." style={{ paddingLeft: '2px', paddingRight: '2px', textAlign: 'right' }}>
                   <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
@@ -1029,16 +1057,29 @@ export default function Guests() {
                 <input type="text" name="PhoneNumber" value={formData.PhoneNumber} onChange={handleChange} />
               </div>
 
-              <div className="form-group">
-                <label>Şehir / Adres (Enter ile alt satıra geçilebilir)</label>
-                <textarea
-                  name="City"
-                  value={formData.City}
-                  onChange={handleChange}
-                  rows="2"
-                  placeholder="Örn: Lefkoşa&#10;KKTC"
-                  style={{ resize: 'vertical', width: '100%', fontFamily: 'inherit', fontSize: '0.95rem', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
-                />
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ flex: '1 1 200px' }}>
+                  <label>Şehir (Kıbrıs)</label>
+                  <textarea
+                    name="City"
+                    value={formData.City}
+                    onChange={handleChange}
+                    rows="2"
+                    placeholder="Güzelyurt&#10;Gemikonağı"
+                    style={{ resize: 'vertical', width: '100%', fontFamily: 'inherit', fontSize: '0.95rem', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+                  />
+                </div>
+                <div className="form-group" style={{ flex: '1 1 200px' }}>
+                  <label>Şehir (Türkiye)</label>
+                  <textarea
+                    name="CityTR"
+                    value={formData.CityTR}
+                    onChange={handleChange}
+                    rows="2"
+                    placeholder="İzmir&#10;Karşıyaka"
+                    style={{ resize: 'vertical', width: '100%', fontFamily: 'inherit', fontSize: '0.95rem', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+                  />
+                </div>
               </div>
               
               <div className="form-group">

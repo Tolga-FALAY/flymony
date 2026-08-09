@@ -93,6 +93,7 @@ export const api = {
       PhoneNumber:    g.PhoneNumber || '',
       InstagramLink:  g.InstagramLink || '',
       City:           g.City || '',
+      CityTR:         g.CityTR || '',
       Notes:          g.Notes || '',
       ProfilePicture: g.ProfilePicture || '',
       BirthDateDay:   g.BirthDateDay || '',
