@@ -4281,11 +4281,11 @@ async function saveGig(event) {
       IsRequest: s.isRequest || 0
     })),
     Guests: editorGigGuests.map(g => ({
-      GuestID: g.guestId,
+      GuestID: (g.guestId && Number(g.guestId) > 0) ? Number(g.guestId) : null,
       IsAnonymous: g.isAnonymous ? 1 : 0,
       TableName: g.tableName,
       Description: g.description || '',
-      GuestCount: g.guestCount || 1,
+      GuestCount: Number(g.guestCount || 1),
       FullName: g.fullName
     }))
   };

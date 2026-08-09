@@ -105,8 +105,11 @@ export const initializeDB = () => {
         CREATE TABLE IF NOT EXISTS Gig_Guests (
             GigGuestID INTEGER PRIMARY KEY AUTOINCREMENT,
             GigID INTEGER NOT NULL,
-            GuestID INTEGER NOT NULL,
+            GuestID INTEGER,
             TableName TEXT,
+            Description TEXT,
+            GuestCount INTEGER DEFAULT 1,
+            IsAnonymous INTEGER DEFAULT 0,
             FOREIGN KEY (GigID) REFERENCES Gigs(GigID) ON DELETE CASCADE,
             FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
         );
@@ -667,6 +670,56 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while adding GoogleMapsLink column to Venues table:", e);
+    }
+
+    // ----------------------------------------------------
+    // GIG_GUESTS TABLE MIGRATION (Description, GuestCount, IsAnonymous, Nullable GuestID)
+    // ----------------------------------------------------
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Gig_Guests)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        
+        if (!existingCols.includes('Description')) {
+            console.log("Migrating database: Adding Description column to Gig_Guests table...");
+            db.exec("ALTER TABLE Gig_Guests ADD COLUMN Description TEXT;");
+        }
+        if (!existingCols.includes('GuestCount')) {
+            console.log("Migrating database: Adding GuestCount column to Gig_Guests table...");
+            db.exec("ALTER TABLE Gig_Guests ADD COLUMN GuestCount INTEGER DEFAULT 1;");
+        }
+        if (!existingCols.includes('IsAnonymous')) {
+            console.log("Migrating database: Adding IsAnonymous column to Gig_Guests table...");
+            db.exec("ALTER TABLE Gig_Guests ADD COLUMN IsAnonymous INTEGER DEFAULT 0;");
+        }
+
+        const guestIdCol = tableInfo.find(c => c.name === 'GuestID');
+        if (guestIdCol && guestIdCol.notnull === 1) {
+            console.log("Migrating Gig_Guests table: Making GuestID column nullable...");
+            db.transaction(() => {
+                db.exec("ALTER TABLE Gig_Guests RENAME TO Gig_Guests_old;");
+                db.exec(`
+                    CREATE TABLE Gig_Guests (
+                        GigGuestID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        GigID INTEGER NOT NULL,
+                        GuestID INTEGER,
+                        TableName TEXT,
+                        Description TEXT,
+                        GuestCount INTEGER DEFAULT 1,
+                        IsAnonymous INTEGER DEFAULT 0,
+                        FOREIGN KEY (GigID) REFERENCES Gigs(GigID) ON DELETE CASCADE,
+                        FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
+                    );
+                `);
+                db.exec(`
+                    INSERT INTO Gig_Guests (GigGuestID, GigID, GuestID, TableName, Description, GuestCount, IsAnonymous)
+                    SELECT GigGuestID, GigID, CASE WHEN GuestID = 0 THEN NULL ELSE GuestID END, TableName, Description, GuestCount, IsAnonymous FROM Gig_Guests_old;
+                `);
+                db.exec("DROP TABLE Gig_Guests_old;");
+            })();
+            console.log("Gig_Guests nullable GuestID migration complete.");
+        }
+    } catch (e) {
+        console.error("Migration error while updating Gig_Guests table:", e);
     }
 
     console.log("Database tables initialized.");

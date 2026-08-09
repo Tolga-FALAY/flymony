@@ -984,15 +984,18 @@ app.get('/api/gigs', (req, res) => {
             }));
 
             const guests = db.prepare(`
-                SELECT gg.GigGuestID, gg.GuestID, gg.TableName, g.FirstName, g.LastName
+                SELECT gg.GigGuestID, gg.GuestID, gg.TableName, gg.Description, gg.GuestCount, gg.IsAnonymous, g.FirstName, g.LastName
                 FROM Gig_Guests gg
-                JOIN Guests g ON gg.GuestID = g.GuestID
+                LEFT JOIN Guests g ON gg.GuestID = g.GuestID
                 WHERE gg.GigID = ?
             `).all(gig.GigID).map(g => ({
                 GigGuestID: Number(g.GigGuestID),
-                GuestID: Number(g.GuestID),
+                GuestID: g.GuestID ? Number(g.GuestID) : null,
+                IsAnonymous: Number(g.IsAnonymous || (!g.GuestID ? 1 : 0)),
                 TableName: g.TableName || '',
-                FullName: `${g.FirstName} ${g.LastName}`.trim()
+                Description: g.Description || '',
+                GuestCount: Number(g.GuestCount || 1),
+                FullName: (g.FirstName || g.LastName) ? `${g.FirstName || ''} ${g.LastName || ''}`.trim() : 'Tanımsız Grup'
             }));
 
             return {
@@ -1049,11 +1052,19 @@ app.post('/api/gigs', (req, res) => {
 
             if (Guests && Array.isArray(Guests)) {
                 const insertGuest = db.prepare(`
-                    INSERT INTO Gig_Guests (GigID, GuestID, TableName)
-                    VALUES (?, ?, ?)
+                    INSERT INTO Gig_Guests (GigID, GuestID, TableName, Description, GuestCount, IsAnonymous)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 `);
                 Guests.forEach(guest => {
-                    insertGuest.run(gigId, Number(guest.GuestID), guest.TableName || '');
+                    const guestId = (guest.GuestID && Number(guest.GuestID) > 0) ? Number(guest.GuestID) : null;
+                    insertGuest.run(
+                        gigId,
+                        guestId,
+                        guest.TableName || '',
+                        guest.Description || '',
+                        Number(guest.GuestCount || 1),
+                        guest.IsAnonymous ? 1 : 0
+                    );
                 });
             }
 
@@ -1103,11 +1114,19 @@ app.put('/api/gigs/:id', (req, res) => {
             db.prepare('DELETE FROM Gig_Guests WHERE GigID = ?').run(gigId);
             if (Guests && Array.isArray(Guests)) {
                 const insertGuest = db.prepare(`
-                    INSERT INTO Gig_Guests (GigID, GuestID, TableName)
-                    VALUES (?, ?, ?)
+                    INSERT INTO Gig_Guests (GigID, GuestID, TableName, Description, GuestCount, IsAnonymous)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 `);
                 Guests.forEach(guest => {
-                    insertGuest.run(gigId, Number(guest.GuestID), guest.TableName || '');
+                    const guestId = (guest.GuestID && Number(guest.GuestID) > 0) ? Number(guest.GuestID) : null;
+                    insertGuest.run(
+                        gigId,
+                        guestId,
+                        guest.TableName || '',
+                        guest.Description || '',
+                        Number(guest.GuestCount || 1),
+                        guest.IsAnonymous ? 1 : 0
+                    );
                 });
             }
         });

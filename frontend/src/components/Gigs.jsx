@@ -212,9 +212,21 @@ export default function Gigs() {
       return;
     }
 
+    const payload = {
+      ...formData,
+      Guests: formData.Guests.map(g => ({
+        GuestID: (g.GuestID && Number(g.GuestID) > 0) ? Number(g.GuestID) : null,
+        IsAnonymous: g.IsAnonymous ? 1 : 0,
+        TableName: g.TableName || '',
+        Description: g.Description || '',
+        GuestCount: Number(g.GuestCount || 1),
+        FullName: g.FullName
+      }))
+    };
+
     try {
       if (editingGig) {
-        await api.updateGig(editingGig.GigID, formData);
+        await api.updateGig(editingGig.GigID, payload);
         // Refresh local store
         const refreshed = await api.getGigs();
         const updated = refreshed.find(g => g.GigID === editingGig.GigID);
@@ -222,9 +234,9 @@ export default function Gigs() {
           store.updateGig(editingGig.GigID, updated);
         }
       } else {
-        const result = await api.createGig(formData);
+        const result = await api.createGig(payload);
         const refreshed = await api.getGigs();
-        const created = refreshed.find(g => g.GigID === result.GigID);
+        const created = refreshed.find(g => g.GigID === result.GigID || g.GigID === result.id);
         if (created) {
           store.addGig(created);
         }
