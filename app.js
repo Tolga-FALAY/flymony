@@ -348,9 +348,9 @@ function openModal(modalId) {
     if (!document.getElementById('guestID')?.value) {
       vanillaRelatedGuestIDs = [];
       const cityEl = document.getElementById('guestCity');
-      if (cityEl) cityEl.value = 'Güzelyurt\nGemikonağı';
+      if (cityEl) cityEl.value = '';
       const cityTREl = document.getElementById('guestCityTR');
-      if (cityTREl) cityTREl.value = 'İzmir\nKarşıyaka';
+      if (cityTREl) cityTREl.value = '';
       const metaEl = document.getElementById('guestRegistrationMeta');
       if (metaEl) metaEl.innerText = '';
     }
@@ -1651,10 +1651,10 @@ function editGuest(id) {
   document.getElementById('guestLastName').value = guest.lastName;
   document.getElementById('guestPhone').value = guest.phone || '';
   if (document.getElementById('guestCity')) {
-    document.getElementById('guestCity').value = guest.city || 'Güzelyurt\nGemikonağı';
+    document.getElementById('guestCity').value = guest.city || '';
   }
   if (document.getElementById('guestCityTR')) {
-    document.getElementById('guestCityTR').value = guest.cityTR || 'İzmir\nKarşıyaka';
+    document.getElementById('guestCityTR').value = guest.cityTR || '';
   }
   document.getElementById('guestInstagram').value = guest.instagram || '';
   document.getElementById('guestNotes').value = guest.notes || '';
