@@ -845,9 +845,12 @@ export default function Guests() {
                 <td data-label="DOĞUM T." style={{ paddingLeft: '2px', paddingRight: '2px' }}>
                   {formatBirthDate(guest.BirthDateDay, guest.BirthDateMonth, guest.BirthDateYear)}
                 </td>
+                <td data-label="Kayıt Tarihi" style={{ textAlign: 'right', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', paddingLeft: '2px', paddingRight: '2px' }}>
+                  {guest.CreatedAt ? new Date(guest.CreatedAt).toLocaleDateString('tr-TR') : '-'}
+                </td>
                 <td data-label="İşlemler" style={{ paddingLeft: '2px', paddingRight: '2px' }}>
                   <div className="action-btns">
-                    {guest.Notes && guest.Notes.trim().length > 0 && (
+                    {String(guest.Notes || '').trim().length > 0 && (
                       <button 
                         className="btn btn-sm" 
                         style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
@@ -864,7 +867,7 @@ export default function Guests() {
               </tr>
             ))}
             {filteredGuests.length === 0 && (
-              <tr><td colSpan="6" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="7" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>

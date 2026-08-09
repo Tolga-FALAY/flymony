@@ -832,10 +832,12 @@ function renderGuests() {
       ? `<span style="font-weight: 700; color: #0284c7; background: rgba(14, 165, 233, 0.12); padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.82rem; border: 1px solid rgba(14, 165, 233, 0.25); display: inline-block; cursor: pointer;" onclick="openGuestGigsModal(${guest.id})" title="Katıldığı sahneleri göster">${gigCount}</span>`
       : `<span style="color: var(--text-muted); font-size: 0.85rem;">0</span>`;
 
-    const hasNotes = guest.notes && guest.notes.trim().length > 0;
+    const hasNotes = String(guest.notes || '').trim().length > 0;
     const noteBtnHtml = hasNotes 
       ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGuestNoteModal(${guest.id})" title="Notu Oku">📝</button>` 
       : '';
+
+    const createdAtStr = guest.createdAt ? new Date(guest.createdAt).toLocaleDateString('tr-TR') : '-';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -855,6 +857,7 @@ function renderGuests() {
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
       <td data-label="DOĞUM T." style="padding-left: 2px; padding-right: 2px;">${birthDateStr}</td>
+      <td data-label="Kayıt Tarihi" style="text-align: right; font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; padding-left: 2px; padding-right: 2px;">${createdAtStr}</td>
       <td data-label="İşlemler" class="action-btns" style="padding-left: 2px; padding-right: 2px;">
         ${noteBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>
