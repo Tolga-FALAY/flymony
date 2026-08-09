@@ -1,0 +1,28 @@
+{
+  "short_name": "FLYmony",
+  "name": "FLYmony - Şarkı & Sahne Yönetimi",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/flymonyFavicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/flymonyLogo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "display": "standalone",
+  "orientation": "portrait"
+}
