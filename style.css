@@ -33,9 +33,14 @@ body {
 }
 
 .container {
-  padding: 2rem 2rem 2rem calc(260px + 2rem);
+  padding: 1.5rem 1.5rem 1.5rem calc(260px + 1.5rem);
   max-width: 1400px;
   margin: 0 auto;
+  transition: padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.sidebar-is-collapsed .container {
+  padding-left: calc(72px + 1.5rem);
 }
 
 /* Desktop: full-height fixed left rail holding logo + vertical nav as one glass card */
@@ -49,6 +54,64 @@ body {
   bottom: 0;
   height: 100vh;
   z-index: 50;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-sidebar.collapsed {
+  width: 72px;
+}
+
+.sidebar-collapse-toggle-btn {
+  position: absolute;
+  top: 1rem;
+  right: -13px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  z-index: 20;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-collapse-toggle-btn:hover {
+  background: var(--primary-hover);
+  transform: scale(1.15);
+}
+
+.app-sidebar.collapsed header {
+  padding: 1rem 0.25rem 0.75rem;
+}
+
+.app-sidebar.collapsed .logo-img {
+  height: 40px;
+  max-width: 50px;
+}
+
+.app-sidebar.collapsed nav#navMenu {
+  padding: 0.75rem 0.3rem;
+}
+
+.app-sidebar.collapsed .nav-btn {
+  justify-content: center;
+  padding: 0.8rem 0;
+  border-radius: 10px;
+}
+
+.app-sidebar.collapsed .nav-text {
+  display: none;
+}
+
+.app-sidebar.collapsed .nav-icon {
+  font-size: 1.25rem;
+  margin: 0;
 }
 
 /* Glassmorphism Dashboard Header — top of the full-height rail */
@@ -95,10 +158,13 @@ h1 {
 }
 
 .nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   background: transparent;
   border: none;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
@@ -107,6 +173,18 @@ h1 {
   font-family: 'Montserrat', sans-serif !important;
   width: 100%;
   text-align: left;
+}
+
+.nav-icon {
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-text {
+  line-height: 1.2;
 }
 
 .nav-btn:hover {

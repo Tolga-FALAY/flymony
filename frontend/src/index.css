@@ -91,6 +91,54 @@ body {
   background: var(--surface);
   border-right: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 50;
+}
+
+.sidebar.sidebar--collapsed {
+  width: 72px;
+  padding: 1.5rem 0.4rem;
+}
+
+.sidebar.sidebar--collapsed .logo-img {
+  height: 42px;
+  max-width: 50px;
+}
+
+.sidebar.sidebar--collapsed .nav-btn {
+  justify-content: center;
+  padding: 0.8rem 0;
+  gap: 0;
+}
+
+.sidebar.sidebar--collapsed .nav-label,
+.sidebar.sidebar--collapsed .sidebar-footer {
+  display: none;
+}
+
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: -13px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  z-index: 20;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--primary-hover);
+  transform: scale(1.15);
 }
 
 .sidebar-logo {
@@ -100,6 +148,7 @@ body {
   padding: 0.25rem 0.5rem 0.5rem;
   margin-bottom: 0.25rem;
   border-bottom: 1px solid var(--border);
+  position: relative;
 }
 
 .logo-img {

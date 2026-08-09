@@ -2876,6 +2876,46 @@ window.pasteVanillaGigPhoto = pasteVanillaGigPhoto;
 window.toggleLiveSongPlayed = toggleLiveSongPlayed;
 window.toggleLiveViewMode = toggleLiveViewMode;
 window.removeLiveGigSong = removeLiveGigSong;
+window.toggleVanillaSidebarCollapse = toggleVanillaSidebarCollapse;
+
+function toggleVanillaSidebarCollapse() {
+  const sidebar = document.querySelector('.app-sidebar');
+  const icon = document.getElementById('sidebarCollapseIcon');
+  if (!sidebar) return;
+  const isCollapsed = sidebar.classList.toggle('collapsed');
+  document.body.classList.toggle('sidebar-is-collapsed', isCollapsed);
+  localStorage.setItem('flymony_sidebar_state', isCollapsed ? 'collapsed' : 'expanded');
+  if (icon) {
+    icon.innerText = isCollapsed ? '➔' : '◀';
+  }
+}
+
+function initVanillaSidebarCollapse() {
+  const savedState = localStorage.getItem('flymony_sidebar_state');
+  // Default to 'collapsed' (icon-only mode) as requested by user
+  const isCollapsed = savedState !== 'expanded';
+  const sidebar = document.querySelector('.app-sidebar');
+  const icon = document.getElementById('sidebarCollapseIcon');
+  if (sidebar) {
+    if (isCollapsed) {
+      sidebar.classList.add('collapsed');
+      document.body.classList.add('sidebar-is-collapsed');
+      if (icon) icon.innerText = '➔';
+    } else {
+      sidebar.classList.remove('collapsed');
+      document.body.classList.remove('sidebar-is-collapsed');
+      if (icon) icon.innerText = '◀';
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVanillaSidebarCollapse);
+  } else {
+    initVanillaSidebarCollapse();
+  }
+}
 
 // Durum Değişiklik Tarihi İşlemleri
 function getLocalDatetimeString() {

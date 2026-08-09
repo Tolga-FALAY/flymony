@@ -103,6 +103,15 @@ const NAV_ITEMS = [
 function App() {
   const [activeTab, setActiveTab] = useState('requests');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('flymony_sidebar_state') !== 'expanded');
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('flymony_sidebar_state', next ? 'collapsed' : 'expanded');
+      return next;
+    });
+  };
 
   // Kayıt sayaçları — store'daki listelerin length'inden okunur.
   // Firestore'a ekstra okuma yapılmaz.
@@ -153,9 +162,17 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className={`sidebar${menuOpen ? ' sidebar--open' : ''}`}>
+      <aside className={`sidebar${sidebarCollapsed ? ' sidebar--collapsed' : ''}${menuOpen ? ' sidebar--open' : ''}`}>
         <div className="sidebar-logo">
           <img src="/flymonyLogo.png" alt="FLY Logo" className="logo-img" />
+          <button 
+            type="button" 
+            className="sidebar-collapse-btn" 
+            onClick={toggleSidebar} 
+            title={sidebarCollapsed ? "Menüyü Genişlet" : "Menüyü Daralt (İkon Modu)"}
+          >
+            {sidebarCollapsed ? '➔' : '◀'}
+          </button>
         </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map(item => (
@@ -163,6 +180,7 @@ function App() {
               key={item.key}
               className={`nav-btn ${activeTab === item.key ? 'active' : ''}`}
               onClick={() => handleNavClick(item.key)}
+              title={`${item.label} ${counts[item.key] !== undefined ? `(${counts[item.key]})` : ''}`}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">
@@ -171,7 +189,7 @@ function App() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-footer">flymony · yönetim paneli</div>
+        <div className="sidebar-footer">flymony</div>
       </aside>
 
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}

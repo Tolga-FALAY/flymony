@@ -13,23 +13,26 @@
 <body>
   <div class="container">
     <aside class="app-sidebar">
-      <header>
+      <header style="position: relative;">
         <button id="menuToggle" class="menu-toggle" aria-label="Menü" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
         <div class="logo-area">
           <img src="flymonyLogo.png" alt="FLY Logo" class="logo-img">
         </div>
+        <button id="sidebarCollapseBtn" class="sidebar-collapse-toggle-btn" onclick="toggleVanillaSidebarCollapse()" title="Menüyü Genişlet / Daralt (İkon Modu)">
+          <span id="sidebarCollapseIcon">➔</span>
+        </button>
       </header>
       <nav id="navMenu">
         <button id="mobileNavClose" class="mobile-nav-close" aria-label="Menüyü Kapat"></button>
-        <button class="nav-btn active" data-target="requests">İstekler</button>
-        <button class="nav-btn" data-target="gigs">Sahneler</button>
-        <button class="nav-btn" data-target="songs">Şarkılar</button>
-        <button class="nav-btn" data-target="artists">Sanatçılar</button>
-        <button class="nav-btn" data-target="guests">Misafirler</button>
-        <button class="nav-btn" data-target="otherOperations">Diğer İşlemler</button>
-        <button class="nav-btn" data-target="parameters">Parametreler</button>
+        <button class="nav-btn active" data-target="requests" title="İstekler"><span class="nav-icon">📜</span><span class="nav-text">İstekler</span></button>
+        <button class="nav-btn" data-target="gigs" title="Sahneler"><span class="nav-icon">🎤</span><span class="nav-text">Sahneler</span></button>
+        <button class="nav-btn" data-target="songs" title="Şarkılar"><span class="nav-icon">🎵</span><span class="nav-text">Şarkılar</span></button>
+        <button class="nav-btn" data-target="artists" title="Sanatçılar"><span class="nav-icon">👨‍🎤</span><span class="nav-text">Sanatçılar</span></button>
+        <button class="nav-btn" data-target="guests" title="Misafirler"><span class="nav-icon">👥</span><span class="nav-text">Misafirler</span></button>
+        <button class="nav-btn" data-target="otherOperations" title="Diğer İşlemler"><span class="nav-icon">⚙️</span><span class="nav-text">Diğer İşlemler</span></button>
+        <button class="nav-btn" data-target="parameters" title="Parametreler"><span class="nav-icon">📊</span><span class="nav-text">Parametreler</span></button>
       </nav>
       <div id="menuBackdrop" class="menu-backdrop"></div>
     </aside>
