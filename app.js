@@ -146,6 +146,7 @@ const DB = {
         fullName: `${g.FirstName || ""} ${g.LastName || ""}`.trim(),
         phone: g.PhoneNumber || "",
         instagram: g.InstagramLink || "",
+        city: g.City || "",
         notes: g.Notes || "",
         profilePicture: g.ProfilePicture || "",
         birthDateDay: g.BirthDateDay || "",
@@ -345,6 +346,10 @@ function openModal(modalId) {
     populateBirthdateDropdowns();
     if (!document.getElementById('guestID')?.value) {
       vanillaRelatedGuestIDs = [];
+      const cityEl = document.getElementById('guestCity');
+      if (cityEl) cityEl.value = '';
+      const metaEl = document.getElementById('guestRegistrationMeta');
+      if (metaEl) metaEl.innerText = '';
     }
     populateVanillaGuestRelationDropdown();
     renderVanillaGuestRelationsList();
@@ -837,16 +842,15 @@ function renderGuests() {
       ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGuestNoteModal(${guest.id})" title="Notu Oku">📝</button>` 
       : '';
 
-    const formatDDMMYYYY = (dateVal) => {
-      if (!dateVal) return '-';
-      const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return '-';
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}.${month}.${year}`;
+    const formatCityMultiLine = (cityStr) => {
+      if (!cityStr || !cityStr.trim()) return '-';
+      const lines = cityStr.trim().split('\n').filter(l => l.trim().length > 0);
+      if (lines.length === 0) return '-';
+      const line1 = lines[0];
+      const restLines = lines.slice(1);
+      const restHtml = restLines.map(l => `<div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500;">${l}</div>`).join('');
+      return `<div style="text-align: center; line-height: 1.25;"><div style="font-size: 0.85rem;">${line1}</div>${restHtml}</div>`;
     };
-    const createdAtStr = formatDDMMYYYY(guest.createdAt);
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -866,8 +870,8 @@ function renderGuests() {
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
       <td data-label="DOĞUM T." style="text-align: center; padding-left: 2px; padding-right: 2px;">${birthDateStr}</td>
-      <td data-label="KAYIT TAR." style="text-align: center; font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; padding-left: 2px; padding-right: 2px;">${createdAtStr}</td>
-      <td data-label="İşlemler" class="action-btns" style="padding-left: 2px; padding-right: 2px;">
+      <td data-label="ŞEHİR" style="text-align: center; padding-left: 2px; padding-right: 2px;">${formatCityMultiLine(guest.city)}</td>
+      <td data-label="KAYIT TAR." class="action-btns" style="padding-left: 2px; padding-right: 2px; text-align: right;">
         ${noteBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editGuest(${guest.id})">Düzenle</button>
         <button class="btn btn-sm btn-danger" onclick="deleteGuest(${guest.id})">Sil</button>
@@ -1478,12 +1482,50 @@ function openGuestContactModal(guestId) {
   openModal('guestContactModal');
 }
 
+function formatVanillaGuestRelativeTimeText(dateVal) {
+  if (!dateVal) return '';
+  const created = new Date(dateVal);
+  if (isNaN(created.getTime())) return '';
+
+  const now = new Date();
+  const diffTime = Math.max(0, now.getTime() - created.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  let timeAgoStr = '';
+  if (diffDays < 60) {
+    timeAgoStr = `${diffDays} Gün`;
+  } else if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    const days = diffDays % 30;
+    if (days === 0) timeAgoStr = `${months} Ay`;
+    else timeAgoStr = `${months} Ay, ${days} Gün`;
+  } else {
+    const years = Math.floor(diffDays / 365);
+    const remDays = diffDays % 365;
+    const months = Math.floor(remDays / 30);
+    const days = remDays % 30;
+    
+    const parts = [`${years} Yıl`];
+    if (months > 0) parts.push(`${months} Ay`);
+    if (days > 0) parts.push(`${days} Gün`);
+    timeAgoStr = parts.join(', ');
+  }
+
+  const dayStr = String(created.getDate()).padStart(2, '0');
+  const monthStr = String(created.getMonth() + 1).padStart(2, '0');
+  const yearStr = created.getFullYear();
+  const formattedDate = `${dayStr}.${monthStr}.${yearStr}`;
+
+  return `📅 Kayıt: ${formattedDate} (${timeAgoStr} önce)`;
+}
+
 async function saveGuest(e) {
   e.preventDefault();
   const id = document.getElementById('guestID').value;
   const firstName = document.getElementById('guestFirstName').value.trim();
   const lastName = document.getElementById('guestLastName').value.trim();
   const phone = document.getElementById('guestPhone').value;
+  const city = document.getElementById('guestCity')?.value || '';
   const instagram = document.getElementById('guestInstagram').value;
   const notes = document.getElementById('guestNotes').value;
   const profilePicture = document.getElementById('guestProfilePicture').value;
@@ -1543,6 +1585,7 @@ async function saveGuest(e) {
       FirstName: firstName,
       LastName: lastName,
       PhoneNumber: phone || "",
+      City: city || "",
       InstagramLink: instagram || "",
       Notes: notes || "",
       ProfilePicture: profilePicture || "",
@@ -1594,9 +1637,17 @@ function editGuest(id) {
   document.getElementById('guestFirstName').value = guest.firstName;
   document.getElementById('guestLastName').value = guest.lastName;
   document.getElementById('guestPhone').value = guest.phone || '';
+  if (document.getElementById('guestCity')) {
+    document.getElementById('guestCity').value = guest.city || '';
+  }
   document.getElementById('guestInstagram').value = guest.instagram || '';
   document.getElementById('guestNotes').value = guest.notes || '';
   
+  const metaEl = document.getElementById('guestRegistrationMeta');
+  if (metaEl) {
+    metaEl.innerText = formatVanillaGuestRelativeTimeText(guest.createdAt);
+  }
+
   // Fill in hidden image inputs
   document.getElementById('guestProfilePicture').value = guest.profilePicture || '';
   document.getElementById('guestPhotos').value = JSON.stringify(guest.photos || []);

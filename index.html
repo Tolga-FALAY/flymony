@@ -275,8 +275,8 @@
                   <th class="th-cep" style="text-align: center; padding-left: 2px; padding-right: 2px;">CEP</th>
                   <th onclick="sortGuests('instagram')" class="th-insta" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">INSTA <span id="sortIconGuestInstagram" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
                   <th onclick="sortGuests('birthdate')" class="th-birthdate" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">DOĞUM T. <span id="sortIconGuestBirthdate" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th onclick="sortGuests('createdat')" class="th-createdat" style="text-align: center; cursor: pointer; user-select: none; padding-left: 2px; padding-right: 2px;" title="Kayıt Tarihine Göre Sırala">KAYIT TAR. <span id="sortIconGuestCreatedAt" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
-                  <th class="th-actions" style="text-align: right; padding-left: 2px; padding-right: 2px;">İşlemler</th>
+                  <th onclick="sortGuests('city')" class="th-city" style="cursor: pointer; user-select: none; text-align: center; padding-left: 2px; padding-right: 2px;">ŞEHİR <span id="sortIconGuestCity" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
+                  <th onclick="sortGuests('createdat')" class="th-createdat" style="text-align: right; cursor: pointer; user-select: none; padding-left: 2px; padding-right: 2px;" title="Kayıt Tarihine Göre Sırala">KAYIT TAR. <span id="sortIconGuestCreatedAt" style="font-size: 0.75rem; color: var(--text-muted);"> ⇅</span></th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -747,6 +747,10 @@
           <input type="text" id="guestPhone">
         </div>
         <div class="form-group">
+          <label>Şehir / Adres (Enter ile alt satıra geçilebilir)</label>
+          <textarea id="guestCity" rows="2" placeholder="Örn: Lefkoşa&#10;KKTC" style="padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none; width: 100%;"></textarea>
+        </div>
+        <div class="form-group">
           <label>Instagram Linki</label>
           <input type="url" id="guestInstagram" placeholder="https://instagram.com/...">
         </div>
@@ -830,9 +834,12 @@
           </div>
         </div>
 
-        <div class="modal-actions" style="margin-top: 2rem;">
-          <button type="button" class="btn btn-outline" onclick="closeModal('guestModal')">İptal</button>
-          <button type="submit" class="btn btn-primary">Kaydet</button>
+        <div class="modal-actions" style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div id="guestRegistrationMeta" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;"></div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline" onclick="closeModal('guestModal')">İptal</button>
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+          </div>
         </div>
       </form>
     </div>

@@ -92,6 +92,7 @@ export const api = {
       FullName:       (g.FullName || `${g.FirstName || ""} ${g.LastName || ""}`).trim(),
       PhoneNumber:    g.PhoneNumber || '',
       InstagramLink:  g.InstagramLink || '',
+      City:           g.City || '',
       Notes:          g.Notes || '',
       ProfilePicture: g.ProfilePicture || '',
       BirthDateDay:   g.BirthDateDay || '',

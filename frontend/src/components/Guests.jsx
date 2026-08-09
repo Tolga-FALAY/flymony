@@ -202,6 +202,7 @@ export default function Guests() {
         FirstName: guest.FirstName,
         LastName: guest.LastName,
         PhoneNumber: guest.PhoneNumber || '',
+        City: guest.City || '',
         InstagramLink: guest.InstagramLink || '',
         Notes: guest.Notes || '',
         ProfilePicture: guest.ProfilePicture || '',
@@ -218,6 +219,7 @@ export default function Guests() {
         FirstName: '',
         LastName: '',
         PhoneNumber: '',
+        City: '',
         InstagramLink: '',
         Notes: '',
         ProfilePicture: '',
@@ -521,6 +523,61 @@ export default function Guests() {
     return `${day}.${month}.${year}`;
   };
 
+  const renderCityMultiLine = (cityStr) => {
+    if (!cityStr || !cityStr.trim()) return '-';
+    const lines = cityStr.trim().split('\n').filter(l => l.trim().length > 0);
+    if (lines.length === 0) return '-';
+    const line1 = lines[0];
+    const restLines = lines.slice(1);
+    return (
+      <div style={{ textAlign: 'center', lineHeight: 1.25 }}>
+        <div style={{ fontSize: '0.85rem' }}>{line1}</div>
+        {restLines.map((l, idx) => (
+          <div key={idx} style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+            {l}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderRegistrationMeta = (createdAtStr) => {
+    if (!createdAtStr) return null;
+    const created = new Date(createdAtStr);
+    if (isNaN(created.getTime())) return null;
+
+    const now = new Date();
+    const diffTime = Math.max(0, now.getTime() - created.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    let timeAgoStr = '';
+    if (diffDays < 60) {
+      timeAgoStr = `${diffDays} Gün`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      const days = diffDays % 30;
+      if (days === 0) timeAgoStr = `${months} Ay`;
+      else timeAgoStr = `${months} Ay, ${days} Gün`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      const remDays = diffDays % 365;
+      const months = Math.floor(remDays / 30);
+      const days = remDays % 30;
+      
+      const parts = [`${years} Yıl`];
+      if (months > 0) parts.push(`${months} Ay`);
+      if (days > 0) parts.push(`${days} Gün`);
+      timeAgoStr = parts.join(', ');
+    }
+
+    const dayStr = String(created.getDate()).padStart(2, '0');
+    const monthStr = String(created.getMonth() + 1).padStart(2, '0');
+    const yearStr = created.getFullYear();
+    const formattedDate = `${dayStr}.${monthStr}.${yearStr}`;
+
+    return `📅 Kayıt: ${formattedDate} (${timeAgoStr} önce)`;
+  };
+
   // 3-Line Phone Formatter
   const renderPhone3Lines = (phone) => {
     if (!phone) return '-';
@@ -779,13 +836,18 @@ export default function Guests() {
                   {renderSortArrow('BirthDate')}
                 </span>
               </th>
-              <th onClick={() => handleSort('CreatedAt')} className="th-createdat" style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', paddingLeft: '2px', paddingRight: '2px' }} title="Kayıt Tarihine Göre Sırala">
+              <th onClick={() => handleSort('City')} className="th-city" style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
+                ŞEHİR
+                <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'City' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('City')}
+                </span>
+              </th>
+              <th onClick={() => handleSort('CreatedAt')} className="th-createdat" style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', paddingLeft: '2px', paddingRight: '2px' }} title="Kayıt Tarihine Göre Sırala">
                 KAYIT TAR.
                 <span style={{ fontSize: '0.75rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('CreatedAt')}
                 </span>
               </th>
-              <th className="th-actions" style={{ textAlign: 'right', paddingLeft: '2px', paddingRight: '2px' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -862,11 +924,11 @@ export default function Guests() {
                 <td data-label="DOĞUM T." style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
                   {formatBirthDate(guest.BirthDateDay, guest.BirthDateMonth, guest.BirthDateYear)}
                 </td>
-                <td data-label="KAYIT TAR." style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', paddingLeft: '2px', paddingRight: '2px' }}>
-                  {formatDDMMYYYY(guest.CreatedAt)}
+                <td data-label="ŞEHİR" style={{ textAlign: 'center', paddingLeft: '2px', paddingRight: '2px' }}>
+                  {renderCityMultiLine(guest.City)}
                 </td>
-                <td data-label="İşlemler" style={{ paddingLeft: '2px', paddingRight: '2px' }}>
-                  <div className="action-btns">
+                <td data-label="KAYIT TAR." style={{ paddingLeft: '2px', paddingRight: '2px', textAlign: 'right' }}>
+                  <div className="action-btns" style={{ justifyContent: 'flex-end' }}>
                     {String(guest.Notes || '').trim().length > 0 && (
                       <button 
                         className="btn btn-sm" 
@@ -965,6 +1027,18 @@ export default function Guests() {
               <div className="form-group">
                 <label>Telefon Numarası</label>
                 <input type="text" name="PhoneNumber" value={formData.PhoneNumber} onChange={handleChange} />
+              </div>
+
+              <div className="form-group">
+                <label>Şehir / Adres (Enter ile alt satıra geçilebilir)</label>
+                <textarea
+                  name="City"
+                  value={formData.City}
+                  onChange={handleChange}
+                  rows="2"
+                  placeholder="Örn: Lefkoşa&#10;KKTC"
+                  style={{ resize: 'vertical', width: '100%', fontFamily: 'inherit', fontSize: '0.95rem', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+                />
               </div>
               
               <div className="form-group">
@@ -1226,9 +1300,14 @@ export default function Guests() {
                 </div>
               </div>
 
-              <div className="modal-actions" style={{marginTop: '2rem'}}>
-                <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
-                <button type="submit" className="btn btn-primary">Kaydet</button>
+              <div className="modal-actions" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                  {editingGuest ? renderRegistrationMeta(editingGuest.CreatedAt) : ''}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
+                  <button type="submit" className="btn btn-primary">Kaydet</button>
+                </div>
               </div>
             </form>
           </div>
