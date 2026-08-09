@@ -469,6 +469,13 @@ export default function Guests() {
     }
   };
 
+  // Helpers
+  const getInitials = (first, last) => {
+    const f = first ? first.charAt(0).toUpperCase() : '';
+    const l = last ? last.charAt(0).toUpperCase() : '';
+    return `${f}${l}`;
+  };
+
   // Age Calculator Helper
   const calculateAge = (day, month, year) => {
     if (!day || !month || !year) return null;
