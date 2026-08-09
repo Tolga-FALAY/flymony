@@ -1081,10 +1081,9 @@
             <span id="gigLiveSongArtist" style="font-size: 0.8rem;">-</span>
           </div>
           <div>
-            <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: bold; font-size: 0.9rem;">
-              <input type="checkbox" id="gigLivePlayedCheckbox" onchange="toggleLiveSongPlayedFromCheckbox()">
-              <span id="gigLivePlayedLabel">Çalınmadı</span>
-            </label>
+            <button type="button" id="btnToggleLivePlayed" onclick="toggleLiveSongPlayed()" style="padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 700; cursor: pointer; border: 1px solid transparent; font-size: 0.88rem; transition: all 0.2s ease;">
+              <span id="gigLivePlayedLabel">◯ Çalınmadı</span>
+            </button>
           </div>
         </div>
 

@@ -1200,17 +1200,22 @@ export default function Gigs() {
                         <span style={{ fontSize: '0.8rem', color: liveTheme === 'dark' ? '#94a3b8' : '#64748b' }}>{gigSong.ArtistNames || '-'}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        {/* Played Switch */}
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={!!gigSong.IsPlayed}
-                            onChange={() => toggleSongPlayed(liveSongIndex)}
-                          />
-                          <span style={{ color: gigSong.IsPlayed ? '#059669' : 'inherit' }}>
-                            {gigSong.IsPlayed ? '✓ Çalındı' : 'Çalınmadı'}
-                          </span>
-                        </label>
+                        <button
+                          type="button"
+                          onClick={() => toggleSongPlayed(liveSongIndex)}
+                          style={{
+                            padding: '0.4rem 0.8rem',
+                            borderRadius: '6px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.2)',
+                            background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                            color: gigSong.IsPlayed ? '#34d399' : (liveTheme === 'dark' ? '#cbd5e1' : '#475569'),
+                            fontSize: '0.88rem'
+                          }}
+                        >
+                          {gigSong.IsPlayed ? '✓ Çalındı (Değiştir ↺)' : '◯ Çalınmadı (Çalındı Yap)'}
+                        </button>
                       </div>
                     </div>
 

@@ -2873,6 +2873,7 @@ window.updateGuestDescriptionVanilla = updateGuestDescriptionVanilla;
 window.updateGuestCountVanilla = updateGuestCountVanilla;
 window.removeGuestFromGigListByIndex = removeGuestFromGigListByIndex;
 window.pasteVanillaGigPhoto = pasteVanillaGigPhoto;
+window.toggleLiveSongPlayed = toggleLiveSongPlayed;
 window.toggleLiveViewMode = toggleLiveViewMode;
 window.removeLiveGigSong = removeLiveGigSong;
 
@@ -4484,7 +4485,7 @@ function renderLiveGigSong() {
   const title = document.getElementById('gigLiveSongTitle');
   const artist = document.getElementById('gigLiveSongArtist');
   const counter = document.getElementById('gigLiveSongCounter');
-  const checkbox = document.getElementById('gigLivePlayedCheckbox');
+  const playedBtn = document.getElementById('btnToggleLivePlayed');
   const playedLabel = document.getElementById('gigLivePlayedLabel');
   const chordContent = document.getElementById('gigLiveChordContent');
 
@@ -4492,9 +4493,12 @@ function renderLiveGigSong() {
     title.innerText = '-';
     artist.innerText = '-';
     counter.innerText = '- / -';
-    checkbox.checked = false;
-    playedLabel.innerText = 'Çalınmadı';
-    playedLabel.style.color = 'inherit';
+    if (playedBtn && playedLabel) {
+      playedBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+      playedBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      playedBtn.style.color = 'inherit';
+      playedLabel.innerText = '◯ Çalınmadı';
+    }
     chordContent.innerHTML = '<div style="text-align: center; margin-top: 3rem; color: var(--text-muted);">Lütfen bir şarkı seçin.</div>';
     return;
   }
@@ -4504,9 +4508,19 @@ function renderLiveGigSong() {
   artist.innerText = gigSong.artistNames || '-';
   counter.innerText = `${liveGigSongIndex + 1} / ${liveGigObj.songs.length}`;
 
-  checkbox.checked = !!gigSong.isPlayed;
-  playedLabel.innerText = gigSong.isPlayed ? '✓ Çalındı' : 'Çalınmadı';
-  playedLabel.style.color = gigSong.isPlayed ? '#059669' : 'inherit';
+  if (playedBtn && playedLabel) {
+    if (gigSong.isPlayed) {
+      playedBtn.style.background = 'rgba(16, 185, 129, 0.25)';
+      playedBtn.style.borderColor = '#10b981';
+      playedBtn.style.color = '#34d399';
+      playedLabel.innerText = '✓ Çalındı (Değiştir ↺)';
+    } else {
+      playedBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+      playedBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      playedBtn.style.color = liveGigTheme === 'dark' ? '#cbd5e1' : '#475569';
+      playedLabel.innerText = '◯ Çalınmadı (Çalındı Yap)';
+    }
+  }
 
   const fullSong = DB.songs.find(s => s.id === gigSong.songId);
   chordContent.style.fontSize = `${liveGigFontSize}rem`;
@@ -4562,12 +4576,11 @@ function renderLiveGigSong() {
   }
 }
 
-async function toggleLiveSongPlayedFromCheckbox() {
+async function toggleLiveSongPlayed() {
   if (liveGigSongIndex === -1 || !liveGigObj.songs || !liveGigObj.songs[liveGigSongIndex]) return;
-  const cb = document.getElementById('gigLivePlayedCheckbox');
   const targetSong = liveGigObj.songs[liveGigSongIndex];
   
-  targetSong.isPlayed = cb.checked ? 1 : 0;
+  targetSong.isPlayed = targetSong.isPlayed ? 0 : 1;
   
   const payload = {
     VenueID: liveGigObj.venueId,
@@ -4578,8 +4591,8 @@ async function toggleLiveSongPlayedFromCheckbox() {
     Songs: liveGigObj.songs.map(s => ({
       SongID: s.songId,
       SortOrder: s.sortOrder,
-      IsPlayed: s.isPlayed,
-      IsRequest: s.isRequest
+      IsPlayed: s.isPlayed ? 1 : 0,
+      IsRequest: s.isRequest ? 1 : 0
     })),
     Guests: (liveGigObj.guests || []).map(g => ({
       GuestID: (g.guestId && Number(g.guestId) > 0) ? Number(g.guestId) : null,
