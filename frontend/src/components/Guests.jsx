@@ -482,7 +482,12 @@ export default function Guests() {
       "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
     ];
     const monthName = months[parseInt(month) - 1] || month;
-    return year ? `${day} ${monthName} ${year}` : `${day} ${monthName}`;
+    return (
+      <div style={{ lineHeight: 1.25 }}>
+        <div>{day} {monthName}</div>
+        {year && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 500 }}>{year}</div>}
+      </div>
+    );
   };
 
   // Generate Year Array from current year down to 1920
@@ -689,32 +694,32 @@ export default function Guests() {
           <thead>
             <tr>
               <th onClick={() => handleSort('FullName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Misafir
+                MISAFIR
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'FullName' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('FullName')}
                 </span>
               </th>
-              <th onClick={() => handleSort('GigCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center' }} title="Sahne Katılım Sayısına Göre Sırala">
+              <th onClick={() => handleSort('GigCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '45px' }} title="Sahne Katılım Sayısına Göre Sırala">
                 🎸
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'GigCount' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('GigCount')}
                 </span>
               </th>
-              <th>Telefon</th>
-              <th onClick={() => handleSort('InstagramLink')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Instagram
+              <th style={{ width: '105px' }}>CEP</th>
+              <th onClick={() => handleSort('InstagramLink')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '70px' }}>
+                INSTA
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'InstagramLink' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('InstagramLink')}
                 </span>
               </th>
-              <th onClick={() => handleSort('BirthDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Doğum Tarihi
+              <th onClick={() => handleSort('BirthDate')} style={{ cursor: 'pointer', userSelect: 'none', width: '95px' }}>
+                DOĞUM T.
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'BirthDate' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('BirthDate')}
                 </span>
               </th>
               <th>Notlar</th>
-              <th onClick={() => handleSort('CreatedAt')} style={{ width: '150px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }} title="Kayıt Tarihine Göre Sırala">
+              <th onClick={() => handleSort('CreatedAt')} style={{ width: '130px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }} title="Kayıt Tarihine Göre Sırala">
                 Kayıt Tarihi
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('CreatedAt')}
@@ -725,7 +730,7 @@ export default function Guests() {
           <tbody>
             {filteredGuests.map(guest => (
               <tr key={guest.GuestID}>
-                <td data-label="Misafir" className="td-guest-profile">
+                <td data-label="MISAFIR" className="td-guest-profile">
                   <div className="guest-profile-content">
                     <div 
                       className="guest-avatar-wrapper"
@@ -776,7 +781,7 @@ export default function Guests() {
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>0</span>
                   )}
                 </td>
-                <td data-label="Telefon">
+                <td data-label="CEP" style={{ whiteSpace: 'nowrap' }}>
                   {guest.PhoneNumber ? (
                     <span
                       style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
@@ -788,12 +793,12 @@ export default function Guests() {
                     '-'
                   )}
                 </td>
-                <td data-label="Instagram">
+                <td data-label="INSTA" style={{ textAlign: 'center' }}>
                   {guest.InstagramLink ? (
                     <a href={guest.InstagramLink} target="_blank" rel="noreferrer" className="instagram-link-badge">Profil</a>
                   ) : '-'}
                 </td>
-                <td data-label="Doğum Tarihi">
+                <td data-label="DOĞUM T.">
                   {formatBirthDate(guest.BirthDateDay, guest.BirthDateMonth, guest.BirthDateYear)}
                 </td>
                 <td data-label="Notlar" className="td-notes-preview" title={guest.Notes}>

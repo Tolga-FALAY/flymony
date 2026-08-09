@@ -768,7 +768,7 @@ function renderGuests() {
       ? `<img src="${guest.profilePicture}" alt="${guest.fullName}" class="guest-avatar-img" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${guest.profilePicture}')">`
       : `<div class="guest-avatar-initials">${initials}</div>`;
 
-    // Birth Date Formatter
+    // Birth Date Formatter (2 lines: Day + Month top, Year bottom)
     const formatBirthDate = (day, month, year) => {
       if (!day || !month) return '-';
       const months = [
@@ -776,7 +776,10 @@ function renderGuests() {
         "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
       ];
       const monthName = months[parseInt(month) - 1] || month;
-      return year ? `${day} ${monthName} ${year}` : `${day} ${monthName}`;
+      if (year) {
+        return `<div style="line-height: 1.25;"><div>${day} ${monthName}</div><div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500;">${year}</div></div>`;
+      }
+      return `<div>${day} ${monthName}</div>`;
     };
     const birthDateStr = formatBirthDate(guest.birthDateDay, guest.birthDateMonth, guest.birthDateYear);
 
@@ -787,7 +790,7 @@ function renderGuests() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="Misafir" class="td-guest-profile">
+      <td data-label="MISAFIR" class="td-guest-profile">
         <div class="guest-profile-content">
           <div class="guest-avatar-wrapper">${avatarHtml}</div>
           <span class="guest-name-text" style="cursor: pointer;" onclick="editGuest(${guest.id})">${guest.firstName} ${guest.lastName}</span>
@@ -796,13 +799,13 @@ function renderGuests() {
       <td data-label="Sahne Sayısı" style="text-align: center;">
         ${gigCountHtml}
       </td>
-      <td data-label="Telefon">
+      <td data-label="CEP" style="white-space: nowrap;">
         ${guest.phone ? `<span style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="openGuestContactModal(${guest.id})">${guest.phone}</span>` : '-'}
       </td>
-      <td data-label="Instagram">
+      <td data-label="INSTA" style="text-align: center;">
         ${guest.instagram ? `<a href="${guest.instagram}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
       </td>
-      <td data-label="Doğum Tarihi">${birthDateStr}</td>
+      <td data-label="DOĞUM T.">${birthDateStr}</td>
       <td data-label="Notlar" class="td-notes-preview" title="${guest.notes || ''}">
         <span class="notes-text">${guest.notes || '-'}</span>
       </td>
