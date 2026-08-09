@@ -287,11 +287,13 @@ function setupTabs() {
 
   buttons.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!btn.dataset.target) return;
       buttons.forEach(b => b.classList.remove('active'));
       tabs.forEach(t => t.classList.remove('active'));
       
       btn.classList.add('active');
-      document.getElementById(btn.dataset.target).classList.add('active');
+      const targetEl = document.getElementById(btn.dataset.target);
+      if (targetEl) targetEl.classList.add('active');
 
       closeMobileMenu();
     });
@@ -5314,7 +5316,21 @@ function closeVanillaFullscreenImage() {
   }
 }
 
+async function refreshApp() {
+  try {
+    localStorage.removeItem('flymony_db_cache_react');
+    localStorage.removeItem('flymony_db_cache_react_time');
+    if (typeof DB !== 'undefined' && DB.loadFromFirestore) {
+      await DB.loadFromFirestore(true);
+    }
+  } catch (e) {
+    console.error("Yenileme hatası:", e);
+  }
+  window.location.reload();
+}
+
 // Window Exports
+window.refreshApp = refreshApp;
 window.setVanillaSubTab = setVanillaSubTab;
 window.renderParameters = renderParameters;
 window.openVanillaStatusModal = openVanillaStatusModal;
