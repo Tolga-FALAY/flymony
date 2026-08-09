@@ -48,8 +48,10 @@ let filterSearch = '';
 
 // Guest Filter variables
 let filterGuestName = '';
+let filterGuestCity = '';
 let filterGuestNotes = '';
 let filterGuestMonth = '';
+let filterGuestIsMusician = false;
 
 // Artist Filter variables
 let filterArtistName = '';
@@ -742,7 +744,17 @@ function renderGuests() {
       }
     }
 
-    // 2. Notes filter
+    // 2. City filter (searches in both Cyprus City and Turkey CityTR)
+    if (filterGuestCity && filterGuestCity.trim()) {
+      const searchCity = filterGuestCity.trim().toLocaleLowerCase('tr-TR');
+      const cyprusCity = (guest.city || '').toLocaleLowerCase('tr-TR');
+      const turkeyCity = (guest.cityTR || '').toLocaleLowerCase('tr-TR');
+      if (!cyprusCity.includes(searchCity) && !turkeyCity.includes(searchCity)) {
+        return false;
+      }
+    }
+
+    // 3. Notes filter
     if (filterGuestNotes) {
       const searchNotes = filterGuestNotes.toLocaleLowerCase('tr-TR');
       if (!(guest.notes || '').toLocaleLowerCase('tr-TR').includes(searchNotes)) {
@@ -750,9 +762,16 @@ function renderGuests() {
       }
     }
 
-    // 3. Birth Month filter
+    // 4. Birth Month filter
     if (filterGuestMonth) {
       if (Number(guest.birthDateMonth) !== Number(filterGuestMonth)) {
+        return false;
+      }
+    }
+
+    // 5. Musician filter
+    if (filterGuestIsMusician) {
+      if (!guest.isMusician) {
         return false;
       }
     }
@@ -2478,12 +2497,16 @@ function clearAllFilters() {
 // Misafir Filtre Değişim Olayı
 function handleGuestFilterChange() {
   const nameInput = document.getElementById('filterGuestName');
+  const cityInput = document.getElementById('filterGuestCity');
   const notesInput = document.getElementById('filterGuestNotes');
   const monthSelect = document.getElementById('filterGuestMonth');
+  const musicianCheck = document.getElementById('filterGuestIsMusician');
 
   filterGuestName = nameInput ? nameInput.value : '';
+  filterGuestCity = cityInput ? cityInput.value : '';
   filterGuestNotes = notesInput ? notesInput.value : '';
   filterGuestMonth = monthSelect ? monthSelect.value : '';
+  filterGuestIsMusician = musicianCheck ? musicianCheck.checked : false;
 
   renderGuests();
 }
@@ -2491,16 +2514,22 @@ function handleGuestFilterChange() {
 // Misafir Filtrelerini Temizle
 function clearAllGuestFilters() {
   const nameInput = document.getElementById('filterGuestName');
+  const cityInput = document.getElementById('filterGuestCity');
   const notesInput = document.getElementById('filterGuestNotes');
   const monthSelect = document.getElementById('filterGuestMonth');
+  const musicianCheck = document.getElementById('filterGuestIsMusician');
 
   if (nameInput) nameInput.value = '';
+  if (cityInput) cityInput.value = '';
   if (notesInput) notesInput.value = '';
   if (monthSelect) monthSelect.value = '';
+  if (musicianCheck) musicianCheck.checked = false;
 
   filterGuestName = '';
+  filterGuestCity = '';
   filterGuestNotes = '';
   filterGuestMonth = '';
+  filterGuestIsMusician = false;
 
   renderGuests();
 }

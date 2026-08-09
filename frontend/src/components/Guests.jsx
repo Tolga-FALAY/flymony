@@ -80,12 +80,14 @@ export default function Guests() {
 
   // Filter States
   const [filterName, setFilterName] = useState('');
+  const [filterCity, setFilterCity] = useState('');
   const [filterNotes, setFilterNotes] = useState('');
   const [filterBirthMonth, setFilterBirthMonth] = useState('');
   const [filterIsMusician, setFilterIsMusician] = useState(false);
 
   const clearAllFilters = () => {
     setFilterName('');
+    setFilterCity('');
     setFilterNotes('');
     setFilterBirthMonth('');
     setFilterIsMusician(false);
@@ -725,7 +727,17 @@ export default function Guests() {
       }
     }
 
-    // 2. Notes filter
+    // 2. City filter (searches both Cyprus City and Turkey CityTR)
+    if (filterCity && filterCity.trim()) {
+      const searchCity = filterCity.trim().toLocaleLowerCase('tr-TR');
+      const cyprusCity = (guest.City || '').toLocaleLowerCase('tr-TR');
+      const turkeyCity = (guest.CityTR || '').toLocaleLowerCase('tr-TR');
+      if (!cyprusCity.includes(searchCity) && !turkeyCity.includes(searchCity)) {
+        return false;
+      }
+    }
+
+    // 3. Notes filter
     if (filterNotes) {
       const searchNotes = filterNotes.toLocaleLowerCase('tr-TR');
       const notes = (guest.Notes || '').toLocaleLowerCase('tr-TR');
@@ -779,19 +791,18 @@ export default function Guests() {
               onChange={(e) => setFilterName(e.target.value)}
             />
           </div>
-          
-          {/* Musician Filter */}
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.4rem', alignSelf: 'flex-end', marginBottom: '0.65rem', padding: '0.5rem 0.25rem', flex: '0 0 auto' }}>
-            <span style={{ fontSize: '1.25rem', filter: 'drop-shadow(0 2px 4px rgba(14, 165, 233, 0.2))', lineHeight: 1 }} title="Sadece Müzisyenler">🎵</span>
+
+          <div className="filter-item">
+            <label htmlFor="filterGuestCityReact">Şehir</label>
             <input 
-              type="checkbox" 
-              id="filterGuestIsMusicianReact" 
-              checked={filterIsMusician}
-              onChange={(e) => setFilterIsMusician(e.target.checked)}
-              style={{ cursor: 'pointer', margin: 0, width: '18px', height: '18px' }}
+              type="text" 
+              id="filterGuestCityReact" 
+              placeholder="Şehir ara..." 
+              value={filterCity}
+              onChange={(e) => setFilterCity(e.target.value)}
             />
           </div>
-
+          
           <div className="filter-item">
             <label htmlFor="filterGuestNotesReact">Notlar</label>
             <input 
@@ -802,7 +813,8 @@ export default function Guests() {
               onChange={(e) => setFilterNotes(e.target.value)}
             />
           </div>
-          <div className="filter-item">
+
+          <div className="filter-item" style={{ flex: '0 1 125px', minWidth: '110px' }}>
             <label htmlFor="filterGuestMonthReact">Doğum Ayı</label>
             <select 
               id="filterGuestMonthReact"
@@ -824,8 +836,38 @@ export default function Guests() {
               <option value="12">Aralık</option>
             </select>
           </div>
-          <div className="filter-item filter-actions">
+
+          <div className="filter-item filter-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button className="btn btn-outline btn-sm" onClick={clearAllFilters}>Temizle</button>
+            
+            {/* Musician Filter Checkbox next to Temizle */}
+            <label 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '0.35rem', 
+                cursor: 'pointer', 
+                userSelect: 'none', 
+                background: filterIsMusician ? 'rgba(14, 165, 233, 0.15)' : 'var(--bg-card, #f8fafc)', 
+                color: filterIsMusician ? 'var(--primary)' : 'inherit',
+                padding: '0.38rem 0.6rem', 
+                borderRadius: '8px', 
+                border: filterIsMusician ? '1px solid var(--primary)' : '1px solid #cbd5e1', 
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                whiteSpace: 'nowrap'
+              }} 
+              title="Sadece Müzisyenleri Filtrele"
+            >
+              <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>🎵</span>
+              <input 
+                type="checkbox" 
+                id="filterGuestIsMusicianReact" 
+                checked={filterIsMusician}
+                onChange={(e) => setFilterIsMusician(e.target.checked)}
+                style={{ cursor: 'pointer', margin: 0, width: '15px', height: '15px' }}
+              />
+            </label>
           </div>
         </div>
       </div>
@@ -998,7 +1040,7 @@ export default function Guests() {
               <button className="close-btn" onClick={closeModal}>&times;</button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div style={{display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1.5rem'}}>
+              <div style={{display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0'}}>
                 {/* Profile Picture Upload (Left/Top Column) */}
                 <div className="form-group profile-picture-upload-section" style={{flex: '1 1 200px', alignItems: 'center', textAlign: 'center'}}>
                   <label style={{width: '100%'}}>Profil Resmi</label>
@@ -1055,14 +1097,14 @@ export default function Guests() {
                     <label>Ad</label>
                     <input type="text" name="FirstName" value={formData.FirstName} onChange={handleChange} required />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
                     <label>Soyad</label>
                     <input type="text" name="LastName" value={formData.LastName} onChange={handleChange} required />
                   </div>
                 </div>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ marginTop: '1.25rem' }}>
                 <label>Telefon Numarası</label>
                 <input type="text" name="PhoneNumber" value={formData.PhoneNumber} onChange={handleChange} />
               </div>
@@ -1075,7 +1117,6 @@ export default function Guests() {
                     value={formData.City}
                     onChange={handleChange}
                     rows="2"
-                    placeholder="Güzelyurt&#10;Gemikonağı"
                     style={{ resize: 'vertical', width: '100%', fontFamily: 'inherit', fontSize: '0.95rem', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
                   />
                 </div>
@@ -1086,7 +1127,6 @@ export default function Guests() {
                     value={formData.CityTR}
                     onChange={handleChange}
                     rows="2"
-                    placeholder="İzmir&#10;Karşıyaka"
                     style={{ resize: 'vertical', width: '100%', fontFamily: 'inherit', fontSize: '0.95rem', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
                   />
                 </div>
