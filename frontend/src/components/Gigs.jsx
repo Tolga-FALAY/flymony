@@ -761,17 +761,17 @@ export default function Gigs() {
                   <td data-label="Misafir Sayısı" style={{ textAlign: 'center' }}>{guestsCount}</td>
                   <td data-label="İşlemler">
                     <div className="action-btns">
-                      <button className="btn btn-sm btn-outline btn-added-style" onClick={() => startLiveMode(gig)}>Sahnem 🎤</button>
                       {String(gig.Notes || '').trim().length > 0 && (
                         <button 
                           className="btn btn-sm" 
                           style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
                           onClick={() => setNoteModalGig(gig)}
-                          title="Geceye Dair Notları Oku"
+                          title={gig.Notes}
                         >
                           📝
                         </button>
                       )}
+                      <button className="btn btn-sm btn-outline btn-added-style" onClick={() => startLiveMode(gig)}>Sahnem 🎤</button>
                       <button className="btn btn-sm btn-outline" onClick={() => handleEdit(gig)}>Düzenle</button>
                       <button className="btn btn-sm btn-danger" onClick={() => handleDelete(gig.GigID)}>Sil</button>
                     </div>

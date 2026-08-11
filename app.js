@@ -879,8 +879,9 @@ function renderGuests() {
       : `<span style="color: var(--text-muted); font-size: 0.85rem;">0</span>`;
 
     const hasNotes = String(guest.notes || '').trim().length > 0;
+    const escapedNotes = String(guest.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const noteBtnHtml = hasNotes 
-      ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGuestNoteModal(${guest.id})" title="Notu Oku">📝</button>` 
+      ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGuestNoteModal(${guest.id})" title="${escapedNotes}">📝</button>` 
       : '';
 
     const formatCityMultiLine = (cityStr) => {
@@ -3938,8 +3939,9 @@ function renderGigs() {
     const playedCount = gig.songs ? gig.songs.filter(s => s.isPlayed).length : 0;
     const guestsCount = gig.guests ? gig.guests.length : 0;
 
+    const escapedGigNotes = String(gig.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const notesBtnHtml = String(gig.notes || '').trim().length > 0
-      ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGigNoteModal(${gig.id})" title="Geceye Dair Notları Oku">📝</button>`
+      ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGigNoteModal(${gig.id})" title="${escapedGigNotes}">📝</button>`
       : '';
 
     tr.innerHTML = `
@@ -3949,8 +3951,8 @@ function renderGigs() {
       <td data-label="Misafir Sayısı" style="text-align: center;">${guestsCount}</td>
       <td data-label="İşlemler">
         <div class="action-btns">
-          <button class="btn btn-sm btn-outline btn-added-style" onclick="startLiveGig(${gig.id})">Sahnem 🎤</button>
           ${notesBtnHtml}
+          <button class="btn btn-sm btn-outline btn-added-style" onclick="startLiveGig(${gig.id})">Sahnem 🎤</button>
           <button class="btn btn-sm btn-outline" onclick="openGigModal(${gig.id})">Düzenle</button>
           <button class="btn btn-sm btn-danger" onclick="deleteGig(${gig.id})">Sil</button>
         </div>

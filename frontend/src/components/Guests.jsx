@@ -1014,7 +1014,7 @@ export default function Guests() {
                         className="btn btn-sm" 
                         style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
                         onClick={() => setNoteModalGuest(guest)}
-                        title="Notu Oku"
+                        title={guest.Notes}
                       >
                         📝
                       </button>
