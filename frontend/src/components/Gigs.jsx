@@ -10,6 +10,7 @@ export default function Gigs() {
   const [guests, setGuests] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGig, setEditingGig] = useState(null);
+  const [noteModalGig, setNoteModalGig] = useState(null);
 
   // Filter States
   const [filterSearch, setFilterSearch] = useState('');
@@ -740,7 +741,6 @@ export default function Gigs() {
               <th>Mekân</th>
               <th style={{ textAlign: 'center' }}>Şarkı Sayısı</th>
               <th style={{ textAlign: 'center' }}>Misafir Sayısı</th>
-              <th>Geceye Dair Notlar</th>
               <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
@@ -759,10 +759,19 @@ export default function Gigs() {
                     <span style={{ fontWeight: '600' }}>{playedCount}</span> / {songsCount}
                   </td>
                   <td data-label="Misafir Sayısı" style={{ textAlign: 'center' }}>{guestsCount}</td>
-                  <td data-label="Notlar" style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{gig.Notes || '-'}</td>
                   <td data-label="İşlemler">
                     <div className="action-btns">
                       <button className="btn btn-sm btn-outline btn-added-style" onClick={() => startLiveMode(gig)}>Sahnem 🎤</button>
+                      {String(gig.Notes || '').trim().length > 0 && (
+                        <button 
+                          className="btn btn-sm" 
+                          style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
+                          onClick={() => setNoteModalGig(gig)}
+                          title="Geceye Dair Notları Oku"
+                        >
+                          📝
+                        </button>
+                      )}
                       <button className="btn btn-sm btn-outline" onClick={() => handleEdit(gig)}>Düzenle</button>
                       <button className="btn btn-sm btn-danger" onClick={() => handleDelete(gig.GigID)}>Sil</button>
                     </div>
@@ -771,7 +780,7 @@ export default function Gigs() {
               );
             })}
             {filteredGigs.length === 0 && (
-              <tr><td colSpan="6" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
@@ -1283,6 +1292,27 @@ export default function Gigs() {
 
           </div>
 
+        </div>,
+        document.body
+      )}
+
+      {/* GIG NOTES POPUP MODAL */}
+      {noteModalGig && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setNoteModalGig(null)}>
+          <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>
+                📝 {noteModalGig.VenueName} ({new Date(noteModalGig.GigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}) - Notlar
+              </h2>
+              <button className="close-btn" onClick={() => setNoteModalGig(null)}>&times;</button>
+            </div>
+            <div style={{ padding: '1rem', background: 'var(--canvas)', borderRadius: '8px', fontSize: '0.95rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: '1.5', maxHeight: '60vh', overflowY: 'auto' }}>
+              {noteModalGig.Notes || 'Herhangi bir not bulunmamaktadır.'}
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setNoteModalGig(null)}>Kapat</button>
+            </div>
+          </div>
         </div>,
         document.body
       )}

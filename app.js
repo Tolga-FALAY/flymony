@@ -3938,15 +3938,19 @@ function renderGigs() {
     const playedCount = gig.songs ? gig.songs.filter(s => s.isPlayed).length : 0;
     const guestsCount = gig.guests ? gig.guests.length : 0;
 
+    const notesBtnHtml = String(gig.notes || '').trim().length > 0
+      ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGigNoteModal(${gig.id})" title="Geceye Dair Notları Oku">📝</button>`
+      : '';
+
     tr.innerHTML = `
       <td data-label="Tarih">${formattedDate}</td>
       <td data-label="Mekân">${gig.venueName} (${gig.cityName || '-'})</td>
       <td data-label="Şarkı Sayısı" style="text-align: center;"><span style="font-weight: 600;">${playedCount}</span> / ${songsCount}</td>
       <td data-label="Misafir Sayısı" style="text-align: center;">${guestsCount}</td>
-      <td data-label="Notlar" style="font-size: 0.82rem; color: var(--text-muted);">${gig.notes || '-'}</td>
       <td data-label="İşlemler">
         <div class="action-btns">
           <button class="btn btn-sm btn-outline btn-added-style" onclick="startLiveGig(${gig.id})">Sahnem 🎤</button>
+          ${notesBtnHtml}
           <button class="btn btn-sm btn-outline" onclick="openGigModal(${gig.id})">Düzenle</button>
           <button class="btn btn-sm btn-danger" onclick="deleteGig(${gig.id})">Sil</button>
         </div>
@@ -3956,9 +3960,24 @@ function renderGigs() {
   });
 
   if (filtered.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
   }
 }
+
+function openGigNoteModal(gigId) {
+  const gig = DB.gigs.find(g => Number(g.id) === Number(gigId));
+  if (!gig) return;
+
+  const nameEl = document.getElementById('gigNoteModalTitle');
+  const bodyEl = document.getElementById('gigNoteModalBody');
+  const formattedDate = new Date(gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  if (nameEl) nameEl.innerText = `📝 ${gig.venueName} (${formattedDate}) - Geceye Dair Notlar`;
+  if (bodyEl) bodyEl.innerText = gig.notes || 'Herhangi bir not bulunmamaktadır.';
+
+  openModal('gigNoteModal');
+}
+window.openGigNoteModal = openGigNoteModal;
 
 function handleGigFilterChange() {
   gigFilterSearch = document.getElementById('filterGigSearch').value;
