@@ -1006,8 +1006,24 @@
           </div>
           <div class="form-group" style="margin: 0;">
             <label for="gigDate">Sahne Tarihi</label>
-            <input type="date" id="gigDate" required onchange="updateVanillaGigDateDisplay()">
-            <div id="gigDateDisplay" style="font-size: 0.85rem; color: var(--primary); font-weight: 600; margin-top: 0.35rem;"></div>
+            <div style="position: relative; width: 100%;">
+              <input 
+                type="text" 
+                id="gigDateFormatted" 
+                readonly 
+                style="width: 100%; padding: 0.75rem 2.5rem 0.75rem 1rem; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; font-weight: 500; background: white; cursor: pointer;"
+              >
+              <input 
+                type="date" 
+                id="gigDate" 
+                required 
+                onchange="updateVanillaGigDateDisplay()"
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 1;"
+              >
+              <span style="position: absolute; right: 0.85rem; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 1.1rem; color: #64748b;">
+                📅
+              </span>
+            </div>
           </div>
         </div>
 
@@ -1065,29 +1081,14 @@
 
           <div id="gigPhotosGallery" class="gallery-previews-grid" style="min-height: 80px; margin-bottom: 1.25rem;"></div>
 
-          <!-- VIDEOLAR SECTION -->
-          <div style="border-top: 1px dashed var(--border); padding-top: 1.25rem; margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-              <label style="margin: 0; font-weight: 600;">Sahne Görselleri (Videolar)</label>
-              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('gigVideoCameraInput').click()">🎥 Video Çek</button>
-                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('gigVideoBrowseInput').click()">📂 Video Ekle</button>
-                <button type="button" class="btn btn-sm btn-outline" onclick="pasteVanillaGigVideo()">📋 Yapıştır</button>
-              </div>
+          <!-- VIDEO LINKS SECTION -->
+          <div style="border-top: 1px dashed var(--border); padding-top: 1rem; margin-top: 1.25rem;">
+            <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Video Linki URL (YouTube, Drive...)</label>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <input type="text" id="gigNewVideoUrl" placeholder="Video URL'si ekle veya yapıştır..." style="margin: 0; flex: 1; font-size: 0.85rem;">
+              <button type="button" class="btn btn-outline" onclick="addGigVideoLink()">Ekle</button>
             </div>
-
-            <input type="file" id="gigVideoCameraInput" accept="video/*" capture="environment" multiple style="display: none;" onchange="handleGigVideoUpload(event)">
-            <input type="file" id="gigVideoBrowseInput" accept="video/*" multiple style="display: none;" onchange="handleGigVideoUpload(event)">
-
-            <div id="gigVideosGallery" class="gallery-previews-grid" style="min-height: 80px; margin-bottom: 1.25rem;"></div>
-
-            <div style="margin-top: 0.75rem;">
-              <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Video Linki (YouTube, Drive...)</label>
-              <div style="display: flex; gap: 0.5rem;">
-                <input type="text" id="gigNewVideoUrl" placeholder="Video URL'si ekle veya yapıştır..." style="margin: 0; flex: 1; font-size: 0.85rem;">
-                <button type="button" class="btn btn-outline" onclick="addGigVideoLink()">Ekle</button>
-              </div>
-            </div>
+            <div id="gigVideosList" style="display: flex; flex-direction: column; gap: 0.25rem;"></div>
           </div>
         </div>
 
@@ -1307,14 +1308,6 @@
     <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation()">
       <button type="button" class="close-btn" onclick="closeVanillaFullscreenImage()" style="position: absolute; top: -40px; right: 0px; background: rgba(255, 255, 255, 0.15); border: none; color: #fff; font-size: 1.75rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">&times;</button>
       <img id="vanillaFullscreenImageEl" src="" alt="Tam Ekran Görünüm" style="max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
-    </div>
-  </div>
-
-  <!-- Vanilla Fullscreen Video Modal -->
-  <div id="vanillaVideoFullscreenModal" class="modal-overlay" style="display: none; z-index: 2500; background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); justify-content: center; align-items: center;" onclick="closeVanillaFullscreenVideo()">
-    <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation()">
-      <button type="button" class="close-btn" onclick="closeVanillaFullscreenVideo()" style="position: absolute; top: -40px; right: 0px; background: rgba(255, 255, 255, 0.15); border: none; color: #fff; font-size: 1.75rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">&times;</button>
-      <video id="vanillaFullscreenVideoEl" controls autoPlay style="max-width: 100%; max-height: 85vh; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);"></video>
     </div>
   </div>
 

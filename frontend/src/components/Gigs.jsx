@@ -12,12 +12,10 @@ export default function Gigs() {
   const [editingGig, setEditingGig] = useState(null);
   const [noteModalGig, setNoteModalGig] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
-  const [fullscreenVideo, setFullscreenVideo] = useState(null);
 
   const gigCameraInputRef = useRef(null);
   const gigBrowseInputRef = useRef(null);
-  const gigVideoCameraInputRef = useRef(null);
-  const gigVideoBrowseInputRef = useRef(null);
+  const gigDateInputRef = useRef(null);
 
   // Filter States
   const [filterSearch, setFilterSearch] = useState('');
@@ -188,91 +186,13 @@ export default function Gigs() {
   const formatGigDateWithDay = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('tr-TR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
       weekday: 'long'
     });
-  };
-
-  const isVideoFile = (url) => {
-    if (!url) return false;
-    if (url.startsWith('data:video/')) return true;
-    if (url.startsWith('blob:')) return true;
-    const lower = url.toLowerCase();
-    return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov') || lower.endsWith('.m4v') || lower.endsWith('.mkv') || lower.endsWith('.3gp');
-  };
-
-  const handleVideoUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    for (const file of files) {
-      if (file.size > 100 * 1024 * 1024) {
-        if (!confirm(`"${file.name}" videosu büyük bir dosyadır (${Math.round(file.size / 1024 / 1024)}MB). Yine de eklemek istiyor musunuz?`)) {
-          continue;
-        }
-      }
-      try {
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = ev => resolve(ev.target.result);
-          reader.onerror = err => reject(err);
-          reader.readAsDataURL(file);
-        });
-        setFormData(prev => ({
-          ...prev,
-          Videos: [...prev.Videos, dataUrl]
-        }));
-      } catch (err) {
-        console.warn("Video yükleme hatası:", err);
-      }
-    }
-    e.target.value = '';
-  };
-
-  const pasteVideoFromClipboard = async () => {
-    try {
-      if (navigator.clipboard && navigator.clipboard.readText) {
-        const text = await navigator.clipboard.readText();
-        if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:video/'))) {
-          setFormData(prev => ({
-            ...prev,
-            Videos: [...prev.Videos, text.trim()]
-          }));
-          return;
-        }
-      }
-      if (navigator.clipboard && navigator.clipboard.read) {
-        const clipboardItems = await navigator.clipboard.read();
-        let found = false;
-        for (const item of clipboardItems) {
-          for (const type of item.types) {
-            if (type.startsWith('video/')) {
-              const blob = await item.getType(type);
-              const dataUrl = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = ev => resolve(ev.target.result);
-                reader.onerror = err => reject(err);
-                reader.readAsDataURL(blob);
-              });
-              setFormData(prev => ({
-                ...prev,
-                Videos: [...prev.Videos, dataUrl]
-              }));
-              found = true;
-              break;
-            }
-          }
-          if (found) break;
-        }
-        if (found) return;
-      }
-      alert("Panoda geçerli bir video bağlantısı veya video dosyası bulunamadı.");
-    } catch (err) {
-      alert("Panodan okunamadı. Lütfen klavyenizden CTRL+V kısayolunu kullanın!");
-    }
   };
 
   const handleCreateNew = () => {
@@ -918,17 +838,45 @@ export default function Gigs() {
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Sahne Tarihi</label>
-                  <input 
-                    type="date" 
-                    value={formData.GigDate} 
-                    onChange={e => setFormData({ ...formData, GigDate: e.target.value })} 
-                    required 
-                  />
-                  {formData.GigDate && (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.35rem' }}>
-                      📅 {formatGigDateWithDay(formData.GigDate)}
-                    </div>
-                  )}
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={formatGigDateWithDay(formData.GigDate)} 
+                      onClick={() => gigDateInputRef.current?.showPicker ? gigDateInputRef.current.showPicker() : gigDateInputRef.current?.focus()} 
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 2.5rem 0.75rem 1rem',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: '10px',
+                        backgroundColor: 'var(--surface)',
+                        color: 'var(--text)',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        fontSize: '0.95rem'
+                      }}
+                    />
+                    <input 
+                      type="date" 
+                      ref={gigDateInputRef}
+                      value={formData.GigDate} 
+                      onChange={e => setFormData({ ...formData, GigDate: e.target.value })} 
+                      style={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%', 
+                        opacity: 0, 
+                        cursor: 'pointer',
+                        zIndex: 1
+                      }}
+                      required 
+                    />
+                    <span style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: '1.1rem', color: 'var(--text-muted)' }}>
+                      📅
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1182,84 +1130,28 @@ export default function Gigs() {
                   )}
                 </div>
 
-                {/* VIDEOLAR SECTION */}
-                <div style={{ marginTop: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.25rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <label style={{ margin: 0, fontWeight: 600 }}>Sahne Görselleri (Videolar)</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => gigVideoCameraInputRef.current?.click()}>
-                        🎥 Video Çek
-                      </button>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => gigVideoBrowseInputRef.current?.click()}>
-                        📂 Video Ekle
-                      </button>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={pasteVideoFromClipboard}>
-                        📋 Yapıştır
-                      </button>
-                    </div>
+                {/* VIDEO LINKS SECTION */}
+                <div style={{ marginTop: '1.25rem', borderTop: '1px dashed var(--border)', paddingTop: '1rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', display: 'block' }}>Video Linki URL (YouTube, Drive...)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Video URL'si ekle veya yapıştır..." 
+                      value={newVideoUrl} 
+                      onChange={e => setNewVideoUrl(e.target.value)} 
+                      style={{ margin: 0, flex: 1, fontSize: '0.85rem' }}
+                    />
+                    <button type="button" className="btn btn-outline" onClick={addVideoLink}>Ekle</button>
                   </div>
-
-                  <input 
-                    type="file" 
-                    ref={gigVideoCameraInputRef} 
-                    accept="video/*" 
-                    capture="environment" 
-                    multiple 
-                    style={{ display: 'none' }} 
-                    onChange={handleVideoUpload} 
-                  />
-                  <input 
-                    type="file" 
-                    ref={gigVideoBrowseInputRef} 
-                    accept="video/*" 
-                    multiple 
-                    style={{ display: 'none' }} 
-                    onChange={handleVideoUpload} 
-                  />
-
-                  <div className="gallery-previews-grid" style={{ marginBottom: '1.25rem' }}>
-                    {formData.Videos && formData.Videos.map((url, index) => (
-                      <div key={index} className="gallery-preview-item" style={{ position: 'relative' }}>
-                        {isVideoFile(url) ? (
-                          <div 
-                            style={{ width: '100%', height: '100%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: '8px', overflow: 'hidden' }}
-                            onClick={() => setFullscreenVideo(url)}
-                          >
-                            <video src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} preload="metadata" />
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '1.5rem' }}>
-                              ▶️
-                            </div>
-                          </div>
-                        ) : (
-                          <a href={url} target="_blank" rel="noreferrer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: '#f1f5f9', padding: '0.35rem', textAlign: 'center', fontSize: '0.75rem', wordBreak: 'break-all', color: 'var(--primary)', borderRadius: '8px', textDecoration: 'none' }}>
-                            <span style={{ fontSize: '1.2rem' }}>🎬</span>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                              {url}
-                            </span>
-                          </a>
-                        )}
-                        <button type="button" className="gallery-preview-delete-badge" onClick={() => removeVideo(index)} title="Videoyu Sil">&times;</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    {formData.Videos.map((url, index) => (
+                      <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '0.35rem 0.65rem', borderRadius: '6px', fontSize: '0.82rem', border: '1px solid #e2e8f0' }}>
+                        <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'underline' }}>
+                          🎬 {url}
+                        </a>
+                        <button type="button" className="btn btn-sm btn-danger" style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }} onClick={() => removeVideo(index)}>&times;</button>
                       </div>
                     ))}
-                    {(!formData.Videos || formData.Videos.length === 0) && (
-                      <div className="gallery-empty-placeholder">
-                        <span>Henüz video eklenmemiş. Anlık çekebilir, cihazınızdan dosya seçebilir veya link ekleyebilirsiniz.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ marginTop: '0.75rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', display: 'block' }}>Video Linki (YouTube, Drive...)</label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <input 
-                        type="text" 
-                        placeholder="Video URL'si ekle veya yapıştır..." 
-                        value={newVideoUrl} 
-                        onChange={e => setNewVideoUrl(e.target.value)} 
-                        style={{ margin: 0, flex: 1, fontSize: '0.85rem' }}
-                      />
-                      <button type="button" className="btn btn-outline" onClick={addVideoLink}>Ekle</button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1565,71 +1457,6 @@ export default function Gigs() {
                 maxWidth: '100%', 
                 maxHeight: '85vh', 
                 objectFit: 'contain',
-                borderRadius: '12px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-              }} 
-            />
-          </div>
-        </div>,
-        document.body
-      )}
-      {/* FULLSCREEN VIDEO MODAL */}
-      {fullscreenVideo && createPortal(
-        <div 
-          className="modal-overlay" 
-          style={{ 
-            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-            zIndex: 2500, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            backdropFilter: 'blur(8px)'
-          }}
-          onClick={() => setFullscreenVideo(null)}
-        >
-          <div 
-            style={{ 
-              position: 'relative', 
-              maxWidth: '90vw', 
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button 
-              type="button"
-              className="close-btn"
-              onClick={() => setFullscreenVideo(null)}
-              style={{
-                position: 'absolute',
-                top: '-40px',
-                right: '0px',
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: 'none',
-                color: '#fff',
-                fontSize: '1.75rem',
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1
-              }}
-            >
-              &times;
-            </button>
-            <video 
-              src={fullscreenVideo} 
-              controls 
-              autoPlay 
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '85vh', 
                 borderRadius: '12px',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
               }} 

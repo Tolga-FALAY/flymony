@@ -4085,18 +4085,18 @@ function openGigModal(gigId = null) {
 
 function updateVanillaGigDateDisplay() {
   const dateVal = document.getElementById('gigDate')?.value;
-  const display = document.getElementById('gigDateDisplay');
-  if (!display) return;
+  const formattedInput = document.getElementById('gigDateFormatted');
+  if (!formattedInput) return;
   if (!dateVal) {
-    display.innerText = '';
+    formattedInput.value = '';
     return;
   }
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) {
-    display.innerText = '';
+    formattedInput.value = dateVal;
     return;
   }
-  display.innerText = '📅 ' + d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+  formattedInput.value = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
 }
 window.updateVanillaGigDateDisplay = updateVanillaGigDateDisplay;
 
@@ -4117,27 +4117,6 @@ function closeVanillaFullscreenImage() {
 }
 window.openVanillaFullscreenImage = openVanillaFullscreenImage;
 window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
-
-function openVanillaFullscreenVideo(src) {
-  const modal = document.getElementById('vanillaVideoFullscreenModal');
-  const video = document.getElementById('vanillaFullscreenVideoEl');
-  if (modal && video) {
-    video.src = src;
-    modal.style.display = 'flex';
-  }
-}
-
-function closeVanillaFullscreenVideo() {
-  const modal = document.getElementById('vanillaVideoFullscreenModal');
-  const video = document.getElementById('vanillaFullscreenVideoEl');
-  if (modal && video) {
-    video.pause();
-    video.src = '';
-    modal.style.display = 'none';
-  }
-}
-window.openVanillaFullscreenVideo = openVanillaFullscreenVideo;
-window.closeVanillaFullscreenVideo = closeVanillaFullscreenVideo;
 
 function renderEditorGigSongs() {
   const container = document.getElementById('gigSongsList');
@@ -4288,14 +4267,6 @@ function removeGuestFromGigListByIndex(index) {
   renderEditorGigGuests();
 }
 
-function isVanillaVideoFile(url) {
-  if (!url) return false;
-  if (url.startsWith('data:video/')) return true;
-  if (url.startsWith('blob:')) return true;
-  const lower = url.toLowerCase();
-  return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov') || lower.endsWith('.m4v') || lower.endsWith('.mkv') || lower.endsWith('.3gp');
-}
-
 function renderEditorGigMedia() {
   const photoGallery = document.getElementById('gigPhotosGallery');
   if (photoGallery) {
@@ -4315,40 +4286,18 @@ function renderEditorGigMedia() {
     }
   }
 
-  const videoGallery = document.getElementById('gigVideosGallery');
-  if (videoGallery) {
-    if (editorGigVideos.length === 0) {
-      videoGallery.innerHTML = `
-        <div class="gallery-empty-placeholder">
-          <span>Henüz video eklenmemiş. Anlık çekebilir, cihazınızdan dosya seçebilir veya link ekleyebilirsiniz.</span>
-        </div>
+  const videosList = document.getElementById('gigVideosList');
+  if (videosList) {
+    videosList.innerHTML = '';
+    editorGigVideos.forEach((video, idx) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 0.35rem 0.65rem; border-radius: 6px; font-size: 0.82rem; border: 1px solid #e2e8f0;';
+      div.innerHTML = `
+        <a href="${video}" target="_blank" rel="noreferrer" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 85%; color: var(--primary); text-decoration: underline;">🎬 ${video}</a>
+        <button type="button" class="btn btn-sm btn-danger" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;" onclick="removeGigVideo(${idx})">&times;</button>
       `;
-    } else {
-      videoGallery.innerHTML = editorGigVideos.map((url, idx) => {
-        const isFile = isVanillaVideoFile(url);
-        if (isFile) {
-          return `
-            <div class="gallery-preview-item" style="position: relative;">
-              <div style="width: 100%; height: 100%; background: #0f172a; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px; overflow: hidden;" onclick="openVanillaFullscreenVideo('${url.replace(/'/g, "\\'")}')">
-                <video src="${url}" style="width: 100%; height: 100%; object-fit: cover;" preload="metadata"></video>
-                <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); color: #fff; font-size: 1.5rem;">▶️</div>
-              </div>
-              <button type="button" class="gallery-preview-delete-badge" onclick="removeGigVideo(${idx})" title="Videoyu Sil">&times;</button>
-            </div>
-          `;
-        } else {
-          return `
-            <div class="gallery-preview-item" style="position: relative;">
-              <a href="${url}" target="_blank" rel="noreferrer" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #f1f5f9; padding: 0.35rem; text-align: center; font-size: 0.75rem; word-break: break-all; color: var(--primary); border-radius: 8px; text-decoration: none;">
-                <span style="font-size: 1.2rem;">🎬</span>
-                <span style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${url}</span>
-              </a>
-              <button type="button" class="gallery-preview-delete-badge" onclick="removeGigVideo(${idx})" title="Videoyu Sil">&times;</button>
-            </div>
-          `;
-        }
-      }).join('');
-    }
+      videosList.appendChild(div);
+    });
   }
 }
 
