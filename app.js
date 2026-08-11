@@ -4032,7 +4032,7 @@ function openGigModal(gigId = null) {
   if (gigId === null) {
     title.innerText = 'Yeni Sahne Gecesi Ekle';
     document.getElementById('gigID').value = '';
-    document.getElementById('gigVenueID').value = DB.venues.length > 0 ? DB.venues[0].id : '';
+    document.getElementById('gigVenueID').value = '';
     document.getElementById('gigDate').value = new Date().toISOString().split('T')[0];
     editorGigSongs = [];
     editorGigGuests = [];
@@ -4078,9 +4078,45 @@ function openGigModal(gigId = null) {
   renderEditorGigSongs();
   renderEditorGigGuests();
   renderEditorGigMedia();
+  updateVanillaGigDateDisplay();
 
   modal.style.display = 'flex';
 }
+
+function updateVanillaGigDateDisplay() {
+  const dateVal = document.getElementById('gigDate')?.value;
+  const display = document.getElementById('gigDateDisplay');
+  if (!display) return;
+  if (!dateVal) {
+    display.innerText = '';
+    return;
+  }
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) {
+    display.innerText = '';
+    return;
+  }
+  display.innerText = '📅 ' + d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+}
+window.updateVanillaGigDateDisplay = updateVanillaGigDateDisplay;
+
+function openVanillaFullscreenImage(src) {
+  const modal = document.getElementById('vanillaImageFullscreenModal');
+  const img = document.getElementById('vanillaFullscreenImageEl');
+  if (modal && img) {
+    img.src = src;
+    modal.style.display = 'flex';
+  }
+}
+
+function closeVanillaFullscreenImage() {
+  const modal = document.getElementById('vanillaImageFullscreenModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+window.openVanillaFullscreenImage = openVanillaFullscreenImage;
+window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
 
 function renderEditorGigSongs() {
   const container = document.getElementById('gigSongsList');
@@ -4233,16 +4269,22 @@ function removeGuestFromGigListByIndex(index) {
 
 function renderEditorGigMedia() {
   const photoGallery = document.getElementById('gigPhotosGallery');
-  photoGallery.innerHTML = '';
-  editorGigPhotos.forEach((photo, idx) => {
-    const div = document.createElement('div');
-    div.style.cssText = 'position: relative; width: 60px; height: 60px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border);';
-    div.innerHTML = `
-      <img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;">
-      <button type="button" class="profile-img-delete-badge" style="padding: 0; font-size: 0.9rem; width: 16px; height: 16px; border: none; background: rgba(0,0,0,0.6);" onclick="removeGigPhoto(${idx})">&times;</button>
-    `;
-    photoGallery.appendChild(div);
-  });
+  if (photoGallery) {
+    if (editorGigPhotos.length === 0) {
+      photoGallery.innerHTML = `
+        <div class="gallery-empty-placeholder">
+          <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
+        </div>
+      `;
+    } else {
+      photoGallery.innerHTML = editorGigPhotos.map((photo, idx) => `
+        <div class="gallery-preview-item">
+          <img src="${photo}" alt="Sahne Fotoğrafı ${idx + 1}" style="cursor: pointer;" onclick="openVanillaFullscreenImage('${photo.replace(/'/g, "\\'")}')">
+          <button type="button" class="gallery-preview-delete-badge" onclick="removeGigPhoto(${idx})" title="Fotoğrafı Sil">&times;</button>
+        </div>
+      `).join('');
+    }
+  }
 
   const videosList = document.getElementById('gigVideosList');
   videosList.innerHTML = '';

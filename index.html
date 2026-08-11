@@ -1006,12 +1006,13 @@
           </div>
           <div class="form-group" style="margin: 0;">
             <label for="gigDate">Sahne Tarihi</label>
-            <input type="date" id="gigDate" required>
+            <input type="date" id="gigDate" required onchange="updateVanillaGigDateDisplay()">
+            <div id="gigDateDisplay" style="font-size: 0.85rem; color: var(--primary); font-weight: 600; margin-top: 0.35rem;"></div>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="gigNotes">Geceye Dair Notlar (Küçük Punto)</label>
+          <label for="gigNotes">Geceye Dair Notlar</label>
           <textarea id="gigNotes" placeholder="Geceden kalan notlar, gözlemler..." style="font-size: 0.85rem; height: 80px; resize: vertical;"></textarea>
         </div>
 
@@ -1047,19 +1048,23 @@
         </div>
 
         <!-- MEDIA GALLERY SECTION -->
-        <div style="border-top: 1px solid var(--border); padding-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-          <div>
+        <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <label style="margin: 0; font-weight: 600;">Sahne Görselleri (Fotolar)</label>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <label style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.8rem; border: 1px dashed var(--primary-color); border-radius: 8px; cursor: pointer; color: var(--text-main); font-weight: 600; font-size: 0.82rem; margin: 0;">
-                🖼️ Görselden Seç
-                <input type="file" id="gigPhotoFileInput" multiple accept="image/*" style="display: none;" onchange="handleGigPhotoUpload(event)">
-              </label>
-              <button type="button" class="btn btn-sm btn-outline" onclick="pasteVanillaGigPhoto()" style="padding: 0.5rem 0.8rem; font-size: 0.82rem; font-weight: 600;">📋 Panodan Yapıştır (CTRL+V)</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('gigPhotoCameraInput').click()">📷 Fotoğraf Çek</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('gigPhotoFileInput').click()">📂 Görsel Ekle</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="pasteVanillaGigPhoto()">📋 Yapıştır</button>
             </div>
-            <div id="gigPhotosGallery" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem;"></div>
           </div>
 
-          <div>
+          <input type="file" id="gigPhotoCameraInput" accept="image/*" capture="environment" multiple style="display: none;" onchange="handleGigPhotoUpload(event)">
+          <input type="file" id="gigPhotoFileInput" accept="image/*" multiple style="display: none;" onchange="handleGigPhotoUpload(event)">
+
+          <div id="gigPhotosGallery" class="gallery-previews-grid" style="min-height: 80px; margin-bottom: 1rem;"></div>
+
+          <div style="margin-top: 0.75rem;">
+            <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Video Linkleri</label>
             <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
               <input type="text" id="gigNewVideoUrl" placeholder="Video Linki ekle veya yapıştır..." style="margin: 0; flex: 1; font-size: 0.85rem;">
               <button type="button" class="btn btn-outline" onclick="addGigVideoLink()">Ekle</button>

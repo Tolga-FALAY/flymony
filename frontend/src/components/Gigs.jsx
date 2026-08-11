@@ -11,6 +11,10 @@ export default function Gigs() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [noteModalGig, setNoteModalGig] = useState(null);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+
+  const gigCameraInputRef = useRef(null);
+  const gigBrowseInputRef = useRef(null);
 
   // Filter States
   const [filterSearch, setFilterSearch] = useState('');
@@ -178,11 +182,23 @@ export default function Gigs() {
     setIsModalOpen(true);
   };
 
+  const formatGigDateWithDay = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      weekday: 'long'
+    });
+  };
+
   const handleCreateNew = () => {
     setEditingGig(null);
     const today = new Date().toISOString().split('T')[0];
     setFormData({
-      VenueID: store.venues.length > 0 ? store.venues[0].VenueID : '',
+      VenueID: '',
       GigDate: today,
       Notes: '',
       Photos: [],
@@ -827,11 +843,16 @@ export default function Gigs() {
                     onChange={e => setFormData({ ...formData, GigDate: e.target.value })} 
                     required 
                   />
+                  {formData.GigDate && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.35rem' }}>
+                      📅 {formatGigDateWithDay(formData.GigDate)}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="form-group">
-                <label>Geceye Dair Notlar (Küçük Punto)</label>
+                <label>Geceye Dair Notlar</label>
                 <textarea 
                   value={formData.Notes} 
                   onChange={e => setFormData({ ...formData, Notes: e.target.value })} 
@@ -1026,48 +1047,79 @@ export default function Gigs() {
 
               {/* MEDIA GALLERY SECTION */}
               <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '0.75rem', color: 'var(--text-main)' }}>📸 Sahne Görselleri ve Videoları</h3>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                  {/* Photo upload and gallery */}
-                  <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.8rem', border: '1px dashed var(--primary)', borderRadius: '8px', cursor: 'pointer', color: 'var(--primary)', fontWeight: '600', fontSize: '0.82rem', margin: 0 }}>
-                        🖼️ Görselden Seç
-                        <input type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
-                      </label>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={pastePhotoFromClipboard} style={{ padding: '0.5rem 0.8rem', fontSize: '0.82rem', fontWeight: '600' }}>📋 Panodan Yapıştır (CTRL+V)</button>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
-                      {formData.Photos.map((photo, index) => (
-                        <div key={index} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                          <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <button type="button" className="profile-img-delete-badge" style={{ padding: 0, fontSize: '0.9rem', width: '16px', height: '16px' }} onClick={() => removePhoto(index)}>&times;</button>
-                        </div>
-                      ))}
-                    </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <label style={{ margin: 0, fontWeight: 600 }}>Sahne Görselleri (Fotolar)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => gigCameraInputRef.current?.click()}>
+                      📷 Fotoğraf Çek
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={() => gigBrowseInputRef.current?.click()}>
+                      📂 Görsel Ekle
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline" onClick={pastePhotoFromClipboard}>
+                      📋 Yapıştır
+                    </button>
                   </div>
+                </div>
 
-                  {/* Video URL upload and list */}
-                  <div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <input 
-                        type="text" 
-                        placeholder="Video URL'si ekle veya yapıştır (YouTube, Drive...)" 
-                        value={newVideoUrl} 
-                        onChange={e => setNewVideoUrl(e.target.value)} 
-                        style={{ margin: 0, flex: 1, fontSize: '0.85rem' }}
+                <input 
+                  type="file" 
+                  ref={gigCameraInputRef} 
+                  accept="image/*" 
+                  capture="environment" 
+                  multiple 
+                  style={{ display: 'none' }} 
+                  onChange={handlePhotoUpload} 
+                />
+                <input 
+                  type="file" 
+                  ref={gigBrowseInputRef} 
+                  accept="image/*" 
+                  multiple 
+                  style={{ display: 'none' }} 
+                  onChange={handlePhotoUpload} 
+                />
+
+                <div className="gallery-previews-grid" style={{ marginBottom: '1.25rem' }}>
+                  {formData.Photos && formData.Photos.map((photo, index) => (
+                    <div key={index} className="gallery-preview-item">
+                      <img 
+                        src={photo} 
+                        alt={`Sahne Fotoğrafı ${index + 1}`} 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setFullscreenImage(photo)}
                       />
-                      <button type="button" className="btn btn-outline" onClick={addVideoLink}>Ekle</button>
+                      <button type="button" className="gallery-preview-delete-badge" onClick={() => removePhoto(index)} title="Fotoğrafı Sil">&times;</button>
                     </div>
-                    <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      {formData.Videos.map((video, index) => (
-                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f5f9', padding: '0.35rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>
-                          <a href={video} target="_blank" rel="noreferrer" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '85%' }}>🔗 {video}</a>
-                          <button type="button" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }} onClick={() => removeVideo(index)}>&times;</button>
-                        </div>
-                      ))}
+                  ))}
+                  {(!formData.Photos || formData.Photos.length === 0) && (
+                    <div className="gallery-empty-placeholder">
+                      <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
                     </div>
+                  )}
+                </div>
+
+                <div style={{ marginTop: '1rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', display: 'block' }}>Video Linkleri</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Video URL'si ekle veya yapıştır (YouTube, Drive...)" 
+                      value={newVideoUrl} 
+                      onChange={e => setNewVideoUrl(e.target.value)} 
+                      style={{ margin: 0, flex: 1, fontSize: '0.85rem' }}
+                    />
+                    <button type="button" className="btn btn-outline" onClick={addVideoLink}>Ekle</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    {formData.Videos.map((url, index) => (
+                      <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '0.35rem 0.65rem', borderRadius: '6px', fontSize: '0.82rem', border: '1px solid #e2e8f0' }}>
+                        <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'underline' }}>
+                          🎬 {url}
+                        </a>
+                        <button type="button" className="btn btn-sm btn-danger" style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }} onClick={() => removeVideo(index)}>&times;</button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1317,6 +1369,70 @@ export default function Gigs() {
         document.body
       )}
 
+      {/* FULLSCREEN IMAGE MODAL */}
+      {fullscreenImage && createPortal(
+        <div 
+          className="modal-overlay" 
+          style={{ 
+            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+            zIndex: 2500, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(8px)'
+          }}
+          onClick={() => setFullscreenImage(null)}
+        >
+          <div 
+            style={{ 
+              position: 'relative', 
+              maxWidth: '90vw', 
+              maxHeight: '90vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              type="button"
+              className="close-btn"
+              onClick={() => setFullscreenImage(null)}
+              style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '0px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: 'none',
+                color: '#fff',
+                fontSize: '1.75rem',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1
+              }}
+            >
+              &times;
+            </button>
+            <img 
+              src={fullscreenImage} 
+              alt="Tam Ekran Görünüm" 
+              style={{ 
+                maxWidth: '100%', 
+                maxHeight: '85vh', 
+                objectFit: 'contain',
+                borderRadius: '12px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+              }} 
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </section>
   );
 }
