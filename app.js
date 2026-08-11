@@ -4118,6 +4118,27 @@ function closeVanillaFullscreenImage() {
 window.openVanillaFullscreenImage = openVanillaFullscreenImage;
 window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
 
+function openVanillaFullscreenVideo(src) {
+  const modal = document.getElementById('vanillaVideoFullscreenModal');
+  const video = document.getElementById('vanillaFullscreenVideoEl');
+  if (modal && video) {
+    video.src = src;
+    modal.style.display = 'flex';
+  }
+}
+
+function closeVanillaFullscreenVideo() {
+  const modal = document.getElementById('vanillaVideoFullscreenModal');
+  const video = document.getElementById('vanillaFullscreenVideoEl');
+  if (modal && video) {
+    video.pause();
+    video.src = '';
+    modal.style.display = 'none';
+  }
+}
+window.openVanillaFullscreenVideo = openVanillaFullscreenVideo;
+window.closeVanillaFullscreenVideo = closeVanillaFullscreenVideo;
+
 function renderEditorGigSongs() {
   const container = document.getElementById('gigSongsList');
   document.getElementById('gigSongsCount').innerText = editorGigSongs.length;
@@ -4267,6 +4288,14 @@ function removeGuestFromGigListByIndex(index) {
   renderEditorGigGuests();
 }
 
+function isVanillaVideoFile(url) {
+  if (!url) return false;
+  if (url.startsWith('data:video/')) return true;
+  if (url.startsWith('blob:')) return true;
+  const lower = url.toLowerCase();
+  return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.mov') || lower.endsWith('.m4v') || lower.endsWith('.mkv') || lower.endsWith('.3gp');
+}
+
 function renderEditorGigMedia() {
   const photoGallery = document.getElementById('gigPhotosGallery');
   if (photoGallery) {
@@ -4286,18 +4315,110 @@ function renderEditorGigMedia() {
     }
   }
 
-  const videosList = document.getElementById('gigVideosList');
-  videosList.innerHTML = '';
-  editorGigVideos.forEach((video, idx) => {
-    const div = document.createElement('div');
-    div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.8rem;';
-    div.innerHTML = `
-      <a href="${video}" target="_blank" rel="noreferrer" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 85%; color: var(--primary-color);">🔗 ${video}</a>
-      <button type="button" style="background: none; border: none; color: #ef4444; cursor: pointer; font-weight: bold; font-size: 0.9rem;" onclick="removeGigVideo(${idx})">&times;</button>
-    `;
-    videosList.appendChild(div);
-  });
+  const videoGallery = document.getElementById('gigVideosGallery');
+  if (videoGallery) {
+    if (editorGigVideos.length === 0) {
+      videoGallery.innerHTML = `
+        <div class="gallery-empty-placeholder">
+          <span>Henüz video eklenmemiş. Anlık çekebilir, cihazınızdan dosya seçebilir veya link ekleyebilirsiniz.</span>
+        </div>
+      `;
+    } else {
+      videoGallery.innerHTML = editorGigVideos.map((url, idx) => {
+        const isFile = isVanillaVideoFile(url);
+        if (isFile) {
+          return `
+            <div class="gallery-preview-item" style="position: relative;">
+              <div style="width: 100%; height: 100%; background: #0f172a; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px; overflow: hidden;" onclick="openVanillaFullscreenVideo('${url.replace(/'/g, "\\'")}')">
+                <video src="${url}" style="width: 100%; height: 100%; object-fit: cover;" preload="metadata"></video>
+                <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); color: #fff; font-size: 1.5rem;">▶️</div>
+              </div>
+              <button type="button" class="gallery-preview-delete-badge" onclick="removeGigVideo(${idx})" title="Videoyu Sil">&times;</button>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="gallery-preview-item" style="position: relative;">
+              <a href="${url}" target="_blank" rel="noreferrer" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #f1f5f9; padding: 0.35rem; text-align: center; font-size: 0.75rem; word-break: break-all; color: var(--primary); border-radius: 8px; text-decoration: none;">
+                <span style="font-size: 1.2rem;">🎬</span>
+                <span style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${url}</span>
+              </a>
+              <button type="button" class="gallery-preview-delete-badge" onclick="removeGigVideo(${idx})" title="Videoyu Sil">&times;</button>
+            </div>
+          `;
+        }
+      }).join('');
+    }
+  }
 }
+
+async function handleGigVideoUpload(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  for (const file of files) {
+    if (file.size > 100 * 1024 * 1024) {
+      if (!confirm(`"${file.name}" videosu büyük bir dosyadır (${Math.round(file.size / 1024 / 1024)}MB). Yine de eklemek istiyor musunuz?`)) {
+        continue;
+      }
+    }
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = ev => resolve(ev.target.result);
+        reader.onerror = err => reject(err);
+        reader.readAsDataURL(file);
+      });
+      editorGigVideos.push(dataUrl);
+    } catch (err) {
+      console.warn("Video yükleme hatası:", err);
+    }
+  }
+  renderEditorGigMedia();
+  event.target.value = '';
+}
+window.handleGigVideoUpload = handleGigVideoUpload;
+
+async function pasteVanillaGigVideo() {
+  try {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      const text = await navigator.clipboard.readText();
+      if (text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:video/'))) {
+        editorGigVideos.push(text.trim());
+        renderEditorGigMedia();
+        return;
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.read) {
+      const clipboardItems = await navigator.clipboard.read();
+      let found = false;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('video/')) {
+            const blob = await item.getType(type);
+            const dataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = ev => resolve(ev.target.result);
+              reader.onerror = err => reject(err);
+              reader.readAsDataURL(blob);
+            });
+            editorGigVideos.push(dataUrl);
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (found) {
+        renderEditorGigMedia();
+        return;
+      }
+    }
+    alert("Panoda geçerli bir video bağlantısı veya video dosyası bulunamadı.");
+  } catch (err) {
+    alert("Panodan okunamadı. Klavyenizden CTRL+V kısayolunu veya aşağıdaki link ekleme alanını kullanabilirsiniz.");
+  }
+}
+window.pasteVanillaGigVideo = pasteVanillaGigVideo;
 
 async function handleGigPhotoUpload(event) {
   const files = Array.from(event.target.files);
