@@ -1313,7 +1313,7 @@ function renderVanillaGuestRelationsList() {
   // Render them as visual items with a remove badge
   container.innerHTML = relatedGuests.map(g => `
     <div style="display: inline-flex; align-items: center; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 6px; margin: 0.25rem; font-size: 0.9rem; border: 1px solid #e2e8f0;">
-      <span>${g.firstName} ${g.lastName}</span>
+      <span style="cursor: pointer; color: #2563eb; font-weight: 500; text-decoration: underline; text-underline-offset: 2px;" title="${g.firstName} ${g.lastName} kaydına git" onclick="editGuest(${g.id})">${g.firstName} ${g.lastName}</span>
       <button type="button" onclick="removeVanillaGuestRelation(${g.id})" style="border: none; background: transparent; color: #ef4444; font-size: 1.1rem; cursor: pointer; margin-left: 0.5rem; padding: 0; line-height: 1; display: flex; align-items: center;">&times;</button>
     </div>
   `).join('');
@@ -1347,7 +1347,7 @@ function renderVanillaGuestRelationsList() {
       indirectGroup.style.display = 'block';
       indirectContainer.innerHTML = indirectGuests.map(g => `
         <div style="display: inline-flex; align-items: center; background: #f1f5f9; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 6px; margin: 0.25rem; font-size: 0.85rem; border: 1px solid #e2e8f0; gap: 0.4rem;">
-          <span>${g.firstName} ${g.lastName}</span>
+          <span style="cursor: pointer; color: #2563eb; font-weight: 500; text-decoration: underline; text-underline-offset: 2px;" title="${g.firstName} ${g.lastName} kaydına git" onclick="editGuest(${g.id})">${g.firstName} ${g.lastName}</span>
           <button type="button" class="btn btn-sm btn-primary" onclick="addVanillaGuestRelationById(${g.id})" style="padding: 0 0.25rem; font-size: 0.75rem; min-height: auto; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 18px; line-height: 1;">İlişki Ekle</button>
         </div>
       `).join('');

@@ -1265,7 +1265,13 @@ export default function Guests() {
                       if (!g) return null;
                       return (
                         <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.95rem' }}>
-                          <span>{g.FullName}</span>
+                          <span 
+                            style={{ cursor: 'pointer', color: 'var(--primary, #2563eb)', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                            title={`${g.FullName || `${g.FirstName} ${g.LastName}`} kaydına git`}
+                            onClick={() => openModal(g)}
+                          >
+                            {g.FullName || `${g.FirstName} ${g.LastName}`}
+                          </span>
                           <button
                             type="button"
                             className="btn btn-sm btn-danger"
@@ -1312,7 +1318,13 @@ export default function Guests() {
                             gap: '0.4rem'
                           }}
                         >
-                          <span>{g.FullName}</span>
+                          <span 
+                            style={{ cursor: 'pointer', color: 'var(--primary, #2563eb)', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                            title={`${g.FullName || `${g.FirstName} ${g.LastName}`} kaydına git`}
+                            onClick={() => openModal(g)}
+                          >
+                            {g.FullName || `${g.FirstName} ${g.LastName}`}
+                          </span>
                           <button
                             type="button"
                             className="btn btn-sm btn-primary"
