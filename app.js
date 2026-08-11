@@ -5040,31 +5040,104 @@ function renderParameters() {
   // 2. Render Venues
   const venuesBody = document.getElementById('vanillaVenuesTableBody');
   if (venuesBody) {
-    venuesBody.innerHTML = DB.venues.map(v => `
-      <tr>
-        <td data-label="Mekan Adı" style="font-weight: 600;">${v.name}</td>
-        <td data-label="Şehir" style="font-weight: 500;">${v.cityName || '-'}</td>
-        <td data-label="İrtibat Kişisi">${v.contactPerson || '-'}</td>
-        <td data-label="İrtibat Telefonu">${v.contactPhone || '-'}</td>
-        <td data-label="Instagram">
-          ${v.instagramLink ? `<a href="${v.instagramLink}" target="_blank" class="instagram-link-badge">Instagram ↗</a>` : '-'}
-        </td>
-        <td data-label="Konum">
-          ${v.googleMapsLink ? `<button type="button" class="btn btn-sm btn-outline" onclick="copyVanillaVenueLink(this, '${v.googleMapsLink}')" title="Google Harita Konumunu Kopyala" style="padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.2s ease;">🗺️ Konum</button>` : '-'}
-        </td>
-        <td data-label="Notlar" style="font-size: 0.82rem; color: var(--text-muted);">${v.notes || '-'}</td>
-        <td data-label="İşlemler">
-          <div class="action-btns">
-            <button class="btn btn-sm btn-outline" onclick="openVanillaVenueModal(${v.id})">Düzenle</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteVanillaVenue(${v.id})">Sil</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    venuesBody.innerHTML = DB.venues.map(v => {
+      const hasNotes = String(v.notes || '').trim().length > 0;
+      const escapedNotes = String(v.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const noteBtnHtml = hasNotes 
+        ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openVenueNoteModal(${v.id})" title="${escapedNotes}">📝</button>`
+        : '';
+
+      return `
+        <tr>
+          <td data-label="MEKAN ADI" style="font-weight: 600;">${v.name}</td>
+          <td data-label="ŞEHİR" style="font-weight: 500;">${v.cityName || '-'}</td>
+          <td data-label="İRTİBAT">${v.contactPerson || '-'}</td>
+          <td data-label="CEP NO" style="text-align: center;">
+            ${v.contactPhone ? `<span style="color: var(--primary); cursor: pointer; text-decoration: underline;" onclick="openVenueContactModal(${v.id})">${formatPhone3Lines(v.contactPhone)}</span>` : '-'}
+          </td>
+          <td data-label="INSTA" style="text-align: center;">
+            ${v.instagramLink ? `<a href="${v.instagramLink}" target="_blank" class="instagram-link-badge">Profil</a>` : '-'}
+          </td>
+          <td data-label="KONUM">
+            ${v.googleMapsLink ? `<button type="button" class="btn btn-sm btn-outline" onclick="copyVanillaVenueLink(this, '${v.googleMapsLink}')" title="Google Harita Konumunu Kopyala" style="padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: all 0.2s ease;">Kopyala</button>` : '-'}
+          </td>
+          <td data-label="İşlemler">
+            <div class="action-btns">
+              ${noteBtnHtml}
+              <button class="btn btn-sm btn-outline" onclick="openVanillaVenueModal(${v.id})">Düzenle</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteVanillaVenue(${v.id})">Sil</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
     if (DB.venues.length === 0) {
-      venuesBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
+      venuesBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Kayıt bulunamadı.</td></tr>';
     }
   }
+
+function openVenueNoteModal(venueId) {
+  const venue = DB.venues.find(v => Number(v.id) === Number(venueId));
+  if (!venue) return;
+
+  const nameEl = document.getElementById('gigNoteModalTitle');
+  const bodyEl = document.getElementById('gigNoteModalBody');
+
+  if (nameEl) nameEl.innerText = `📝 ${venue.name} - Notlar`;
+  if (bodyEl) bodyEl.innerText = venue.notes || 'Herhangi bir not bulunmamaktadır.';
+
+  openModal('gigNoteModal');
+}
+window.openVenueNoteModal = openVenueNoteModal;
+
+function openVenueContactModal(venueId) {
+  const venue = DB.venues.find(v => Number(v.id) === Number(venueId));
+  if (!venue || !venue.contactPhone) return;
+
+  const phoneClean = cleanPhoneNumberForWhatsapp(venue.contactPhone);
+  const igUsername = getInstagramUsername(venue.instagramLink);
+
+  const container = document.getElementById('guestContactOptionsBody');
+  if (!container) return;
+
+  let html = `
+    <div style="font-weight: bold; font-size: 1.05rem; color: #1e293b; margin-bottom: 0.75rem; text-align: center;">
+      ${venue.name} ${venue.contactPerson ? '(' + venue.contactPerson + ')' : ''}
+    </div>
+    
+    <!-- Mobil Arama -->
+    <a href="tel:${venue.contactPhone}" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px; color: #3b82f6;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+      Mobil Arama
+    </a>
+    
+    <!-- WhatsApp Arama -->
+    <a href="whatsapp://call?phone=${phoneClean}" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 10px; color: #22c55e;"><path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/></svg>
+      WhatsApp Arama
+    </a>
+    
+    <!-- WhatsApp Mesaj -->
+    <a href="https://wa.me/${phoneClean}" target="_blank" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 10px; color: #22c55e;"><path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/></svg>
+      WhatsApp Mesaj
+    </a>
+  `;
+
+  if (venue.instagramLink && igUsername) {
+    html += `
+      <!-- Instagram DM Mesaj -->
+      <a href="https://instagram.com/direct/t/${igUsername}" target="_blank" class="btn btn-outline" style="display: flex; align-items: center; justify-content: flex-start; padding: 0.75rem 1rem; text-decoration: none; color: inherit;" onclick="closeModal('guestContactModal')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 10px; color: #ec4899;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+        Instagram DM Mesaj
+      </a>
+    `;
+  }
+
+  container.innerHTML = html;
+  openModal('guestContactModal');
+}
+window.openVenueContactModal = openVenueContactModal;
 
   // 3. Render Cities
   const citiesBody = document.getElementById('vanillaCitiesTableBody');

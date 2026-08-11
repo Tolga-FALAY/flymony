@@ -1,6 +1,53 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
+
+const cleanPhoneNumberForWhatsapp = (phone) => {
+  if (!phone) return '';
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 10 && cleaned.startsWith('5')) {
+    cleaned = '90' + cleaned;
+  } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+    cleaned = '90' + cleaned.substring(1);
+  }
+  return cleaned;
+};
+
+const getInstagramUsername = (url) => {
+  if (!url) return '';
+  const match = url.match(/(?:instagram\.com\/|instagr\.am\/)([a-zA-Z0-9_\.]+)/i);
+  return match ? match[1] : '';
+};
+
+const renderPhone3Lines = (phone) => {
+  if (!phone) return '-';
+  const digits = phone.replace(/\D/g, '');
+  let p1 = '', p2 = '', p3 = '';
+  if (digits.length === 11 && digits.startsWith('0')) {
+    p1 = digits.substring(0, 4);
+    p2 = digits.substring(4, 7);
+    p3 = digits.substring(7, 11);
+  } else if (digits.length === 10 && digits.startsWith('5')) {
+    p1 = '0' + digits.substring(0, 3);
+    p2 = digits.substring(3, 6);
+    p3 = digits.substring(6, 10);
+  } else {
+    const parts = phone.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      p1 = parts[0]; p2 = parts[1]; p3 = parts.slice(2).join(' ');
+    } else {
+      p1 = digits.substring(0, 4); p2 = digits.substring(4, 7); p3 = digits.substring(7);
+    }
+  }
+  return (
+    <div style={{ lineHeight: 1.15, fontSize: '0.8rem', fontFamily: 'monospace', textAlign: 'center' }}>
+      <div>{p1}</div>
+      <div>{p2}</div>
+      <div>{p3}</div>
+    </div>
+  );
+};
 
 const COLOR_PRESETS = [
   { label: 'Mavi', hex: '#0ea5e9' },
@@ -20,6 +67,8 @@ export default function Parameters() {
   const [cities, setCities] = useState([]);
   const [languages, setLanguages] = useState([]);
   const [copiedVenueId, setCopiedVenueId] = useState(null);
+  const [contactVenue, setContactVenue] = useState(null);
+  const [noteModalVenue, setNoteModalVenue] = useState(null);
 
   // Modal states
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -454,24 +503,34 @@ export default function Parameters() {
             <table>
               <thead>
                 <tr>
-                  <th>Mekan Adı</th>
-                  <th>Şehir</th>
-                  <th>İrtibat Kişisi</th>
-                  <th>İrtibat Telefonu</th>
-                  <th>Instagram</th>
-                  <th>Konum</th>
-                  <th>Notlar</th>
+                  <th>MEKAN ADI</th>
+                  <th>ŞEHİR</th>
+                  <th>İRTİBAT</th>
+                  <th style={{ textAlign: 'center' }}>CEP NO</th>
+                  <th style={{ textAlign: 'center' }}>INSTA</th>
+                  <th>KONUM</th>
                   <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
                 </tr>
               </thead>
               <tbody>
                 {venues.map(v => (
                   <tr key={v.VenueID}>
-                    <td data-label="Mekan Adı" style={{ fontWeight: 600 }}>{v.VenueName}</td>
-                    <td data-label="Şehir" style={{ fontWeight: 500 }}>{v.CityName || '-'}</td>
-                    <td data-label="İrtibat Kişisi">{v.ContactPerson || '-'}</td>
-                    <td data-label="İrtibat Telefonu">{v.ContactPhone || '-'}</td>
-                    <td data-label="Instagram">
+                    <td data-label="MEKAN ADI" style={{ fontWeight: 600 }}>{v.VenueName}</td>
+                    <td data-label="ŞEHİR" style={{ fontWeight: 500 }}>{v.CityName || '-'}</td>
+                    <td data-label="İRTİBAT">{v.ContactPerson || '-'}</td>
+                    <td data-label="CEP NO" style={{ textAlign: 'center' }}>
+                      {v.ContactPhone ? (
+                        <span
+                          style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                          onClick={() => setContactVenue(v)}
+                        >
+                          {renderPhone3Lines(v.ContactPhone)}
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td data-label="INSTA" style={{ textAlign: 'center' }}>
                       {v.InstagramLink ? (
                         <a
                           href={v.InstagramLink}
@@ -479,11 +538,11 @@ export default function Parameters() {
                           rel="noreferrer"
                           className="instagram-link-badge"
                         >
-                          Instagram ↗
+                          Profil
                         </a>
                       ) : '-'}
                     </td>
-                    <td data-label="Konum">
+                    <td data-label="KONUM">
                       {v.GoogleMapsLink ? (
                         <button
                           type="button"
@@ -505,13 +564,22 @@ export default function Parameters() {
                             fontWeight: '600'
                           }}
                         >
-                          {copiedVenueId === v.VenueID ? '✅ Kopyalandı' : '🗺️ Konum'}
+                          {copiedVenueId === v.VenueID ? '✅ Kopyalandı' : 'Kopyala'}
                         </button>
                       ) : '-'}
                     </td>
-                    <td data-label="Notlar" style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{v.Notes || '-'}</td>
                     <td data-label="İşlemler">
                       <div className="action-btns">
+                        {String(v.Notes || '').trim().length > 0 && (
+                          <button 
+                            className="btn btn-sm" 
+                            style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
+                            onClick={() => setNoteModalVenue(v)}
+                            title={v.Notes}
+                          >
+                            📝
+                          </button>
+                        )}
                         <button className="btn btn-sm btn-outline" onClick={() => openVenueModal(v)}>Düzenle</button>
                         <button className="btn btn-sm btn-danger" onClick={() => handleVenueDelete(v)}>Sil</button>
                       </div>
@@ -519,7 +587,7 @@ export default function Parameters() {
                   </tr>
                 ))}
                 {venues.length === 0 && (
-                  <tr><td colSpan="8" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+                  <tr><td colSpan="7" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
               </tbody>
             </table>
@@ -849,6 +917,106 @@ export default function Parameters() {
             </form>
           </div>
         </div>
+      )}
+      {/* VENUE CONTACT MODAL */}
+      {contactVenue && (() => {
+        const phoneClean = cleanPhoneNumberForWhatsapp(contactVenue.ContactPhone);
+        const igUsername = getInstagramUsername(contactVenue.InstagramLink);
+        return createPortal(
+          <div className="modal-overlay" style={{ zIndex: 1300 }} onClick={() => setContactVenue(null)}>
+            <div className="modal-content" style={{ maxWidth: '350px', padding: '1.5rem', borderRadius: '12px' }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header" style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.2rem', margin: 0 }}>İletişim Seçenekleri</h2>
+                <button type="button" className="close-btn" onClick={() => setContactVenue(null)}>&times;</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#1e293b', marginBottom: '0.75rem', textAlign: 'center' }}>
+                  {contactVenue.VenueName} {contactVenue.ContactPerson ? `(${contactVenue.ContactPerson})` : ''}
+                </div>
+                
+                {/* Mobil Arama */}
+                <a
+                  href={`tel:${contactVenue.ContactPhone}`}
+                  className="btn btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                  onClick={() => setContactVenue(null)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', color: '#3b82f6' }}>
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  </svg>
+                  Mobil Arama
+                </a>
+                
+                {/* WhatsApp Arama */}
+                <a
+                  href={`whatsapp://call?phone=${phoneClean}`}
+                  className="btn btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                  onClick={() => setContactVenue(null)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '10px', color: '#22c55e' }}>
+                    <path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/>
+                  </svg>
+                  WhatsApp Arama
+                </a>
+                
+                {/* WhatsApp Mesaj */}
+                <a
+                  href={`https://wa.me/${phoneClean}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                  onClick={() => setContactVenue(null)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '10px', color: '#22c55e' }}>
+                    <path d="M12.004 2C6.51 2 2.014 6.5 2.014 12c0 2.13.67 4.13 1.81 5.79l-1.2 4.41 4.54-1.18c1.58.86 3.38 1.3 5.24 1.3 5.494 0 9.99-4.5 9.99-10S17.498 2 12.004 2zm0 1.95c4.43 0 8.04 3.61 8.04 8.05s-3.61 8.05-8.04 8.05c-1.63 0-3.19-.5-4.52-1.42l-.33-.21-2.73.71.73-2.67-.25-.37c-1.02-1.42-1.57-3.12-1.57-4.89 0-4.44 3.61-8.05 8.04-8.05zM9.474 8.01c-.18 0-.46.07-.7.33-.25.26-.95.93-.95 2.27 0 1.34.98 2.63 1.11 2.81.14.19 1.9 2.9 4.62 4.08.65.28 1.15.45 1.54.57.65.21 1.25.18 1.72.11.52-.08 1.6-.65 1.82-1.29.23-.63.23-1.18.16-1.29-.07-.11-.25-.18-.53-.32-.28-.14-1.19-.44-2.27-1.4-.84-.75-1.4-1.67-1.57-1.95-.17-.28-.02-.43.12-.57.13-.13.28-.32.42-.48.14-.16.19-.27.28-.46.09-.18.05-.35-.02-.48-.07-.14-.61-1.48-.84-2.02-.22-.54-.45-.46-.61-.47h-.49z"/>
+                  </svg>
+                  WhatsApp Mesaj
+                </a>
+
+                {contactVenue.InstagramLink && igUsername && (
+                  <a
+                    href={`https://instagram.com/direct/t/${igUsername}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-outline"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit' }}
+                    onClick={() => setContactVenue(null)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', color: '#ec4899' }}>
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                    Instagram DM Mesaj
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* VENUE NOTE POPUP MODAL */}
+      {noteModalVenue && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setNoteModalVenue(null)}>
+          <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>📝 {noteModalVenue.VenueName} - Notlar</h2>
+              <button className="close-btn" onClick={() => setNoteModalVenue(null)}>&times;</button>
+            </div>
+            <div style={{ padding: '1rem', background: 'var(--canvas)', borderRadius: '8px', fontSize: '0.95rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: '1.5', maxHeight: '60vh', overflowY: 'auto' }}>
+              {noteModalVenue.Notes || 'Herhangi bir not bulunmamaktadır.'}
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setNoteModalVenue(null)}>Kapat</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

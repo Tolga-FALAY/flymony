@@ -740,7 +740,7 @@ export default function Gigs() {
               <th>Tarih</th>
               <th>Mekân</th>
               <th style={{ textAlign: 'center' }}>Şarkı Sayısı</th>
-              <th style={{ textAlign: 'center' }}>Misafir Sayısı</th>
+              <th style={{ textAlign: 'center' }}>MİSAFİRLERİM</th>
               <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
