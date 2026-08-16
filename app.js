@@ -6168,6 +6168,57 @@ async function permanentDeleteVanillaNote(noteId) {
   }
 }
 
+async function pasteVanillaNotePhotoFromClipboard() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error("Tarayıcı panodan kopyalama okumasını desteklemiyor.");
+    }
+    const clipboardItems = await navigator.clipboard.read();
+    let found = false;
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const dataUrl = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = ev => {
+              const img = new Image();
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width, height = img.height;
+                const max = 1000;
+                if (width > height) {
+                  if (width > max) { height = Math.round((height * max) / width); width = max; }
+                } else {
+                  if (height > max) { width = Math.round((width * max) / height); height = max; }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL(blob.type || 'image/jpeg', 0.75));
+              };
+              img.src = ev.target.result;
+            };
+            reader.readAsDataURL(blob);
+          });
+          vanillaNoteCurrentPhotos.push(dataUrl);
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+    if (!found) {
+      alert("Panoda kopyalanmış bir görsel bulunamadı. Metin alanına tıklayıp CTRL+V kısayolunu da kullanabilirsiniz!");
+    } else {
+      renderVanillaNotePhotos();
+    }
+  } catch (err) {
+    alert("Pano okuma izni verilmedi veya desteklenmiyor. Metin alanına tıklayıp klavyenizden CTRL+V kısayolunu kullanabilirsiniz!");
+  }
+}
+
 // Initial load for vanilla notes
 if (typeof window !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -6217,6 +6268,7 @@ window.viewVanillaFullscreenImage = viewVanillaFullscreenImage;
 window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
 window.resetVanillaNoteForm = resetVanillaNoteForm;
 window.handleVanillaNotePhotoUpload = handleVanillaNotePhotoUpload;
+window.pasteVanillaNotePhotoFromClipboard = pasteVanillaNotePhotoFromClipboard;
 window.removeVanillaNotePhoto = removeVanillaNotePhoto;
 window.saveVanillaNote = saveVanillaNote;
 window.editVanillaNote = editVanillaNote;

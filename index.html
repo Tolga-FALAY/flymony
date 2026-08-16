@@ -526,6 +526,8 @@
 
               <button type="button" class="btn btn-outline" onclick="document.getElementById('vanillaNoteFileInput').click()" style="font-size: 0.82rem; padding: 5px 10px;" title="Galeriden görsel seç">📂 Görsel Ekle</button>
               <input type="file" id="vanillaNoteFileInput" accept="image/*" multiple style="display: none;" onchange="handleVanillaNotePhotoUpload(event)">
+
+              <button type="button" class="btn btn-outline" onclick="pasteVanillaNotePhotoFromClipboard()" style="font-size: 0.82rem; padding: 5px 10px;" title="Panodan kopyalanmış görseli yapıştır">📋 Yapıştır</button>
             </div>
 
             <div style="display: flex; gap: 0.4rem;">

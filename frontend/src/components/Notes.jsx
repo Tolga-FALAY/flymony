@@ -90,6 +90,33 @@ export default function Notes() {
     }
   };
 
+  const pastePhotoFromClipboard = async () => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        throw new Error("Tarayıcı panodan kopyalama okumasını desteklemiyor.");
+      }
+      const clipboardItems = await navigator.clipboard.read();
+      let found = false;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const compressed = await compressImage(blob, 1000, 1000, 0.75);
+            setPhotos(prev => [...prev, compressed]);
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (!found) {
+        alert("Panoda kopyalanmış bir görsel bulunamadı. Metin alanına tıklayıp CTRL+V kısayolunu da kullanabilirsiniz!");
+      }
+    } catch (err) {
+      alert("Pano okuma izni verilmedi veya desteklenmiyor. Metin alanına tıklayıp klavyenizden CTRL+V kısayolunu kullanabilirsiniz!");
+    }
+  };
+
   const removePhoto = (idxToRemove) => {
     setPhotos(prev => prev.filter((_, idx) => idx !== idxToRemove));
   };
@@ -445,6 +472,16 @@ export default function Notes() {
               style={{ display: 'none' }} 
               onChange={handlePhotoUpload} 
             />
+
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={pastePhotoFromClipboard}
+              style={{ fontSize: '0.82rem', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              title="Panodan kopyalanmış görseli yapıştır"
+            >
+              📋 Yapıştır
+            </button>
           </div>
 
           <div style={{ display: 'flex', gap: '0.4rem' }}>
