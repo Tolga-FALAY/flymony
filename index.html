@@ -41,15 +41,13 @@
         <button class="nav-btn" data-target="otherOperations" title="Diğer İşlemler"><span class="nav-icon">⚙️</span><span class="nav-text">Diğer İşlemler</span></button>
         <button class="nav-btn" data-target="parameters" title="Parametreler"><span class="nav-icon">📊</span><span class="nav-text">Parametreler</span></button>
         <button class="nav-btn nav-btn-refresh" onclick="refreshApp()" title="Kayıtları Sistemden Yeniden Çek (Yenile)"><span class="nav-icon">🔄</span><span class="nav-text">Yenile</span></button>
-        <button class="nav-btn nav-btn-notes" onclick="openVanillaQuickNotesModal()" title="Not Ekle" style="position: relative;">
-          <span class="nav-icon" style="position: relative;">
-            📝
-            <span id="vanillaNotesIconBadge" class="sidebar-icon-badge" style="position: absolute; top: -6px; right: -10px; background: #0284c7; color: #fff; border-radius: 10px; padding: 1px 4px; font-size: 0.65rem; font-weight: bold; min-width: 16px; text-align: center; line-height: 1.2; border: 1.5px solid #fff; display: none;">0</span>
+        <button class="nav-btn" data-target="notes" title="Notlar" style="position: relative;">
+          <span class="nav-icon" id="vanillaNotesNavIcon">📝</span>
+          <span class="nav-text" id="vanillaNotesNavText">
+            <span>Notlar</span>
+            <span id="vanillaNotesTextBadge" style="margin-left: auto; background: #0284c7; color: #fff; border-radius: 12px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold; min-width: 18px; text-align: center; line-height: 1.2;">0</span>
           </span>
-          <span class="nav-text" style="display: flex; align-items: center; justify-content: space-between; flex: 1; gap: 0.4rem;">
-            <span>Not Ekle</span>
-            <span id="vanillaNotesTextBadge" style="background: #0284c7; color: #fff; border-radius: 12px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold; min-width: 18px; text-align: center; line-height: 1.2;">0</span>
-          </span>
+          <span id="vanillaNotesIconBadge" style="display: none; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #0284c7; color: #fff; font-size: 0.8rem; font-weight: bold; margin: auto;">0</span>
         </button>
       </nav>
       <div id="menuBackdrop" class="menu-backdrop"></div>
@@ -488,6 +486,89 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <!-- NOTLAR SEKMESİ -->
+      <section id="notes" class="tab-content">
+        <div class="section-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <span style="font-size: 1.5rem;">📝</span>
+            <h2 style="margin: 0;">Hızlı Notlar & Fotoğraflar</h2>
+            <span id="vanillaNotesActiveBadge" style="background: #0284c7; color: #ffffff; border-radius: 12px; padding: 2px 8px; font-size: 0.78rem; font-weight: bold;">0 Aktif Not</span>
+          </div>
+
+          <div style="display: flex; gap: 0.4rem; background: #f1f5f9; padding: 3px; border-radius: 8px; border: 1px solid var(--border);">
+            <button type="button" id="vanillaTabActiveNotesBtn" class="btn btn-sm btn-primary" onclick="setVanillaNotesFilter('active')" style="border: none; padding: 4px 10px; font-size: 0.8rem; font-weight: 600;">📌 Aktif Notlar (<span id="vanillaTabActiveCount">0</span>)</button>
+            <button type="button" id="vanillaTabTrashNotesBtn" class="btn btn-sm btn-outline" onclick="setVanillaNotesFilter('trash')" style="border: none; padding: 4px 10px; font-size: 0.8rem; font-weight: 600;">🗑️ Çöp Kutusu (<span id="vanillaTabTrashCount">0</span>)</button>
+            <button type="button" id="vanillaTabAllNotesBtn" class="btn btn-sm btn-outline" onclick="setVanillaNotesFilter('all')" style="border: none; padding: 4px 10px; font-size: 0.8rem; font-weight: 600;">Tümü (<span id="vanillaTabAllCount">0</span>)</button>
+          </div>
+        </div>
+
+        <!-- NEW / EDIT NOTE FORM -->
+        <div class="card" style="background: #ffffff; border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1.25rem; box-shadow: 0 2px 5px rgba(0,0,0,0.04);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span id="vanillaNoteFormTitleMain" style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">✍️ Yeni Not Ekle</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted); background: #f8fafc; padding: 2px 6px; borderRadius: 4px; border: 1px solid #e2e8f0;">🕒 Tarih & Saat: Otomatik Kaydedilir</span>
+            </div>
+            <button type="button" id="vanillaNoteCancelEditBtnMain" class="btn btn-outline btn-sm" style="display: none; font-size: 0.75rem; padding: 2px 8px;" onclick="resetVanillaNoteForm()">➕ Yeni Nota Dön</button>
+          </div>
+
+          <textarea id="vanillaNoteText" rows="3" placeholder="Notunuzu buraya yazın... (Enter tuşu ile yeni satıra geçebilirsiniz, panodan görsel yapıştırabilirsiniz)" style="width: 100%; padding: 0.75rem; font-size: 0.92rem; border-radius: 8px; border: 1px solid #cbd5e1; resize: vertical; min-height: 85px; font-family: inherit; line-height: 1.45; margin-bottom: 0.75rem;"></textarea>
+
+          <div id="vanillaNotePhotosContainer" style="display: none; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; padding: 0.5rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;"></div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.4rem;">
+              <button type="button" class="btn btn-outline" onclick="document.getElementById('vanillaNoteCameraInput').click()" style="font-size: 0.82rem; padding: 5px 10px;" title="Kamera ile anlık fotoğraf çek">📷 Fotoğraf Çek</button>
+              <input type="file" id="vanillaNoteCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleVanillaNotePhotoUpload(event)">
+
+              <button type="button" class="btn btn-outline" onclick="document.getElementById('vanillaNoteFileInput').click()" style="font-size: 0.82rem; padding: 5px 10px;" title="Galeriden görsel seç">📂 Görsel Ekle</button>
+              <input type="file" id="vanillaNoteFileInput" accept="image/*" multiple style="display: none;" onchange="handleVanillaNotePhotoUpload(event)">
+            </div>
+
+            <div style="display: flex; gap: 0.4rem;">
+              <button type="button" id="vanillaNoteCancelBtnMain" class="btn btn-outline" style="display: none; font-size: 0.85rem; padding: 5px 12px;" onclick="resetVanillaNoteForm()">Vazgeç</button>
+              <button type="button" id="vanillaNoteSaveBtnMain" class="btn btn-primary" style="font-size: 0.85rem; padding: 5px 18px; font-weight: 600;" onclick="saveVanillaNote()">💾 Notu Kaydet</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEARCH & COUNT ROW -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+          <div style="position: relative; width: 320px; max-width: 100%;">
+            <input type="text" id="vanillaNotesSearchInput" placeholder="Notlarda veya tarihlerde ara..." oninput="handleVanillaNotesSearch(this.value)" style="width: 100%; padding: 0.45rem 0.75rem; font-size: 0.85rem; margin: 0;">
+          </div>
+          <div id="vanillaNotesCountLabel" style="font-size: 0.85rem; color: var(--text-muted);">0 Not listeleniyor</div>
+        </div>
+
+        <!-- SORTABLE DATA TABLE -->
+        <div class="table-responsive" style="background: #ffffff; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+          <table class="data-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f8fafc; border-bottom: 2px solid var(--border);">
+                <th style="padding: 0.75rem 0.85rem; text-align: left; cursor: pointer; user-select: none; width: 160px;" onclick="handleVanillaNotesSort('CreatedAt')" title="Tarihe göre sırala">
+                  🕒 Tarih & Saat <span id="sortIconCreatedAt">▼</span>
+                </th>
+                <th style="padding: 0.75rem 0.85rem; text-align: left; cursor: pointer; user-select: none;" onclick="handleVanillaNotesSort('NoteText')" title="Not metnine göre sırala">
+                  📝 Not İçeriği <span id="sortIconNoteText">↕</span>
+                </th>
+                <th style="padding: 0.75rem 0.85rem; text-align: center; cursor: pointer; user-select: none; width: 120px;" onclick="handleVanillaNotesSort('Photos')" title="Görsel sayısına göre sırala">
+                  🖼️ Görseller <span id="sortIconPhotos">↕</span>
+                </th>
+                <th style="padding: 0.75rem 0.85rem; text-align: center; cursor: pointer; user-select: none; width: 100px;" onclick="handleVanillaNotesSort('IsDeleted')" title="Duruma göre sırala">
+                  🏷️ Durum <span id="sortIconIsDeleted">↕</span>
+                </th>
+                <th style="padding: 0.75rem 0.85rem; text-align: center; width: 140px;">
+                  ⚙️ İşlemler
+                </th>
+              </tr>
+            </thead>
+            <tbody id="vanillaQuickNotesTableBody">
+              <!-- Dinamik olarak dolacak -->
+            </tbody>
+          </table>
         </div>
       </section>
     </main>

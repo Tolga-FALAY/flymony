@@ -6,7 +6,7 @@ import Requests from './components/Requests';
 import Gigs from './components/Gigs';
 import OtherOperations from './components/OtherOperations';
 import Parameters from './components/Parameters';
-import QuickNotesModal from './components/QuickNotesModal';
+import Notes from './components/Notes';
 import store from './store';
 import ChordFullscreenViewer from './components/ChordFullscreenViewer';
 
@@ -106,7 +106,6 @@ function App() {
     }
   });
 
-  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [notesCount, setNotesCount] = useState(0);
 
   const toggleSidebar = () => {
@@ -121,7 +120,13 @@ function App() {
     });
   };
 
-  const [counts, setCounts] = useState({ requests: 0, songs: 0, artists: 0, guests: 0, gigs: 0 });
+  const [counts, setCounts] = useState({
+    requests: 0,
+    songs: 0,
+    artists: 0,
+    guests: 0,
+    gigs: 0
+  });
 
   const updateCounts = () => {
     setCounts({
@@ -131,7 +136,7 @@ function App() {
       guests:   (store.guests || []).length,
       gigs:     (store.gigs || []).length
     });
-    setNotesCount((store.notes || []).length);
+    setNotesCount((store.activeNotes || []).length);
   };
 
   useEffect(() => {
@@ -228,60 +233,58 @@ function App() {
             <span className="nav-label">{isRefreshing ? 'Yenileniyor...' : 'Yenile'}</span>
           </button>
 
+          {/* NOT EKLE / NOTLAR TAB BUTTON */}
           <button
             type="button"
-            className="nav-btn nav-btn--notes"
-            onClick={() => {
-              setIsNotesModalOpen(true);
-              setMenuOpen(false);
-            }}
-            title={notesCount > 0 ? `Not Ekle (${notesCount} Not)` : "Not Ekle (0 Not)"}
+            className={`nav-btn nav-btn--notes ${activeTab === 'notes' ? 'active' : ''}`}
+            onClick={() => handleNavClick('notes')}
+            title={notesCount > 0 ? `Notlar (${notesCount} Aktif Not)` : "Notlar (0 Not)"}
             style={{ marginTop: '0.25rem', position: 'relative' }}
           >
-            <span className="nav-icon" style={{ position: 'relative' }}>
-              📝
-              {sidebarCollapsed && (
-                <span 
-                  style={{
-                    position: 'absolute',
-                    top: '-6px',
-                    right: '-10px',
-                    background: notesCount > 0 ? '#ef4444' : '#0284c7',
-                    color: '#ffffff',
-                    borderRadius: '10px',
-                    padding: '1px 4px',
-                    fontSize: '0.65rem',
-                    fontWeight: 'bold',
-                    minWidth: '16px',
-                    textAlign: 'center',
-                    lineHeight: 1.2,
-                    border: '1.5px solid #ffffff',
-                    boxShadow: notesCount > 0 ? '0 0 6px rgba(239, 68, 68, 0.8)' : 'none'
-                  }}
-                >
-                  {notesCount}
-                </span>
-              )}
-            </span>
-            <span className="nav-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1, gap: '0.4rem' }}>
-              <span>Not Ekle</span>
+            {sidebarCollapsed ? (
               <span 
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
                   background: notesCount > 0 ? '#ef4444' : '#0284c7',
                   color: '#ffffff',
-                  borderRadius: '12px',
-                  padding: '1px 6px',
-                  fontSize: '0.72rem',
+                  fontSize: '0.8rem',
                   fontWeight: 'bold',
-                  minWidth: '18px',
-                  textAlign: 'center',
-                  lineHeight: 1.2,
-                  boxShadow: notesCount > 0 ? '0 0 6px rgba(239, 68, 68, 0.7)' : 'none'
+                  boxShadow: notesCount > 0 ? '0 0 8px rgba(239, 68, 68, 0.8)' : 'none',
+                  margin: 'auto'
                 }}
               >
                 {notesCount}
               </span>
-            </span>
+            ) : (
+              <>
+                <span className="nav-icon">📝</span>
+                <span className="nav-label">
+                  Notlar
+                </span>
+                <span 
+                  style={{
+                    marginLeft: 'auto',
+                    background: notesCount > 0 ? '#ef4444' : '#0284c7',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    padding: '1px 6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 'bold',
+                    minWidth: '18px',
+                    textAlign: 'center',
+                    lineHeight: 1.2,
+                    boxShadow: notesCount > 0 ? '0 0 6px rgba(239, 68, 68, 0.7)' : 'none'
+                  }}
+                >
+                  {notesCount}
+                </span>
+              </>
+            )}
           </button>
         </nav>
         <div className="sidebar-footer">flymony</div>
@@ -307,10 +310,10 @@ function App() {
           <div style={{ display: activeTab === 'guests' ? 'block' : 'none' }}><Guests /></div>
           <div style={{ display: activeTab === 'otherOperations' ? 'block' : 'none' }}><OtherOperations /></div>
           <div style={{ display: activeTab === 'parameters' ? 'block' : 'none' }}><Parameters /></div>
+          <div style={{ display: activeTab === 'notes' ? 'block' : 'none' }}><Notes /></div>
         </div>
       </main>
       <ChordFullscreenViewer />
-      <QuickNotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} />
     </div>
   );
 }

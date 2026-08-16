@@ -120,10 +120,21 @@ export const initializeDB = () => {
             NoteID INTEGER PRIMARY KEY AUTOINCREMENT,
             NoteText TEXT,
             Photos TEXT DEFAULT '[]',
+            IsDeleted INTEGER DEFAULT 0,
             CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
             UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
+
+    // Ensure QuickNotes has IsDeleted column
+    try {
+        const noteCols = db.prepare("PRAGMA table_info(QuickNotes)").all();
+        if (noteCols.length > 0 && !noteCols.some(col => col.name === 'IsDeleted')) {
+            db.exec("ALTER TABLE QuickNotes ADD COLUMN IsDeleted INTEGER DEFAULT 0;");
+        }
+    } catch (e) {
+        console.warn("QuickNotes migration check error:", e);
+    }
 
     // Check if Requests table exists and has GuestID column
     let hasRequestsTable = false;

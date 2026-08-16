@@ -89,6 +89,8 @@ const store = {
   get cities()   { return _cities; },
   get languages() { return _languages; },
   get notes()    { return _notes; },
+  get activeNotes() { return _notes.filter(n => !n.IsDeleted); },
+  get deletedNotes() { return _notes.filter(n => !!n.IsDeleted); },
   get isLoaded() { return _loaded; },
 
   // ── Tek seferlik yükleme ─────────────────────────────────────────────────
@@ -299,6 +301,7 @@ const store = {
       NoteID: Number(n.NoteID),
       NoteText: n.NoteText || '',
       Photos: n.Photos || [],
+      IsDeleted: Number(n.IsDeleted || 0),
       CreatedAt: n.CreatedAt,
       UpdatedAt: n.UpdatedAt
     }));
@@ -601,7 +604,7 @@ const store = {
 
   // ── Not mutasyonları ─────────────────────────────────────────────────────
   addNote(note) {
-    _notes.unshift(note);
+    _notes.unshift({ ...note, IsDeleted: Number(note.IsDeleted || 0) });
     _notify();
   },
 
@@ -614,6 +617,22 @@ const store = {
   },
 
   removeNote(id) {
+    const idx = _notes.findIndex(n => n.NoteID === id);
+    if (idx !== -1) {
+      _notes[idx] = { ..._notes[idx], IsDeleted: 1 };
+    }
+    _notify();
+  },
+
+  restoreNote(id) {
+    const idx = _notes.findIndex(n => n.NoteID === id);
+    if (idx !== -1) {
+      _notes[idx] = { ..._notes[idx], IsDeleted: 0 };
+    }
+    _notify();
+  },
+
+  permanentDeleteNote(id) {
     _notes = _notes.filter(n => n.NoteID !== id);
     _notify();
   }

@@ -1157,13 +1157,14 @@ app.delete('/api/gigs/:id', (req, res) => {
 app.get('/api/notes', (req, res) => {
     try {
         const notes = db.prepare(`
-            SELECT NoteID, NoteText, Photos, CreatedAt, UpdatedAt
+            SELECT NoteID, NoteText, Photos, COALESCE(IsDeleted, 0) AS IsDeleted, CreatedAt, UpdatedAt
             FROM QuickNotes
             ORDER BY NoteID DESC
         `).all().map(n => ({
             NoteID: Number(n.NoteID),
             NoteText: n.NoteText || '',
             Photos: n.Photos ? JSON.parse(n.Photos) : [],
+            IsDeleted: Number(n.IsDeleted || 0),
             CreatedAt: n.CreatedAt,
             UpdatedAt: n.UpdatedAt
         }));
@@ -1177,8 +1178,8 @@ app.post('/api/notes', (req, res) => {
     const { NoteText, Photos } = req.body;
     try {
         const insert = db.prepare(`
-            INSERT INTO QuickNotes (NoteText, Photos)
-            VALUES (?, ?)
+            INSERT INTO QuickNotes (NoteText, Photos, IsDeleted, CreatedAt, UpdatedAt)
+            VALUES (?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
         const result = insert.run(
             NoteText || '',
@@ -1209,11 +1210,34 @@ app.put('/api/notes/:id', (req, res) => {
     }
 });
 
+// Soft Delete Note
 app.delete('/api/notes/:id', (req, res) => {
     const noteId = req.params.id;
     try {
+        db.prepare('UPDATE QuickNotes SET IsDeleted = 1, UpdatedAt = CURRENT_TIMESTAMP WHERE NoteID = ?').run(noteId);
+        res.json({ message: 'Not silindi olarak işaretlendi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Restore Deleted Note
+app.put('/api/notes/:id/restore', (req, res) => {
+    const noteId = req.params.id;
+    try {
+        db.prepare('UPDATE QuickNotes SET IsDeleted = 0, UpdatedAt = CURRENT_TIMESTAMP WHERE NoteID = ?').run(noteId);
+        res.json({ message: 'Not geri yüklendi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Permanent Delete Note (Optional)
+app.delete('/api/notes/:id/permanent', (req, res) => {
+    const noteId = req.params.id;
+    try {
         db.prepare('DELETE FROM QuickNotes WHERE NoteID = ?').run(noteId);
-        res.json({ message: 'Not silindi.' });
+        res.json({ message: 'Not kalıcı olarak silindi.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

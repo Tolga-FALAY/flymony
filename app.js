@@ -5721,11 +5721,15 @@ async function refreshApp() {
 }
 
 // ==========================================
-// VANILLA QUICK NOTES (NOT EKLE) LOGIC
+// VANILLA QUICK NOTES (NOTLAR) LOGIC
 // ==========================================
 let vanillaNotes = [];
 let vanillaNoteCurrentPhotos = [];
 let vanillaEditingNoteId = null;
+let vanillaNotesFilter = 'active'; // 'active' | 'trash' | 'all'
+let vanillaNotesSearchQuery = '';
+let vanillaNotesSortField = 'CreatedAt';
+let vanillaNotesSortAsc = false;
 
 async function loadVanillaNotes() {
   try {
@@ -5737,87 +5741,216 @@ async function loadVanillaNotes() {
     console.warn('Vanilla notları yüklenirken hata:', err);
   }
   updateVanillaNotesBadge();
+  renderVanillaNotesTable();
 }
 
 function updateVanillaNotesBadge() {
-  const count = vanillaNotes.length;
-  const isRed = count > 0;
+  const activeCount = vanillaNotes.filter(n => !n.IsDeleted).length;
+  const trashCount = vanillaNotes.filter(n => !!n.IsDeleted).length;
+  const isRed = activeCount > 0;
   const bgColor = isRed ? '#ef4444' : '#0284c7';
-  const shadow = isRed ? '0 0 6px rgba(239, 68, 68, 0.8)' : 'none';
+  const shadow = isRed ? '0 0 8px rgba(239, 68, 68, 0.8)' : 'none';
 
   const iconBadge = document.getElementById('vanillaNotesIconBadge');
   const textBadge = document.getElementById('vanillaNotesTextBadge');
-  const headerBadge = document.getElementById('vanillaQuickNotesHeaderBadge');
+  const activeBadge = document.getElementById('vanillaNotesActiveBadge');
+  const tabActiveCount = document.getElementById('vanillaTabActiveCount');
+  const tabTrashCount = document.getElementById('vanillaTabTrashCount');
+  const tabAllCount = document.getElementById('vanillaTabAllCount');
+
+  const isCollapsed = document.querySelector('.sidebar')?.classList.contains('sidebar--collapsed') ||
+                      document.querySelector('aside')?.classList.contains('sidebar--collapsed');
 
   if (iconBadge) {
-    iconBadge.innerText = count;
+    iconBadge.innerText = activeCount;
     iconBadge.style.background = bgColor;
     iconBadge.style.boxShadow = shadow;
-    // Show icon badge when collapsed
-    const isCollapsed = document.querySelector('.sidebar')?.classList.contains('sidebar--collapsed') ||
-                        document.querySelector('aside')?.classList.contains('sidebar--collapsed');
-    iconBadge.style.display = isCollapsed ? 'block' : 'none';
+    iconBadge.style.display = isCollapsed ? 'inline-flex' : 'none';
   }
 
+  const navIcon = document.getElementById('vanillaNotesNavIcon');
+  const navText = document.getElementById('vanillaNotesNavText');
+  if (navIcon) navIcon.style.display = isCollapsed ? 'none' : 'inline-flex';
+  if (navText) navText.style.display = isCollapsed ? 'none' : 'flex';
+
   if (textBadge) {
-    textBadge.innerText = count;
+    textBadge.innerText = activeCount;
     textBadge.style.background = bgColor;
     textBadge.style.boxShadow = shadow;
   }
 
-  if (headerBadge) {
-    headerBadge.innerText = `${count} Not`;
-    headerBadge.style.background = bgColor;
+  if (activeBadge) {
+    activeBadge.innerText = `${activeCount} Aktif Not`;
+    activeBadge.style.background = bgColor;
+    activeBadge.style.boxShadow = isRed ? '0 0 8px rgba(239, 68, 68, 0.6)' : 'none';
   }
+
+  if (tabActiveCount) tabActiveCount.innerText = activeCount;
+  if (tabTrashCount) tabTrashCount.innerText = trashCount;
+  if (tabAllCount) tabAllCount.innerText = vanillaNotes.length;
 }
 
-function openVanillaQuickNotesModal() {
-  resetVanillaNoteForm();
-  renderVanillaQuickNotes();
-  openModal('vanillaQuickNotesModal');
+function setVanillaNotesFilter(tab) {
+  vanillaNotesFilter = tab;
+  ['vanillaTabActiveNotesBtn', 'vanillaTabTrashNotesBtn', 'vanillaTabAllNotesBtn'].forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.className = 'btn btn-sm btn-outline';
+    }
+  });
+
+  if (tab === 'active') {
+    document.getElementById('vanillaTabActiveNotesBtn')?.setAttribute('class', 'btn btn-sm btn-primary');
+  } else if (tab === 'trash') {
+    document.getElementById('vanillaTabTrashNotesBtn')?.setAttribute('class', 'btn btn-sm btn-primary');
+  } else {
+    document.getElementById('vanillaTabAllNotesBtn')?.setAttribute('class', 'btn btn-sm btn-primary');
+  }
+
+  renderVanillaNotesTable();
 }
 
-function renderVanillaQuickNotes() {
-  const container = document.getElementById('vanillaQuickNotesList');
+function handleVanillaNotesSearch(val) {
+  vanillaNotesSearchQuery = val;
+  renderVanillaNotesTable();
+}
+
+function handleVanillaNotesSort(field) {
+  if (vanillaNotesSortField === field) {
+    vanillaNotesSortAsc = !vanillaNotesSortAsc;
+  } else {
+    vanillaNotesSortField = field;
+    vanillaNotesSortAsc = field === 'NoteText';
+  }
+
+  // Update sort icons
+  ['CreatedAt', 'NoteText', 'Photos', 'IsDeleted'].forEach(f => {
+    const el = document.getElementById(`sortIcon${f}`);
+    if (el) {
+      if (f === vanillaNotesSortField) {
+        el.innerText = vanillaNotesSortAsc ? '▲' : '▼';
+      } else {
+        el.innerText = '↕';
+      }
+    }
+  });
+
+  renderVanillaNotesTable();
+}
+
+function renderVanillaNotesTable() {
+  const container = document.getElementById('vanillaQuickNotesTableBody');
   if (!container) return;
 
-  if (vanillaNotes.length === 0) {
+  let list = [...vanillaNotes];
+
+  if (vanillaNotesFilter === 'active') {
+    list = list.filter(n => !n.IsDeleted);
+  } else if (vanillaNotesFilter === 'trash') {
+    list = list.filter(n => !!n.IsDeleted);
+  }
+
+  if (vanillaNotesSearchQuery.trim()) {
+    const q = vanillaNotesSearchQuery.toLocaleLowerCase('tr-TR');
+    list = list.filter(n => 
+      (n.NoteText || '').toLocaleLowerCase('tr-TR').includes(q) ||
+      (n.CreatedAt || '').includes(q)
+    );
+  }
+
+  list.sort((a, b) => {
+    let valA, valB;
+    if (vanillaNotesSortField === 'CreatedAt') {
+      valA = new Date(a.CreatedAt || 0).getTime();
+      valB = new Date(b.CreatedAt || 0).getTime();
+    } else if (vanillaNotesSortField === 'NoteText') {
+      valA = (a.NoteText || '').toLocaleLowerCase('tr-TR');
+      valB = (b.NoteText || '').toLocaleLowerCase('tr-TR');
+    } else if (vanillaNotesSortField === 'Photos') {
+      valA = (a.Photos || []).length;
+      valB = (b.Photos || []).length;
+    } else if (vanillaNotesSortField === 'IsDeleted') {
+      valA = a.IsDeleted ? 1 : 0;
+      valB = b.IsDeleted ? 1 : 0;
+    } else {
+      valA = a.NoteID;
+      valB = b.NoteID;
+    }
+
+    if (valA < valB) return vanillaNotesSortAsc ? -1 : 1;
+    if (valA > valB) return vanillaNotesSortAsc ? 1 : -1;
+    return 0;
+  });
+
+  const countLabel = document.getElementById('vanillaNotesCountLabel');
+  if (countLabel) countLabel.innerText = `${list.length} Not listeleniyor`;
+
+  if (list.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; padding: 1.5rem; background: #f8fafc; border-radius: 8px; border: 1px dashed var(--border); color: var(--text-muted); font-size: 0.85rem;">
-        Henüz kayıtlı bir not bulunmuyor. Yukarıdaki alandan hemen bir not veya fotoğraf ekleyebilirsiniz.
-      </div>
+      <tr>
+        <td colSpan="5" style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+          ${vanillaNotesSearchQuery ? 'Aramanıza uygun not bulunamadı.' : (vanillaNotesFilter === 'trash' ? 'Çöp kutusunda silinmiş not bulunmuyor.' : 'Henüz kayıtlı not bulunmuyor. Yukarıdan yeni not ekleyebilirsiniz.')}
+        </td>
+      </tr>
     `;
     return;
   }
 
-  container.innerHTML = vanillaNotes.map(note => {
+  container.innerHTML = list.map(note => {
     const isEditing = vanillaEditingNoteId === note.NoteID;
+    const isDeleted = !!note.IsDeleted;
     const dateFormatted = note.CreatedAt ? new Date(note.CreatedAt).toLocaleString('tr-TR', {
       day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    }) : '';
+    }) : '-';
 
     const photosHtml = (note.Photos && note.Photos.length > 0) ? `
-      <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem;">
+      <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center;">
         ${note.Photos.map(p => `
-          <div onclick="viewVanillaFullscreenImage('${p.replace(/'/g, "\\'")}')" style="width: 60px; height: 60px; border-radius: 6px; overflow: hidden; border: 1px solid #cbd5e1; cursor: pointer;" title="Büyütmek için tıklayın">
+          <div onclick="viewVanillaFullscreenImage('${p.replace(/'/g, "\\'")}')" style="width: 42px; height: 42px; border-radius: 5px; overflow: hidden; border: 1px solid #cbd5e1; cursor: pointer;" title="Büyütmek için tıklayın">
             <img src="${p}" alt="Not Foto" style="width: 100%; height: 100%; object-fit: cover;">
           </div>
         `).join('')}
       </div>
-    ` : '';
+    ` : '<span style="font-size: 0.8rem; color: var(--text-muted);">-</span>';
+
+    const statusBadge = isDeleted ? `
+      <span style="background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; border-radius: 12px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600;">
+        🗑️ Silindi
+      </span>
+    ` : `
+      <span style="background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 12px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600;">
+        ✅ Aktif
+      </span>
+    `;
+
+    const actionsHtml = !isDeleted ? `
+      <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem; height: 26px;" onclick="editVanillaNote(${note.NoteID})" title="Notu Düzenle">✏️ Düzenle</button>
+      <button type="button" class="btn btn-sm btn-danger" style="padding: 2px 8px; font-size: 0.75rem; height: 26px;" onclick="deleteVanillaNote(${note.NoteID})" title="Notu Çöp Kutusuna Taşı">🗑️ Sil</button>
+    ` : `
+      <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem; height: 26px; color: #16a34a; border-color: #16a34a;" onclick="restoreVanillaNote(${note.NoteID})" title="Silinen Notu Geri Yükle">♻️ Geri Yükle</button>
+      <button type="button" class="btn btn-sm btn-danger" style="padding: 2px 8px; font-size: 0.75rem; height: 26px;" onclick="permanentDeleteVanillaNote(${note.NoteID})" title="Kalıcı Olarak Sil">❌ Yok Et</button>
+    `;
 
     return `
-      <div style="background: ${isEditing ? '#eff6ff' : '#ffffff'}; border: ${isEditing ? '1.5px solid var(--primary)' : '1px solid var(--border)'}; border-radius: 8px; padding: 0.75rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem; gap: 0.5rem;">
-          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">🕒 ${dateFormatted}</span>
-          <div style="display: flex; gap: 0.3rem;">
-            <button type="button" class="btn btn-outline" style="padding: 1px 6px; font-size: 0.72rem; height: 22px;" onclick="editVanillaNote(${note.NoteID})">✏️ Düzenle</button>
-            <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 6px; font-size: 0.72rem; height: 22px;" onclick="deleteVanillaNote(${note.NoteID})">🗑️ Sil</button>
+      <tr style="background: ${isEditing ? '#eff6ff' : (isDeleted ? '#f8fafc' : '#ffffff')}; border-bottom: 1px solid var(--border-soft); opacity: ${isDeleted ? 0.75 : 1};">
+        <td style="padding: 0.75rem 0.85rem; font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; vertical-align: top;">
+          <div style="font-weight: 600; color: var(--text-main);">${dateFormatted}</div>
+        </td>
+        <td style="padding: 0.75rem 0.85rem; font-size: 0.88rem; color: ${isDeleted ? 'var(--text-muted)' : 'var(--text-main)'}; white-space: pre-wrap; line-height: 1.45; vertical-align: top;">
+          <div style="text-decoration: ${isDeleted ? 'line-through' : 'none'};">${note.NoteText ? escapeHtml(note.NoteText) : '<span style="font-style: italic; color: var(--text-muted);">(Yalnızca fotoğraf)</span>'}</div>
+        </td>
+        <td style="padding: 0.75rem 0.85rem; text-align: center; vertical-align: top;">
+          ${photosHtml}
+        </td>
+        <td style="padding: 0.75rem 0.85rem; text-align: center; vertical-align: top;">
+          ${statusBadge}
+        </td>
+        <td style="padding: 0.75rem 0.85rem; text-align: center; vertical-align: top;">
+          <div style="display: flex; justify-content: center; gap: 0.3rem; flex-wrap: wrap;">
+            ${actionsHtml}
           </div>
-        </div>
-        ${note.NoteText ? `<div style="font-size: 0.88rem; color: var(--text-main); white-space: pre-wrap; line-height: 1.45;">${escapeHtml(note.NoteText)}</div>` : ''}
-        ${photosHtml}
-      </div>
+        </td>
+      </tr>
     `;
   }).join('');
 }
@@ -5828,20 +5961,20 @@ function resetVanillaNoteForm() {
   const textEl = document.getElementById('vanillaNoteText');
   if (textEl) textEl.value = '';
   
-  const formTitle = document.getElementById('vanillaNoteFormTitle');
-  if (formTitle) formTitle.innerText = '✍️ Yeni Not';
+  const formTitleMain = document.getElementById('vanillaNoteFormTitleMain');
+  if (formTitleMain) formTitleMain.innerText = '✍️ Yeni Not Ekle';
 
-  const saveBtn = document.getElementById('vanillaNoteSaveBtn');
-  if (saveBtn) saveBtn.innerText = '💾 Notu Kaydet';
+  const saveBtnMain = document.getElementById('vanillaNoteSaveBtnMain');
+  if (saveBtnMain) saveBtnMain.innerText = '💾 Notu Kaydet';
 
-  const cancelBtn = document.getElementById('vanillaNoteCancelBtn');
-  if (cancelBtn) cancelBtn.style.display = 'none';
+  const cancelBtnMain = document.getElementById('vanillaNoteCancelBtnMain');
+  if (cancelBtnMain) cancelBtnMain.style.display = 'none';
 
-  const cancelEditBtn = document.getElementById('vanillaNoteCancelEditBtn');
-  if (cancelEditBtn) cancelEditBtn.style.display = 'none';
+  const cancelEditBtnMain = document.getElementById('vanillaNoteCancelEditBtnMain');
+  if (cancelEditBtnMain) cancelEditBtnMain.style.display = 'none';
 
   renderVanillaNotePhotos();
-  renderVanillaQuickNotes();
+  renderVanillaNotesTable();
 }
 
 function renderVanillaNotePhotos() {
@@ -5856,9 +5989,9 @@ function renderVanillaNotePhotos() {
 
   container.style.display = 'flex';
   container.innerHTML = vanillaNoteCurrentPhotos.map((src, idx) => `
-    <div style="position: relative; width: 70px; height: 70px; border-radius: 6px; overflow: hidden; border: 1px solid #cbd5e1; cursor: pointer;">
+    <div style="position: relative; width: 75px; height: 75px; border-radius: 6px; overflow: hidden; border: 1px solid #cbd5e1; cursor: pointer;">
       <img src="${src}" alt="Foto" onclick="viewVanillaFullscreenImage('${src.replace(/'/g, "\\'")}')" style="width: 100%; height: 100%; object-fit: cover;">
-      <button type="button" onclick="removeVanillaNotePhoto(${idx})" style="position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer;">&times;</button>
+      <button type="button" onclick="removeVanillaNotePhoto(${idx})" style="position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer;">&times;</button>
     </div>
   `).join('');
 }
@@ -5937,6 +6070,7 @@ async function saveVanillaNote() {
         NoteID: data.id,
         NoteText: text,
         Photos: [...vanillaNoteCurrentPhotos],
+        IsDeleted: 0,
         CreatedAt: new Date().toISOString(),
         UpdatedAt: new Date().toISOString()
       });
@@ -5944,6 +6078,7 @@ async function saveVanillaNote() {
 
     resetVanillaNoteForm();
     updateVanillaNotesBadge();
+    renderVanillaNotesTable();
   } catch (err) {
     console.error('Not kaydetme hatası:', err);
     alert('Hata: ' + err.message);
@@ -5963,36 +6098,72 @@ function editVanillaNote(noteId) {
     textEl.focus();
   }
 
-  const formTitle = document.getElementById('vanillaNoteFormTitle');
-  if (formTitle) formTitle.innerText = '✏️ Notu Güncelle';
+  const formTitleMain = document.getElementById('vanillaNoteFormTitleMain');
+  if (formTitleMain) formTitleMain.innerText = '✏️ Notu Düzenle';
 
-  const saveBtn = document.getElementById('vanillaNoteSaveBtn');
-  if (saveBtn) saveBtn.innerText = '💾 Güncelle';
+  const saveBtnMain = document.getElementById('vanillaNoteSaveBtnMain');
+  if (saveBtnMain) saveBtnMain.innerText = '💾 Güncelle';
 
-  const cancelBtn = document.getElementById('vanillaNoteCancelBtn');
-  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+  const cancelBtnMain = document.getElementById('vanillaNoteCancelBtnMain');
+  if (cancelBtnMain) cancelBtnMain.style.display = 'inline-block';
 
-  const cancelEditBtn = document.getElementById('vanillaNoteCancelEditBtn');
-  if (cancelEditBtn) cancelEditBtn.style.display = 'inline-block';
+  const cancelEditBtnMain = document.getElementById('vanillaNoteCancelEditBtnMain');
+  if (cancelEditBtnMain) cancelEditBtnMain.style.display = 'inline-block';
 
   renderVanillaNotePhotos();
-  renderVanillaQuickNotes();
+  renderVanillaNotesTable();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function deleteVanillaNote(noteId) {
-  if (!confirm('Bu notu silmek istediğinize emin misiniz?')) return;
+  if (!confirm('Bu notu çöp kutusuna taşımak istediğinize emin misiniz?')) return;
   try {
     const res = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Silinemedi');
+    const idx = vanillaNotes.findIndex(n => n.NoteID === noteId);
+    if (idx !== -1) {
+      vanillaNotes[idx].IsDeleted = 1;
+    }
+    if (vanillaEditingNoteId === noteId) {
+      resetVanillaNoteForm();
+    }
+    updateVanillaNotesBadge();
+    renderVanillaNotesTable();
+  } catch (err) {
+    console.error('Silme hatası:', err);
+    alert('Hata: ' + err.message);
+  }
+}
+
+async function restoreVanillaNote(noteId) {
+  try {
+    const res = await fetch(`/api/notes/${noteId}/restore`, { method: 'PUT' });
+    if (!res.ok) throw new Error('Geri yüklenemedi');
+    const idx = vanillaNotes.findIndex(n => n.NoteID === noteId);
+    if (idx !== -1) {
+      vanillaNotes[idx].IsDeleted = 0;
+    }
+    updateVanillaNotesBadge();
+    renderVanillaNotesTable();
+  } catch (err) {
+    console.error('Geri yükleme hatası:', err);
+    alert('Hata: ' + err.message);
+  }
+}
+
+async function permanentDeleteVanillaNote(noteId) {
+  if (!confirm('Bu notu KALICI olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+  try {
+    const res = await fetch(`/api/notes/${noteId}/permanent`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Kalıcı silinemedi');
     vanillaNotes = vanillaNotes.filter(n => n.NoteID !== noteId);
     if (vanillaEditingNoteId === noteId) {
       resetVanillaNoteForm();
-    } else {
-      renderVanillaQuickNotes();
     }
     updateVanillaNotesBadge();
+    renderVanillaNotesTable();
   } catch (err) {
-    console.error('Silme hatası:', err);
+    console.error('Kalıcı silme hatası:', err);
     alert('Hata: ' + err.message);
   }
 }
@@ -6044,12 +6215,16 @@ window.deleteVanillaCity = deleteVanillaCity;
 window.copyVanillaVenueLink = copyVanillaVenueLink;
 window.viewVanillaFullscreenImage = viewVanillaFullscreenImage;
 window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
-window.openVanillaQuickNotesModal = openVanillaQuickNotesModal;
 window.resetVanillaNoteForm = resetVanillaNoteForm;
 window.handleVanillaNotePhotoUpload = handleVanillaNotePhotoUpload;
 window.removeVanillaNotePhoto = removeVanillaNotePhoto;
 window.saveVanillaNote = saveVanillaNote;
 window.editVanillaNote = editVanillaNote;
 window.deleteVanillaNote = deleteVanillaNote;
+window.restoreVanillaNote = restoreVanillaNote;
+window.permanentDeleteVanillaNote = permanentDeleteVanillaNote;
+window.setVanillaNotesFilter = setVanillaNotesFilter;
+window.handleVanillaNotesSearch = handleVanillaNotesSearch;
+window.handleVanillaNotesSort = handleVanillaNotesSort;
 
 

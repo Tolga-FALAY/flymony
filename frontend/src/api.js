@@ -328,6 +328,7 @@ export const api = {
       NoteID: Number(n.NoteID),
       NoteText: n.NoteText || '',
       Photos: n.Photos || [],
+      IsDeleted: Number(n.IsDeleted || 0),
       CreatedAt: n.CreatedAt,
       UpdatedAt: n.UpdatedAt
     }));
@@ -344,6 +345,14 @@ export const api = {
 
   deleteNote: async (id) => {
     return request(`/notes/${id}`, 'DELETE');
+  },
+
+  restoreNote: async (id) => {
+    return request(`/notes/${id}/restore`, 'PUT');
+  },
+
+  permanentDeleteNote: async (id) => {
+    return request(`/notes/${id}/permanent`, 'DELETE');
   }
 };
 
