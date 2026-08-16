@@ -1151,6 +1151,74 @@ app.delete('/api/gigs/:id', (req, res) => {
     }
 });
 
+// ========================
+// QUICK NOTES CRUD ENDPOINTS
+// ========================
+app.get('/api/notes', (req, res) => {
+    try {
+        const notes = db.prepare(`
+            SELECT NoteID, NoteText, Photos, CreatedAt, UpdatedAt
+            FROM QuickNotes
+            ORDER BY NoteID DESC
+        `).all().map(n => ({
+            NoteID: Number(n.NoteID),
+            NoteText: n.NoteText || '',
+            Photos: n.Photos ? JSON.parse(n.Photos) : [],
+            CreatedAt: n.CreatedAt,
+            UpdatedAt: n.UpdatedAt
+        }));
+        res.json(notes);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/notes', (req, res) => {
+    const { NoteText, Photos } = req.body;
+    try {
+        const insert = db.prepare(`
+            INSERT INTO QuickNotes (NoteText, Photos)
+            VALUES (?, ?)
+        `);
+        const result = insert.run(
+            NoteText || '',
+            Photos ? JSON.stringify(Photos) : '[]'
+        );
+        res.status(201).json({ id: Number(result.lastInsertRowid), message: 'Not eklendi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/notes/:id', (req, res) => {
+    const noteId = req.params.id;
+    const { NoteText, Photos } = req.body;
+    try {
+        db.prepare(`
+            UPDATE QuickNotes
+            SET NoteText = ?, Photos = ?, UpdatedAt = CURRENT_TIMESTAMP
+            WHERE NoteID = ?
+        `).run(
+            NoteText || '',
+            Photos ? JSON.stringify(Photos) : '[]',
+            noteId
+        );
+        res.json({ message: 'Not güncellendi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/notes/:id', (req, res) => {
+    const noteId = req.params.id;
+    try {
+        db.prepare('DELETE FROM QuickNotes WHERE NoteID = ?').run(noteId);
+        res.json({ message: 'Not silindi.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Fallback for React Router (Single Page Application routing)
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/vanilla')) {

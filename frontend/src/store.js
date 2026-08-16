@@ -17,6 +17,7 @@ let _venues  = [];
 let _gigs    = [];
 let _cities  = [];
 let _languages = [];
+let _notes   = [];
 let _loaded  = false;
 
 // ─── Yardımcı: sanatçı adlarını listeden çöz ────────────────────────────────
@@ -60,7 +61,8 @@ function _notify() {
       venues: _venues,
       gigs: _gigs,
       cities: _cities,
-      languages: _languages
+      languages: _languages,
+      notes: _notes
     };
     localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
     localStorage.setItem(cacheTimeKey, Date.now().toString());
@@ -86,6 +88,7 @@ const store = {
   get gigs()     { return _gigs; },
   get cities()   { return _cities; },
   get languages() { return _languages; },
+  get notes()    { return _notes; },
   get isLoaded() { return _loaded; },
 
   // ── Tek seferlik yükleme ─────────────────────────────────────────────────
@@ -119,6 +122,7 @@ const store = {
             _gigs = parsed.gigs || [];
             _cities = parsed.cities || [];
             _languages = parsed.languages || [];
+            _notes = parsed.notes || [];
             _loaded = true;
             _notify();
             return;
@@ -129,7 +133,7 @@ const store = {
       }
     }
 
-    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList, languagesList] = await Promise.all([
+    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList, languagesList, notesList] = await Promise.all([
       api.getArtists(),
       api.getSongs(),
       api.getGuests(),
@@ -138,7 +142,8 @@ const store = {
       api.getVenues(),
       api.getGigs(),
       api.getCities(),
-      api.getLanguages()
+      api.getLanguages(),
+      api.getNotes()
     ]);
 
     // 1. Sanatçıları yükle
@@ -288,6 +293,15 @@ const store = {
       (a.LanguageName || '').toLocaleLowerCase('tr-TR')
         .localeCompare((b.LanguageName || '').toLocaleLowerCase('tr-TR'), 'tr')
     );
+
+    // 10. Notları yükle
+    _notes = (notesList || []).map(n => ({
+      NoteID: Number(n.NoteID),
+      NoteText: n.NoteText || '',
+      Photos: n.Photos || [],
+      CreatedAt: n.CreatedAt,
+      UpdatedAt: n.UpdatedAt
+    }));
 
     _loaded = true;
     _notify();
@@ -582,6 +596,25 @@ const store = {
 
   removeLanguage(id) {
     _languages = _languages.filter(l => l.LanguageID !== id);
+    _notify();
+  },
+
+  // ── Not mutasyonları ─────────────────────────────────────────────────────
+  addNote(note) {
+    _notes.unshift(note);
+    _notify();
+  },
+
+  updateNote(id, data) {
+    const idx = _notes.findIndex(n => n.NoteID === id);
+    if (idx !== -1) {
+      _notes[idx] = { ..._notes[idx], ...data };
+    }
+    _notify();
+  },
+
+  removeNote(id) {
+    _notes = _notes.filter(n => n.NoteID !== id);
     _notify();
   }
 };

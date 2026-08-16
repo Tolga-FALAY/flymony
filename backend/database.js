@@ -115,6 +115,14 @@ export const initializeDB = () => {
             FOREIGN KEY (GigID) REFERENCES Gigs(GigID) ON DELETE CASCADE,
             FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS QuickNotes (
+            NoteID INTEGER PRIMARY KEY AUTOINCREMENT,
+            NoteText TEXT,
+            Photos TEXT DEFAULT '[]',
+            CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     `);
 
     // Check if Requests table exists and has GuestID column

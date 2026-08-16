@@ -6,6 +6,7 @@ import Requests from './components/Requests';
 import Gigs from './components/Gigs';
 import OtherOperations from './components/OtherOperations';
 import Parameters from './components/Parameters';
+import QuickNotesModal from './components/QuickNotesModal';
 import store from './store';
 import ChordFullscreenViewer from './components/ChordFullscreenViewer';
 
@@ -77,7 +78,7 @@ const NAV_ITEMS = [
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
       </svg>
     )
   },
@@ -86,15 +87,9 @@ const NAV_ITEMS = [
     label: 'Parametreler',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <line x1="4" y1="21" x2="4" y2="14" />
-        <line x1="4" y1="10" x2="4" y2="3" />
-        <line x1="12" y1="21" x2="12" y2="12" />
-        <line x1="12" y1="8" x2="12" y2="3" />
-        <line x1="20" y1="21" x2="20" y2="16" />
-        <line x1="20" y1="12" x2="20" y2="3" />
-        <line x1="1" y1="14" x2="7" y2="14" />
-        <line x1="9" y1="8" x2="15" y2="8" />
-        <line x1="17" y1="16" x2="23" y2="16" />
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
       </svg>
     )
   }
@@ -103,35 +98,44 @@ const NAV_ITEMS = [
 function App() {
   const [activeTab, setActiveTab] = useState('requests');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('flymony_sidebar_state') !== 'expanded');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('flymony_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [notesCount, setNotesCount] = useState(0);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(prev => {
       const next = !prev;
-      localStorage.setItem('flymony_sidebar_state', next ? 'collapsed' : 'expanded');
+      try {
+        localStorage.setItem('flymony_sidebar_collapsed', String(next));
+      } catch (e) {
+        console.warn("Sidebar tercihi kaydedilemedi:", e);
+      }
       return next;
     });
   };
 
-  // Kayıt sayaçları — store'daki listelerin length'inden okunur.
-  // Firestore'a ekstra okuma yapılmaz.
   const [counts, setCounts] = useState({ requests: 0, songs: 0, artists: 0, guests: 0, gigs: 0 });
 
   const updateCounts = () => {
     setCounts({
-      requests: store.requests.length,
-      songs:    store.songs.length,
-      artists:  store.artists.length,
-      guests:   store.guests.length,
-      gigs:     store.gigs.length
+      requests: (store.requests || []).length,
+      songs:    (store.songs || []).length,
+      artists:  (store.artists || []).length,
+      guests:   (store.guests || []).length,
+      gigs:     (store.gigs || []).length
     });
+    setNotesCount((store.notes || []).length);
   };
 
   useEffect(() => {
-    // Uygulama açılışında tüm koleksiyonları bir kez yükle (4 okuma toplamda)
     store.load().then(updateCounts);
-
-    // Store her güncellendiğinde (CRUD sonrası) sayaçları yenile — Firestore okuma YOK
     window.addEventListener('store-updated', updateCounts);
     return () => window.removeEventListener('store-updated', updateCounts);
   }, []);
@@ -223,6 +227,62 @@ function App() {
             </span>
             <span className="nav-label">{isRefreshing ? 'Yenileniyor...' : 'Yenile'}</span>
           </button>
+
+          <button
+            type="button"
+            className="nav-btn nav-btn--notes"
+            onClick={() => {
+              setIsNotesModalOpen(true);
+              setMenuOpen(false);
+            }}
+            title={notesCount > 0 ? `Not Ekle (${notesCount} Not)` : "Not Ekle (0 Not)"}
+            style={{ marginTop: '0.25rem', position: 'relative' }}
+          >
+            <span className="nav-icon" style={{ position: 'relative' }}>
+              📝
+              {sidebarCollapsed && (
+                <span 
+                  style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-10px',
+                    background: notesCount > 0 ? '#ef4444' : '#0284c7',
+                    color: '#ffffff',
+                    borderRadius: '10px',
+                    padding: '1px 4px',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    minWidth: '16px',
+                    textAlign: 'center',
+                    lineHeight: 1.2,
+                    border: '1.5px solid #ffffff',
+                    boxShadow: notesCount > 0 ? '0 0 6px rgba(239, 68, 68, 0.8)' : 'none'
+                  }}
+                >
+                  {notesCount}
+                </span>
+              )}
+            </span>
+            <span className="nav-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1, gap: '0.4rem' }}>
+              <span>Not Ekle</span>
+              <span 
+                style={{
+                  background: notesCount > 0 ? '#ef4444' : '#0284c7',
+                  color: '#ffffff',
+                  borderRadius: '12px',
+                  padding: '1px 6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 'bold',
+                  minWidth: '18px',
+                  textAlign: 'center',
+                  lineHeight: 1.2,
+                  boxShadow: notesCount > 0 ? '0 0 6px rgba(239, 68, 68, 0.7)' : 'none'
+                }}
+              >
+                {notesCount}
+              </span>
+            </span>
+          </button>
         </nav>
         <div className="sidebar-footer">flymony</div>
       </aside>
@@ -250,6 +310,7 @@ function App() {
         </div>
       </main>
       <ChordFullscreenViewer />
+      <QuickNotesModal isOpen={isNotesModalOpen} onClose={() => setIsNotesModalOpen(false)} />
     </div>
   );
 }

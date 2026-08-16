@@ -319,5 +319,32 @@ export const api = {
 
   deleteGig: async (id) => {
     return request(`/gigs/${id}`, 'DELETE');
+  },
+
+  // Notes
+  getNotes: async () => {
+    const data = await request('/notes');
+    return data.map(n => ({
+      NoteID: Number(n.NoteID),
+      NoteText: n.NoteText || '',
+      Photos: n.Photos || [],
+      CreatedAt: n.CreatedAt,
+      UpdatedAt: n.UpdatedAt
+    }));
+  },
+
+  createNote: async (data) => {
+    const result = await request('/notes', 'POST', data);
+    return { NoteID: Number(result.id), message: result.message };
+  },
+
+  updateNote: async (id, data) => {
+    return request(`/notes/${id}`, 'PUT', data);
+  },
+
+  deleteNote: async (id) => {
+    return request(`/notes/${id}`, 'DELETE');
   }
 };
+
+export default api;
