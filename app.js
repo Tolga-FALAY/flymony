@@ -4256,7 +4256,7 @@ function renderEditorGigGuests() {
   const container = document.getElementById('gigGuestsList');
   const totalCount = editorGigGuests.reduce((sum, g) => sum + (Number(g.guestCount) || 1), 0);
   const countEl = document.getElementById('gigGuestsCount');
-  if (countEl) countEl.innerText = `${totalCount} Kişi`;
+  if (countEl) countEl.innerText = totalCount;
   container.innerHTML = '';
 
   updateVanillaTargetTableDropdown();
@@ -4278,7 +4278,7 @@ function renderEditorGigGuests() {
     groupDiv.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.3rem;">
         <div style="display: flex; align-items: center; gap: 0.3rem;">
-          <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName} (${totalCountInGroup} Kişi)</span>
+          <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName} (${totalCountInGroup})</span>
           <button type="button" class="btn btn-outline" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="renameTableVanilla('${tName.replace(/'/g, "\\'")}')" title="Masa Adını Değiştir">✏️ Adlandır</button>
         </div>
         <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 22px;" onclick="relateGroupGuestsVanilla('${tName.replace(/'/g, "\\'")}')" title="Seçilen misafirleri birbiriyle ilişkilendir">🔗 İlişkilendir</button>
