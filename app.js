@@ -3937,7 +3937,7 @@ function renderGigs() {
     const formattedDate = new Date(gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
     const songsCount = gig.songs ? gig.songs.length : 0;
     const playedCount = gig.songs ? gig.songs.filter(s => s.isPlayed).length : 0;
-    const guestsCount = gig.guests ? gig.guests.length : 0;
+    const guestsCount = gig.guests ? gig.guests.reduce((sum, g) => sum + (Number(g.guestCount || g.GuestCount) || 1), 0) : 0;
 
     const escapedGigNotes = String(gig.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const notesBtnHtml = String(gig.notes || '').trim().length > 0
@@ -4063,7 +4063,7 @@ function openGigModal(gigId = null) {
       tableName: g.tableName || g.TableName || 'Masa 1',
       description: g.description || g.Description || '',
       guestCount: Number(g.guestCount || g.GuestCount || 1),
-      fullName: g.fullName || g.FullName || (g.isAnonymous ? 'Tanımsız Grup' : 'Misafir')
+      fullName: g.fullName || g.FullName || (g.isAnonymous ? (Number(g.guestCount || g.GuestCount || 1) > 1 ? 'Tanımsız Grup' : 'Tanımsız Kişi') : 'Misafir')
     }));
 
     editorGigPhotos = [...(gig.photos || [])];
@@ -4155,7 +4155,9 @@ function renderEditorGigSongs() {
 
 function renderEditorGigGuests() {
   const container = document.getElementById('gigGuestsList');
-  document.getElementById('gigGuestsCount').innerText = editorGigGuests.length;
+  const totalCount = editorGigGuests.reduce((sum, g) => sum + (Number(g.guestCount) || 1), 0);
+  const countEl = document.getElementById('gigGuestsCount');
+  if (countEl) countEl.innerText = `${totalCount} Kişi`;
   container.innerHTML = '';
 
   const groups = {};
@@ -4169,7 +4171,7 @@ function renderEditorGigGuests() {
     const groupDiv = document.createElement('div');
     groupDiv.style.cssText = 'margin-bottom: 0.75rem; border: 1px solid var(--border-soft); border-radius: 6px; padding: 0.5rem; background: #f8fafc;';
     
-    const totalCountInGroup = groups[tName].reduce((sum, g) => sum + (g.guestCount || 1), 0);
+    const totalCountInGroup = groups[tName].reduce((sum, g) => sum + (Number(g.guestCount) || 1), 0);
 
     groupDiv.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-bottom: 0.4rem;">
@@ -4186,12 +4188,19 @@ function renderEditorGigGuests() {
       const topRow = document.createElement('div');
       topRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;';
       
-      if (guest.isAnonymous || !guest.guestId) {
+      const isAnon = Boolean(guest.isAnonymous || !guest.guestId);
+      const isGroup = isAnon && (Number(guest.guestCount || 1) > 1 || guest.fullName === 'Tanımsız Grup');
+
+      if (isAnon) {
         topRow.innerHTML = `
           <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
-            <span style="color: #0284c7; font-weight: bold; font-size: 0.8rem;">👥 Tanımsız Grup</span>
-            <input type="number" min="1" max="99" value="${guest.guestCount || 1}" onchange="updateGuestCountVanilla(${guest._idx}, this.value)" style="width: 45px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; text-align: center;" title="Kişi Sayısı">
-            <span style="font-size: 0.78rem; color: var(--text-muted);">Kişi</span>
+            ${isGroup ? `
+              <span style="color: #0284c7; font-weight: bold; font-size: 0.8rem; white-space: nowrap;">👥 Tanımsız Grup</span>
+              <input type="number" min="1" max="99" value="${guest.guestCount || 1}" onchange="updateGuestCountVanilla(${guest._idx}, this.value)" style="width: 45px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; text-align: center;" title="Kişi Sayısı">
+              <span style="font-size: 0.78rem; color: var(--text-muted);">Kişi</span>
+            ` : `
+              <span style="color: #0284c7; font-weight: bold; font-size: 0.8rem; white-space: nowrap;">👤 Tanımsız Kişi</span>
+            `}
           </div>
           <div style="display: flex; align-items: center; gap: 0.35rem;">
             <input type="text" value="${guest.tableName}" onchange="updateGuestTableVanilla(${guest._idx}, this.value)" placeholder="Masa..." style="width: 80px; padding: 2px 4px; font-size: 0.78rem; height: 22px; margin: 0;">
@@ -4211,13 +4220,16 @@ function renderEditorGigGuests() {
         `;
       }
 
-      const descRow = document.createElement('div');
-      descRow.innerHTML = `
-        <input type="text" value="${guest.description || ''}" onchange="updateGuestDescriptionVanilla(${guest._idx}, this.value)" placeholder="Tarif / Açıklama / Not ekle (örn: Ahmet'in yanındaki sarışın çift)..." style="width: 100%; padding: 2px 6px; font-size: 0.78rem; height: 22px; margin: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
-      `;
-
       gRow.appendChild(topRow);
-      gRow.appendChild(descRow);
+
+      if (isAnon) {
+        const descRow = document.createElement('div');
+        descRow.innerHTML = `
+          <input type="text" value="${guest.description || ''}" onchange="updateGuestDescriptionVanilla(${guest._idx}, this.value)" placeholder="${isGroup ? "Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..." : "Kişi ismi, tarif veya açıklama (örn: Selim Bey'in misafiri, sarışın beyefendi)..."}" style="width: 100%; padding: 2px 6px; font-size: 0.78rem; height: 22px; margin: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
+        `;
+        gRow.appendChild(descRow);
+      }
+
       listDiv.appendChild(gRow);
     });
 
@@ -4230,12 +4242,25 @@ function renderEditorGigGuests() {
   }
 }
 
+function addAnonymousGuestPersonToGig() {
+  editorGigGuests.push({
+    guestId: null,
+    isAnonymous: true,
+    tableName: 'Masa 1',
+    description: '',
+    guestCount: 1,
+    fullName: 'Tanımsız Kişi'
+  });
+  renderEditorGigGuests();
+}
+window.addAnonymousGuestPersonToGig = addAnonymousGuestPersonToGig;
+
 function addAnonymousGuestGroupToGig() {
   editorGigGuests.push({
     guestId: null,
     isAnonymous: true,
     tableName: 'Masa 1',
-    description: 'Tanımsız Grup',
+    description: '',
     guestCount: 2,
     fullName: 'Tanımsız Grup'
   });

@@ -296,8 +296,11 @@ export const api = {
       })),
       Guests: (gig.Guests || []).map(g => ({
         GigGuestID: Number(g.GigGuestID),
-        GuestID: Number(g.GuestID),
+        GuestID: g.GuestID ? Number(g.GuestID) : null,
         TableName: g.TableName || '',
+        Description: g.Description || '',
+        GuestCount: Number(g.GuestCount || 1),
+        IsAnonymous: Number(g.IsAnonymous || (!g.GuestID ? 1 : 0)),
         FullName: g.FullName || ''
       })),
       CreatedAt: gig.CreatedAt,

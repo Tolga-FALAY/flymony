@@ -174,7 +174,7 @@ export default function Gigs() {
         TableName: g.TableName || 'Masa 1',
         Description: g.Description || '',
         GuestCount: Number(g.GuestCount || 1),
-        FullName: g.FullName || (g.IsAnonymous ? 'Tanımsız Grup' : 'Misafir')
+        FullName: g.FullName || (g.IsAnonymous ? (Number(g.GuestCount || 1) > 1 ? 'Tanımsız Grup' : 'Tanımsız Kişi') : 'Misafir')
       })) : []
     });
     setSongSearchText('');
@@ -345,6 +345,23 @@ export default function Gigs() {
     setGuestSearchText('');
   };
 
+  const addAnonymousGuestPerson = () => {
+    setFormData(prev => ({
+      ...prev,
+      Guests: [
+        ...prev.Guests,
+        {
+          GuestID: null,
+          IsAnonymous: 1,
+          TableName: 'Masa 1',
+          Description: '',
+          GuestCount: 1,
+          FullName: 'Tanımsız Kişi'
+        }
+      ]
+    }));
+  };
+
   const addAnonymousGuestGroup = () => {
     setFormData(prev => ({
       ...prev,
@@ -354,7 +371,7 @@ export default function Gigs() {
           GuestID: null,
           IsAnonymous: 1,
           TableName: 'Masa 1',
-          Description: 'Tanımsız Grup',
+          Description: '',
           GuestCount: 2,
           FullName: 'Tanımsız Grup'
         }
@@ -687,10 +704,16 @@ export default function Gigs() {
     const guestObj = guests.find(g => g.GuestID === gEntry.GuestID);
     const tName = gEntry.TableName || 'Masasız';
     if (!guestsByTable[tName]) guestsByTable[tName] = [];
+    let displayName = gEntry.FullName;
+    if (guestObj) {
+      displayName = guestObj.FullName;
+    } else if (!displayName || displayName === 'Misafir') {
+      displayName = (Number(gEntry.GuestCount || 1) > 1) ? 'Tanımsız Grup' : 'Tanımsız Kişi';
+    }
     guestsByTable[tName].push({
       ...gEntry,
       _idx: index,
-      FullName: guestObj ? guestObj.FullName : (gEntry.FullName || 'Tanımsız Grup')
+      FullName: displayName
     });
   });
 
@@ -766,7 +789,7 @@ export default function Gigs() {
               const formattedDate = new Date(gig.GigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
               const songsCount = gig.Songs ? gig.Songs.length : 0;
               const playedCount = gig.Songs ? gig.Songs.filter(s => s.IsPlayed).length : 0;
-              const guestsCount = gig.Guests ? gig.Guests.length : 0;
+              const guestsCount = gig.Guests ? gig.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
 
               return (
                 <tr key={gig.GigID}>
@@ -965,9 +988,14 @@ export default function Gigs() {
 
                 {/* GUESTS SECTION */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <h3 style={{ margin: 0, color: 'var(--text-main)' }}>👥 Ağırlanan Misafirler ({formData.Guests.length})</h3>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestGroup} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>➕ Tanımsız Grup Ekle</button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
+                      👥 Ağırlanan Misafirler ({formData.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0)} Kişi)
+                    </h3>
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestPerson} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>➕ Tanımsız Kişi Ekle</button>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestGroup} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>➕ Tanımsız Grup Ekle</button>
+                    </div>
                   </div>
                   
                   <div className="form-group" style={{ position: 'relative', marginBottom: '0.5rem' }}>
@@ -1000,7 +1028,7 @@ export default function Gigs() {
                   {/* List of gig guests grouped by Table */}
                   <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
                     {Object.keys(guestsByTable).map(tName => {
-                      const totalInGroup = guestsByTable[tName].reduce((sum, g) => sum + (g.GuestCount || 1), 0);
+                      const totalInGroup = guestsByTable[tName].reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0);
                       return (
                         <div key={tName} style={{ marginBottom: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '6px', padding: '0.5rem', background: '#f8fafc' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
@@ -1014,55 +1042,70 @@ export default function Gigs() {
                               🔗 Seçilenleri İlişkilendir
                             </button>
                           </div>
-                          {guestsByTable[tName].map(gEntry => (
-                            <div key={gEntry._idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.35rem 0', borderBottom: '1px dashed #e2e8f0', fontSize: '0.85rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                {gEntry.IsAnonymous || !gEntry.GuestID ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
-                                    <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem' }}>👥 Tanımsız Grup</span>
+                          {guestsByTable[tName].map(gEntry => {
+                            const isAnonymous = Boolean(gEntry.IsAnonymous || !gEntry.GuestID);
+                            const isGroup = isAnonymous && (Number(gEntry.GuestCount || 1) > 1 || gEntry.FullName === 'Tanımsız Grup');
+
+                            return (
+                              <div key={gEntry._idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.35rem 0', borderBottom: '1px dashed #e2e8f0', fontSize: '0.85rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                  {isAnonymous ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
+                                      {isGroup ? (
+                                        <>
+                                          <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>👥 Tanımsız Grup</span>
+                                          <input 
+                                            type="number" 
+                                            min="1" 
+                                            max="99" 
+                                            value={gEntry.GuestCount || 1} 
+                                            onChange={e => updateGuestCount(gEntry._idx, e.target.value)} 
+                                            style={{ width: '45px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, textAlign: 'center' }} 
+                                            title="Kişi Sayısı"
+                                          />
+                                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Kişi</span>
+                                        </>
+                                      ) : (
+                                        <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>👤 Tanımsız Kişi</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
+                                      <input 
+                                        type="checkbox" 
+                                        checked={!!(selectedGroupGuests[tName] && selectedGroupGuests[tName].has(gEntry.GuestID))}
+                                        onChange={() => toggleGroupGuestSelect(tName, gEntry.GuestID)}
+                                        style={{ margin: 0 }}
+                                      />
+                                      <span style={{ fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{gEntry.FullName}</span>
+                                    </div>
+                                  )}
+                                  
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <input 
-                                      type="number" 
-                                      min="1" 
-                                      max="99" 
-                                      value={gEntry.GuestCount || 1} 
-                                      onChange={e => updateGuestCount(gEntry._idx, e.target.value)} 
-                                      style={{ width: '45px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, textAlign: 'center' }} 
-                                      title="Kişi Sayısı"
+                                      type="text" 
+                                      value={gEntry.TableName} 
+                                      onChange={e => updateGuestTableByIndex(gEntry._idx, e.target.value)}
+                                      placeholder="Masa..."
+                                      style={{ width: '80px', padding: '2px 4px', fontSize: '0.78rem', height: '22px', margin: 0 }}
                                     />
-                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Kişi</span>
+                                    <button type="button" className="btn btn-sm btn-danger" style={{ padding: '1px 5px', fontSize: '0.7rem', height: '20px' }} onClick={() => removeGuestFromGigByIndex(gEntry._idx)}>&times;</button>
                                   </div>
-                                ) : (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
-                                    <input 
-                                      type="checkbox" 
-                                      checked={!!(selectedGroupGuests[tName] && selectedGroupGuests[tName].has(gEntry.GuestID))}
-                                      onChange={() => toggleGroupGuestSelect(tName, gEntry.GuestID)}
-                                      style={{ margin: 0 }}
-                                    />
-                                    <span style={{ fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{gEntry.FullName}</span>
-                                  </div>
-                                )}
-                                
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                </div>
+
+                                {/* Ekstra açıklama/tarif alanı SADECE Tanımsız Kişi ve Gruplar için gösterilir */}
+                                {isAnonymous && (
                                   <input 
                                     type="text" 
-                                    value={gEntry.TableName} 
-                                    onChange={e => updateGuestTableByIndex(gEntry._idx, e.target.value)}
-                                    placeholder="Masa..."
-                                    style={{ width: '80px', padding: '2px 4px', fontSize: '0.78rem', height: '22px', margin: 0 }}
+                                    value={gEntry.Description || ''} 
+                                    onChange={e => updateGuestDescription(gEntry._idx, e.target.value)} 
+                                    placeholder={isGroup ? "Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..." : "Kişi ismi, tarif veya açıklama (örn: Selim Bey'in misafiri, sarışın beyefendi)..."} 
+                                    style={{ width: '100%', padding: '2px 6px', fontSize: '0.78rem', height: '22px', margin: 0, border: '1px solid #cbd5e1', borderRadius: '4px', background: '#ffffff' }}
                                   />
-                                  <button type="button" className="btn btn-sm btn-danger" style={{ padding: '1px 5px', fontSize: '0.7rem', height: '20px' }} onClick={() => removeGuestFromGigByIndex(gEntry._idx)}>&times;</button>
-                                </div>
+                                )}
                               </div>
-                              <input 
-                                type="text" 
-                                value={gEntry.Description || ''} 
-                                onChange={e => updateGuestDescription(gEntry._idx, e.target.value)} 
-                                placeholder="Tarif / Açıklama / Not ekle (örn: Ahmet'in yanındaki sarışın çift)..." 
-                                style={{ width: '100%', padding: '2px 6px', fontSize: '0.78rem', height: '22px', margin: 0, border: '1px solid #cbd5e1', borderRadius: '4px', background: '#ffffff' }}
-                              />
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       );
                     })}

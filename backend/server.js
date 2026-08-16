@@ -999,7 +999,7 @@ app.get('/api/gigs', (req, res) => {
                 TableName: g.TableName || '',
                 Description: g.Description || '',
                 GuestCount: Number(g.GuestCount || 1),
-                FullName: (g.FirstName || g.LastName) ? `${g.FirstName || ''} ${g.LastName || ''}`.trim() : 'Tanımsız Grup'
+                FullName: (g.FirstName || g.LastName) ? `${g.FirstName || ''} ${g.LastName || ''}`.trim() : (g.Description || (Number(g.GuestCount || 1) > 1 ? 'Tanımsız Grup' : 'Tanımsız Kişi'))
             }));
 
             return {
