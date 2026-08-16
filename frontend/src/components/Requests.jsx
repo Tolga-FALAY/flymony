@@ -452,12 +452,6 @@ export default function Requests() {
         <table>
           <thead>
             <tr>
-              <th onClick={() => handleSort('RequestDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Tarih / Saat
-                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'RequestDate' ? 'inherit' : 'var(--text-muted)' }}>
-                  {renderSortArrow('RequestDate')}
-                </span>
-              </th>
               <th onClick={() => handleSort('FullNames')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 Misafir
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'FullNames' ? 'inherit' : 'var(--text-muted)' }}>
@@ -470,27 +464,26 @@ export default function Requests() {
                   {renderSortArrow('SongTitle')}
                 </span>
               </th>
-              <th>Dil</th>
               <th onClick={() => handleSort('Status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 Durum
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'Status' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('Status')}
                 </span>
               </th>
-              <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
+              <th onClick={() => handleSort('RequestDate')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }}>
+                Tarih / Saat
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'RequestDate' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('RequestDate')}
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {filteredRequests.map(req => {
-              const rawDate = req.RequestDate || '';
-              const dateObj = new Date(rawDate.endsWith('Z') ? rawDate : (rawDate ? rawDate + 'Z' : Date.now()));
               const song = songs.find(s => s.SongID === req.SongID);
-
-              // Dynamically colored status badge helper
 
               return (
                 <tr key={req.RequestID}>
-                  <td data-label="Tarih / Saat">{dateObj.toLocaleString('tr-TR')}</td>
                   <td data-label="Misafir">{req.FullNames || '-'}</td>
                   <td data-label="İstenen Şarkı">
                     <span className="song-title-wrapper">
@@ -508,14 +501,13 @@ export default function Requests() {
                       )}
                     </span>
                   </td>
-                  <td data-label="Dil">{song?.LanguageName || '-'}</td>
                   <td data-label="Durum">
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                       <span className="status-badge" style={getStatusStyle(req.Status)}>{req.Status}</span>
                       {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
                     </div>
                   </td>
-                  <td data-label="İşlemler">
+                  <td data-label="Tarih / Saat">
                     <div className="action-btns">
                       <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
                         {req.Notes && req.Notes.trim() ? (
@@ -601,7 +593,7 @@ export default function Requests() {
               );
             })}
             {filteredRequests.length === 0 && (
-              <tr><td colSpan="6" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
