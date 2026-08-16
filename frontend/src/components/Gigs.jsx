@@ -1171,25 +1171,32 @@ export default function Gigs() {
                               <div key={gEntry._idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.35rem 0', borderBottom: '1px dashed #e2e8f0', fontSize: '0.85rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                                   {isAnonymous ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
-                                      {isGroup ? (
-                                        <>
-                                          <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>👥 Tanımsız Grup</span>
-                                          <input 
-                                            type="number" 
-                                            min="1" 
-                                            max="99" 
-                                            value={gEntry.GuestCount || 1} 
-                                            onChange={e => updateGuestCount(gEntry._idx, e.target.value)} 
-                                            style={{ width: '45px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, textAlign: 'center' }} 
-                                            title="Kişi Sayısı"
-                                          />
-                                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Kişi</span>
-                                        </>
-                                      ) : (
-                                        <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>👤 Tanımsız Kişi</span>
-                                      )}
-                                    </div>
+                                    isGroup ? (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
+                                        <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>👥 Tanımsız Grup</span>
+                                        <input 
+                                          type="number" 
+                                          min="1" 
+                                          max="99" 
+                                          value={gEntry.GuestCount || 1} 
+                                          onChange={e => updateGuestCount(gEntry._idx, e.target.value)} 
+                                          style={{ width: '45px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, textAlign: 'center' }} 
+                                          title="Kişi Sayısı"
+                                        />
+                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Kişi</span>
+                                      </div>
+                                    ) : (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
+                                        <span style={{ fontSize: '0.95rem', userSelect: 'none' }} title="Tanımsız Kişi">👤</span>
+                                        <input 
+                                          type="text" 
+                                          value={gEntry.Description || ''} 
+                                          onChange={e => updateGuestDescription(gEntry._idx, e.target.value)} 
+                                          placeholder="Kişi ismi, tarif veya açıklama" 
+                                          style={{ flex: 1, minWidth: 0, padding: '2px 6px', fontSize: '0.78rem', height: '22px', margin: 0, border: '1px solid #cbd5e1', borderRadius: '4px', background: '#ffffff' }}
+                                        />
+                                      </div>
+                                    )
                                   ) : (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
                                       <input 
@@ -1218,13 +1225,13 @@ export default function Gigs() {
                                   </div>
                                 </div>
 
-                                {/* Ekstra açıklama/tarif alanı SADECE Tanımsız Kişi ve Gruplar için gösterilir */}
-                                {isAnonymous && (
+                                {/* Ekstra açıklama/tarif alanı SADECE Tanımsız Grup için alt satırda gösterilir */}
+                                {isAnonymous && isGroup && (
                                   <input 
                                     type="text" 
                                     value={gEntry.Description || ''} 
                                     onChange={e => updateGuestDescription(gEntry._idx, e.target.value)} 
-                                    placeholder={isGroup ? "Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..." : "Kişi ismi, tarif veya açıklama (örn: Selim Bey'in misafiri, sarışın beyefendi)..."} 
+                                    placeholder="Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..." 
                                     style={{ width: '100%', padding: '2px 6px', fontSize: '0.78rem', height: '22px', margin: 0, border: '1px solid #cbd5e1', borderRadius: '4px', background: '#ffffff' }}
                                   />
                                 )}

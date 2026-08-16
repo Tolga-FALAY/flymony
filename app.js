@@ -4299,23 +4299,34 @@ function renderEditorGigGuests() {
       const optionsHtml = existingTables.map(t => `<option value="${t}" ${t === guest.tableName ? 'selected' : ''}>${t}</option>`).join('') + '<option value="__NEW_TABLE__">➕ Yeni Masa...</option>';
 
       if (isAnon) {
-        topRow.innerHTML = `
-          <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
-            ${isGroup ? `
+        if (isGroup) {
+          topRow.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
               <span style="color: #0284c7; font-weight: bold; font-size: 0.8rem; white-space: nowrap;">👥 Tanımsız Grup</span>
               <input type="number" min="1" max="99" value="${guest.guestCount || 1}" onchange="updateGuestCountVanilla(${guest._idx}, this.value)" style="width: 45px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; text-align: center;" title="Kişi Sayısı">
               <span style="font-size: 0.78rem; color: var(--text-muted);">Kişi</span>
-            ` : `
-              <span style="color: #0284c7; font-weight: bold; font-size: 0.8rem; white-space: nowrap;">👤 Tanımsız Kişi</span>
-            `}
-          </div>
-          <div style="display: flex; align-items: center; gap: 0.35rem;">
-            <select onchange="moveGuestTableVanilla(${guest._idx}, this.value)" style="width: 95px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff;" title="Misafirin Masasını Değiştir">
-              ${optionsHtml}
-            </select>
-            <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigListByIndex(${guest._idx})">&times;</button>
-          </div>
-        `;
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <select onchange="moveGuestTableVanilla(${guest._idx}, this.value)" style="width: 95px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff;" title="Misafirin Masasını Değiştir">
+                ${optionsHtml}
+              </select>
+              <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigListByIndex(${guest._idx})">&times;</button>
+            </div>
+          `;
+        } else {
+          topRow.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
+              <span style="font-size: 0.95rem; user-select: none;" title="Tanımsız Kişi">👤</span>
+              <input type="text" value="${guest.description || ''}" onchange="updateGuestDescriptionVanilla(${guest._idx}, this.value)" placeholder="Kişi ismi, tarif veya açıklama" style="flex: 1; min-width: 0; padding: 2px 6px; font-size: 0.78rem; height: 22px; margin: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <select onchange="moveGuestTableVanilla(${guest._idx}, this.value)" style="width: 95px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff;" title="Misafirin Masasını Değiştir">
+                ${optionsHtml}
+              </select>
+              <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigListByIndex(${guest._idx})">&times;</button>
+            </div>
+          `;
+        }
       } else {
         topRow.innerHTML = `
           <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
@@ -4333,10 +4344,10 @@ function renderEditorGigGuests() {
 
       gRow.appendChild(topRow);
 
-      if (isAnon) {
+      if (isAnon && isGroup) {
         const descRow = document.createElement('div');
         descRow.innerHTML = `
-          <input type="text" value="${guest.description || ''}" onchange="updateGuestDescriptionVanilla(${guest._idx}, this.value)" placeholder="${isGroup ? "Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..." : "Kişi ismi, tarif veya açıklama (örn: Selim Bey'in misafiri, sarışın beyefendi)..."}" style="width: 100%; padding: 2px 6px; font-size: 0.78rem; height: 22px; margin: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
+          <input type="text" value="${guest.description || ''}" onchange="updateGuestDescriptionVanilla(${guest._idx}, this.value)" placeholder="Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..." style="width: 100%; padding: 2px 6px; font-size: 0.78rem; height: 22px; margin: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
         `;
         gRow.appendChild(descRow);
       }
