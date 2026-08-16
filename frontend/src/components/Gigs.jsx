@@ -1068,13 +1068,13 @@ export default function Gigs() {
 
                 {/* GUESTS SECTION */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    <h3 style={{ margin: 0, color: 'var(--text-main)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', gap: '0.4rem' }}>
+                    <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1rem' }}>
                       👥 Ağırlanan Misafirler ({formData.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0)} Kişi)
                     </h3>
-                    <div style={{ display: 'flex', gap: '0.35rem' }}>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestPerson} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>➕ Tanımsız Kişi Ekle</button>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestGroup} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>➕ Tanımsız Grup Ekle</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestPerson} style={{ fontSize: '0.72rem', padding: '1px 8px', height: '20px', lineHeight: 1, whiteSpace: 'nowrap' }}>➕ Kişi Ekle</button>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestGroup} style={{ fontSize: '0.72rem', padding: '1px 8px', height: '20px', lineHeight: 1, whiteSpace: 'nowrap' }}>➕ Grup Ekle</button>
                     </div>
                   </div>
 
@@ -1159,8 +1159,9 @@ export default function Gigs() {
                               className="btn btn-outline" 
                               style={{ padding: '2px 6px', fontSize: '0.75rem', height: '22px' }}
                               onClick={() => makeSelectedGuestsRelated(tName)}
+                              title="Seçilen misafirleri birbiriyle ilişkilendir"
                             >
-                              🔗 Seçilenleri İlişkilendir
+                              🔗 İlişkilendir
                             </button>
                           </div>
                           {guestsByTable[tName].map(gEntry => {

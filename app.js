@@ -4281,7 +4281,7 @@ function renderEditorGigGuests() {
           <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName} (${totalCountInGroup} Kişi)</span>
           <button type="button" class="btn btn-outline" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="renameTableVanilla('${tName.replace(/'/g, "\\'")}')" title="Masa Adını Değiştir">✏️ Adlandır</button>
         </div>
-        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 22px;" onclick="relateGroupGuestsVanilla('${tName.replace(/'/g, "\\'")}')">🔗 Seçilenleri İlişkilendir</button>
+        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 22px;" onclick="relateGroupGuestsVanilla('${tName.replace(/'/g, "\\'")}')" title="Seçilen misafirleri birbiriyle ilişkilendir">🔗 İlişkilendir</button>
       </div>
     `;
 
