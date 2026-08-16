@@ -76,6 +76,7 @@ let editorGigSongs = [];
 let editorGigGuests = [];
 let editorGigPhotos = [];
 let editorGigVideos = [];
+let vanillaSelectedTargetTable = 'Masa 1';
 
 // Live mode temporary states
 let liveGigObj = null;
@@ -4068,6 +4069,7 @@ function openGigModal(gigId = null) {
 
     editorGigPhotos = [...(gig.photos || [])];
     editorGigVideos = [...(gig.videos || [])];
+    vanillaSelectedTargetTable = (editorGigGuests.length > 0 && editorGigGuests[0].tableName) ? editorGigGuests[0].tableName : 'Masa 1';
   }
 
   document.getElementById('gigSongSearch').value = '';
@@ -4153,12 +4155,112 @@ function renderEditorGigSongs() {
   }
 }
 
+function getVanillaExistingTables() {
+  const list = Array.from(new Set(editorGigGuests.map(g => (g.tableName || '').trim()).filter(Boolean)));
+  if (list.length === 0) list.push('Masa 1');
+  if (vanillaSelectedTargetTable && !list.includes(vanillaSelectedTargetTable)) {
+    list.push(vanillaSelectedTargetTable);
+  }
+  return list;
+}
+
+function updateVanillaTargetTableDropdown() {
+  const select = document.getElementById('vanillaTargetTableSelect');
+  if (!select) return;
+  const tables = getVanillaExistingTables();
+  select.innerHTML = tables.map(t => `<option value="${t}" ${t === vanillaSelectedTargetTable ? 'selected' : ''}>${t}</option>`).join('') + '<option value="__NEW__">➕ Yeni Masa Aç...</option>';
+  
+  const searchInput = document.getElementById('gigGuestSearch');
+  if (searchInput) {
+    searchInput.placeholder = `Misafir ara ve [${vanillaSelectedTargetTable}] masasına ekle...`;
+  }
+}
+
+function handleVanillaTargetTableChange(val) {
+  if (val === '__NEW__') {
+    addNewTableVanilla();
+  } else {
+    vanillaSelectedTargetTable = val;
+    updateVanillaTargetTableDropdown();
+  }
+}
+window.handleVanillaTargetTableChange = handleVanillaTargetTableChange;
+
+function addNewTableVanilla() {
+  const tables = getVanillaExistingTables();
+  let maxNum = 0;
+  tables.forEach(t => {
+    const m = t.match(/^Masa\s*(\d+)$/i);
+    if (m) {
+      const n = parseInt(m[1]);
+      if (n > maxNum) maxNum = n;
+    }
+  });
+  const defaultNext = `Masa ${Math.max(tables.length + 1, maxNum + 1)}`;
+  const newName = prompt('Yeni masa ismi veya numarası girin:', defaultNext);
+  if (newName && newName.trim()) {
+    vanillaSelectedTargetTable = newName.trim();
+    updateVanillaTargetTableDropdown();
+  }
+}
+window.addNewTableVanilla = addNewTableVanilla;
+
+function renameTableVanilla(oldTableName) {
+  const newName = prompt(`"${oldTableName}" masasının yeni ismini girin:`, oldTableName);
+  if (newName && newName.trim() && newName.trim() !== oldTableName) {
+    const trimmed = newName.trim();
+    editorGigGuests.forEach(g => {
+      if ((g.tableName || 'Masa 1') === oldTableName) {
+        g.tableName = trimmed;
+      }
+    });
+    if (vanillaSelectedTargetTable === oldTableName) {
+      vanillaSelectedTargetTable = trimmed;
+    }
+    renderEditorGigGuests();
+  }
+}
+window.renameTableVanilla = renameTableVanilla;
+
+function moveGuestTableVanilla(index, newTable) {
+  if (newTable === '__NEW_TABLE__') {
+    const tables = getVanillaExistingTables();
+    let maxNum = 0;
+    tables.forEach(t => {
+      const m = t.match(/^Masa\s*(\d+)$/i);
+      if (m) {
+        const n = parseInt(m[1]);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+    const defaultNext = `Masa ${Math.max(tables.length + 1, maxNum + 1)}`;
+    const customName = prompt('Yeni masa ismi girin:', defaultNext);
+    if (customName && customName.trim()) {
+      const trimmed = customName.trim();
+      if (editorGigGuests[index]) {
+        editorGigGuests[index].tableName = trimmed;
+      }
+      vanillaSelectedTargetTable = trimmed;
+      renderEditorGigGuests();
+    }
+  } else {
+    if (editorGigGuests[index]) {
+      editorGigGuests[index].tableName = newTable || 'Masa 1';
+    }
+    renderEditorGigGuests();
+  }
+}
+window.moveGuestTableVanilla = moveGuestTableVanilla;
+
 function renderEditorGigGuests() {
   const container = document.getElementById('gigGuestsList');
   const totalCount = editorGigGuests.reduce((sum, g) => sum + (Number(g.guestCount) || 1), 0);
   const countEl = document.getElementById('gigGuestsCount');
   if (countEl) countEl.innerText = `${totalCount} Kişi`;
   container.innerHTML = '';
+
+  updateVanillaTargetTableDropdown();
+  const existingTables = getVanillaExistingTables();
 
   const groups = {};
   editorGigGuests.forEach((guest, index) => {
@@ -4174,9 +4276,12 @@ function renderEditorGigGuests() {
     const totalCountInGroup = groups[tName].reduce((sum, g) => sum + (Number(g.guestCount) || 1), 0);
 
     groupDiv.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-bottom: 0.4rem;">
-        <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName} (${totalCountInGroup} Kişi)</span>
-        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 22px;" onclick="relateGroupGuestsVanilla('${tName}')">🔗 Seçilenleri İlişkilendir</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.3rem;">
+        <div style="display: flex; align-items: center; gap: 0.3rem;">
+          <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-main);">📍 ${tName} (${totalCountInGroup} Kişi)</span>
+          <button type="button" class="btn btn-outline" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="renameTableVanilla('${tName.replace(/'/g, "\\'")}')" title="Masa Adını Değiştir">✏️ Adlandır</button>
+        </div>
+        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 22px;" onclick="relateGroupGuestsVanilla('${tName.replace(/'/g, "\\'")}')">🔗 Seçilenleri İlişkilendir</button>
       </div>
     `;
 
@@ -4191,6 +4296,8 @@ function renderEditorGigGuests() {
       const isAnon = Boolean(guest.isAnonymous || !guest.guestId);
       const isGroup = isAnon && (Number(guest.guestCount || 1) > 1 || guest.fullName === 'Tanımsız Grup');
 
+      const optionsHtml = existingTables.map(t => `<option value="${t}" ${t === guest.tableName ? 'selected' : ''}>${t}</option>`).join('') + '<option value="__NEW_TABLE__">➕ Yeni Masa...</option>';
+
       if (isAnon) {
         topRow.innerHTML = `
           <div style="display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0;">
@@ -4203,7 +4310,9 @@ function renderEditorGigGuests() {
             `}
           </div>
           <div style="display: flex; align-items: center; gap: 0.35rem;">
-            <input type="text" value="${guest.tableName}" onchange="updateGuestTableVanilla(${guest._idx}, this.value)" placeholder="Masa..." style="width: 80px; padding: 2px 4px; font-size: 0.78rem; height: 22px; margin: 0;">
+            <select onchange="moveGuestTableVanilla(${guest._idx}, this.value)" style="width: 95px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff;" title="Misafirin Masasını Değiştir">
+              ${optionsHtml}
+            </select>
             <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigListByIndex(${guest._idx})">&times;</button>
           </div>
         `;
@@ -4214,7 +4323,9 @@ function renderEditorGigGuests() {
             <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${guest.fullName}</span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.35rem;">
-            <input type="text" value="${guest.tableName}" onchange="updateGuestTableVanilla(${guest._idx}, this.value)" placeholder="Masa..." style="width: 80px; padding: 2px 4px; font-size: 0.78rem; height: 22px; margin: 0;">
+            <select onchange="moveGuestTableVanilla(${guest._idx}, this.value)" style="width: 95px; padding: 1px 4px; font-size: 0.78rem; height: 22px; margin: 0; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff;" title="Misafirin Masasını Değiştir">
+              ${optionsHtml}
+            </select>
             <button type="button" class="btn btn-sm btn-danger" style="padding: 1px 5px; font-size: 0.7rem; height: 20px;" onclick="removeGuestFromGigListByIndex(${guest._idx})">&times;</button>
           </div>
         `;
@@ -4246,7 +4357,7 @@ function addAnonymousGuestPersonToGig() {
   editorGigGuests.push({
     guestId: null,
     isAnonymous: true,
-    tableName: 'Masa 1',
+    tableName: vanillaSelectedTargetTable || 'Masa 1',
     description: '',
     guestCount: 1,
     fullName: 'Tanımsız Kişi'
@@ -4259,7 +4370,7 @@ function addAnonymousGuestGroupToGig() {
   editorGigGuests.push({
     guestId: null,
     isAnonymous: true,
-    tableName: 'Masa 1',
+    tableName: vanillaSelectedTargetTable || 'Masa 1',
     description: '',
     guestCount: 2,
     fullName: 'Tanımsız Grup'
@@ -4589,7 +4700,7 @@ function addGuestToGigList(guestId, fullName) {
   editorGigGuests.push({
     guestId,
     isAnonymous: false,
-    tableName: 'Masa 1',
+    tableName: vanillaSelectedTargetTable || 'Masa 1',
     description: '',
     guestCount: 1,
     fullName

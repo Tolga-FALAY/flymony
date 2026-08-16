@@ -41,6 +41,7 @@ export default function Gigs() {
   
   // Selection states for Grouping / Relationship inside tables
   const [selectedGroupGuests, setSelectedGroupGuests] = useState({}); // { table_name: Set(GuestIDs) }
+  const [selectedTargetTable, setSelectedTargetTable] = useState('Masa 1');
 
   // Active Performance ("Sahnem") State
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -180,6 +181,8 @@ export default function Gigs() {
     setSongSearchText('');
     setGuestSearchText('');
     setSelectedGroupGuests({});
+    const initialTable = (gig.Guests && gig.Guests.length > 0 && gig.Guests[0].TableName) ? gig.Guests[0].TableName : 'Masa 1';
+    setSelectedTargetTable(initialTable);
     setIsModalOpen(true);
   };
 
@@ -210,6 +213,7 @@ export default function Gigs() {
     setSongSearchText('');
     setGuestSearchText('');
     setSelectedGroupGuests({});
+    setSelectedTargetTable('Masa 1');
     setIsModalOpen(true);
   };
 
@@ -333,7 +337,7 @@ export default function Gigs() {
     const newGuestEntry = {
       GuestID: guest.GuestID,
       IsAnonymous: 0,
-      TableName: 'Masa 1',
+      TableName: selectedTargetTable || 'Masa 1',
       Description: '',
       GuestCount: 1,
       FullName: guest.FullName
@@ -353,7 +357,7 @@ export default function Gigs() {
         {
           GuestID: null,
           IsAnonymous: 1,
-          TableName: 'Masa 1',
+          TableName: selectedTargetTable || 'Masa 1',
           Description: '',
           GuestCount: 1,
           FullName: 'Tanımsız Kişi'
@@ -370,13 +374,78 @@ export default function Gigs() {
         {
           GuestID: null,
           IsAnonymous: 1,
-          TableName: 'Masa 1',
+          TableName: selectedTargetTable || 'Masa 1',
           Description: '',
           GuestCount: 2,
           FullName: 'Tanımsız Grup'
         }
       ]
     }));
+  };
+
+  const handleAddNewTable = () => {
+    let maxNum = 0;
+    existingTables.forEach(t => {
+      const match = t.match(/^Masa\s*(\d+)$/i);
+      if (match) {
+        const n = parseInt(match[1]);
+        if (n > maxNum) maxNum = n;
+      }
+    });
+    const defaultNext = `Masa ${Math.max(existingTables.length + 1, maxNum + 1)}`;
+    const newName = prompt('Yeni masa ismi veya numarası girin:', defaultNext);
+    if (newName && newName.trim()) {
+      const trimmed = newName.trim();
+      setSelectedTargetTable(trimmed);
+    }
+  };
+
+  const handleRenameTable = (oldTableName) => {
+    const newName = prompt(`"${oldTableName}" masasının yeni ismini girin:`, oldTableName);
+    if (newName && newName.trim() && newName.trim() !== oldTableName) {
+      const trimmed = newName.trim();
+      setFormData(prev => ({
+        ...prev,
+        Guests: prev.Guests.map(g => 
+          (g.TableName || 'Masa 1') === oldTableName 
+            ? { ...g, TableName: trimmed }
+            : g
+        )
+      }));
+      if (selectedTargetTable === oldTableName) {
+        setSelectedTargetTable(trimmed);
+      }
+      setSelectedGroupGuests(prev => {
+        const copy = { ...prev };
+        if (copy[oldTableName]) {
+          copy[trimmed] = copy[oldTableName];
+          delete copy[oldTableName];
+        }
+        return copy;
+      });
+    }
+  };
+
+  const handleMoveGuestTable = (guestIndex, targetTableVal) => {
+    if (targetTableVal === '__NEW_TABLE__') {
+      let maxNum = 0;
+      existingTables.forEach(t => {
+        const match = t.match(/^Masa\s*(\d+)$/i);
+        if (match) {
+          const n = parseInt(match[1]);
+          if (n > maxNum) maxNum = n;
+        }
+      });
+      const defaultNext = `Masa ${Math.max(existingTables.length + 1, maxNum + 1)}`;
+      const customName = prompt('Yeni masa ismi girin:', defaultNext);
+      if (customName && customName.trim()) {
+        const trimmed = customName.trim();
+        updateGuestTableByIndex(guestIndex, trimmed);
+        setSelectedTargetTable(trimmed);
+      }
+    } else {
+      updateGuestTableByIndex(guestIndex, targetTableVal);
+    }
   };
 
   const removeGuestFromGigByIndex = (indexToRemove) => {
@@ -698,6 +767,17 @@ export default function Gigs() {
     a.toLocaleLowerCase('tr-TR').localeCompare(b.toLocaleLowerCase('tr-TR'), 'tr')
   );
 
+  // Derived list of unique tables
+  const existingTables = Array.from(
+    new Set(formData.Guests.map(g => (g.TableName || '').trim()).filter(Boolean))
+  );
+  if (existingTables.length === 0) {
+    existingTables.push('Masa 1');
+  }
+  if (selectedTargetTable && !existingTables.includes(selectedTargetTable)) {
+    existingTables.push(selectedTargetTable);
+  }
+
   // Grouping guests inside the editor by table
   const guestsByTable = {};
   formData.Guests.forEach((gEntry, index) => {
@@ -997,11 +1077,41 @@ export default function Gigs() {
                       <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestGroup} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>➕ Tanımsız Grup Ekle</button>
                     </div>
                   </div>
+
+                  {/* ACTIVE / TARGET TABLE SELECTOR BAR */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', background: '#f1f5f9', padding: '0.35rem 0.55rem', borderRadius: '6px', border: '1px solid var(--border-soft)' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>📍 Hedef Masa:</span>
+                    <select 
+                      value={selectedTargetTable} 
+                      onChange={e => {
+                        if (e.target.value === '__NEW__') {
+                          handleAddNewTable();
+                        } else {
+                          setSelectedTargetTable(e.target.value);
+                        }
+                      }}
+                      style={{ flex: 1, padding: '2px 6px', fontSize: '0.8rem', height: '24px', margin: 0, borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 'bold', color: 'var(--primary)', background: '#ffffff' }}
+                    >
+                      {existingTables.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                      <option value="__NEW__">➕ Yeni Masa Aç...</option>
+                    </select>
+                    <button 
+                      type="button" 
+                      className="btn btn-sm btn-outline" 
+                      onClick={handleAddNewTable} 
+                      style={{ fontSize: '0.75rem', padding: '2px 6px', height: '24px', whiteSpace: 'nowrap' }}
+                      title="Yeni Masa Oluştur"
+                    >
+                      ➕ Yeni Masa
+                    </button>
+                  </div>
                   
                   <div className="form-group" style={{ position: 'relative', marginBottom: '0.5rem' }}>
                     <input 
                       type="text" 
-                      placeholder="Misafir ara ve ekle..." 
+                      placeholder={`Misafir ara ve [${selectedTargetTable}] masasına ekle...`} 
                       value={guestSearchText} 
                       onChange={e => setGuestSearchText(e.target.value)} 
                     />
@@ -1031,8 +1141,19 @@ export default function Gigs() {
                       const totalInGroup = guestsByTable[tName].reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0);
                       return (
                         <div key={tName} style={{ marginBottom: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '6px', padding: '0.5rem', background: '#f8fafc' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
-                            <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>📍 {tName} ({totalInGroup} Kişi)</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                              <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>📍 {tName} ({totalInGroup} Kişi)</span>
+                              <button 
+                                type="button" 
+                                className="btn btn-outline" 
+                                style={{ padding: '1px 5px', fontSize: '0.7rem', height: '20px' }}
+                                onClick={() => handleRenameTable(tName)}
+                                title="Masa Adını Değiştir"
+                              >
+                                ✏️ Adlandır
+                              </button>
+                            </div>
                             <button 
                               type="button" 
                               className="btn btn-outline" 
@@ -1082,13 +1203,17 @@ export default function Gigs() {
                                   )}
                                   
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <input 
-                                      type="text" 
-                                      value={gEntry.TableName} 
-                                      onChange={e => updateGuestTableByIndex(gEntry._idx, e.target.value)}
-                                      placeholder="Masa..."
-                                      style={{ width: '80px', padding: '2px 4px', fontSize: '0.78rem', height: '22px', margin: 0 }}
-                                    />
+                                    <select 
+                                      value={gEntry.TableName || 'Masa 1'} 
+                                      onChange={e => handleMoveGuestTable(gEntry._idx, e.target.value)}
+                                      style={{ width: '95px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff' }}
+                                      title="Misafirin Masasını Değiştir"
+                                    >
+                                      {existingTables.map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                      ))}
+                                      <option value="__NEW_TABLE__">➕ Yeni Masa...</option>
+                                    </select>
                                     <button type="button" className="btn btn-sm btn-danger" style={{ padding: '1px 5px', fontSize: '0.7rem', height: '20px' }} onClick={() => removeGuestFromGigByIndex(gEntry._idx)}>&times;</button>
                                   </div>
                                 </div>
