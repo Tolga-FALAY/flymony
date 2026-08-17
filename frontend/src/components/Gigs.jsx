@@ -1694,61 +1694,6 @@ export default function Gigs() {
             </button>
           </div>
 
-          {/* FLOATING TOP-RIGHT CONTROLS: A/T TOGGLE & CLOSE BUTTON */}
-          <div className="fullscreen-viewer-floating-controls">
-            {(() => {
-              const gigSong = liveGig.Songs && liveSongIndex !== -1 ? liveGig.Songs[liveSongIndex] : null;
-              const fullSongObj = gigSong ? (songs.find(s => s.SongID === gigSong.SongID) || gigSong) : null;
-              const hasChordImg = Boolean(fullSongObj && fullSongObj.ChordImagePath);
-              const hasLyr = Boolean(fullSongObj && hasLyricsContent(fullSongObj.Lyrics));
-
-              if (liveViewMode === 'image') {
-                return (
-                  <button 
-                    type="button" 
-                    className={`viewer-btn-float btn-transpose-toggle ${hasLyr ? 'btn-status-success' : 'btn-status-danger'}`}
-                    onClick={() => {
-                      if (hasLyr) {
-                        setLiveViewMode('chords');
-                      } else {
-                        alert("Bu şarkının transpoze bilgisi yoktur");
-                      }
-                    }}
-                    title="Transpoze / Akor Metnine Geç (T)"
-                  >
-                    T
-                  </button>
-                );
-              } else {
-                return (
-                  <button 
-                    type="button" 
-                    className={`viewer-btn-float btn-chord-toggle ${hasChordImg ? 'btn-status-success' : 'btn-status-danger'}`}
-                    onClick={() => {
-                      if (hasChordImg) {
-                        setLiveViewMode('image');
-                      } else {
-                        alert("Bu şarkının akor görseli yoktur");
-                      }
-                    }}
-                    title="Akor Görseline Geç (A)"
-                  >
-                    A
-                  </button>
-                );
-              }
-            })()}
-
-            <button 
-              type="button" 
-              className="viewer-btn-float btn-close-toggle" 
-              onClick={closeLiveMode}
-              title="Sahnem Ekranını Kapat (X)"
-            >
-              &times;
-            </button>
-          </div>
-
           {/* LEFT SLIDE-IN REPERTOIRE DRAWER */}
           {isLiveDrawerOpen && (
             <div className="live-stage-backdrop" onClick={() => setIsLiveDrawerOpen(false)} />
@@ -2033,6 +1978,8 @@ export default function Gigs() {
 
               const htmlContent = renderTransposedTextAsHTML(fullSongObj.Lyrics, liveTransposeShift, targetScale);
               const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+              const hasLyr = Boolean(fullSongObj && hasLyricsContent(fullSongObj.Lyrics));
+              const hasChordImg = Boolean(fullSongObj && (fullSongObj.ChordImagePath || (Array.isArray(fullSongObj.ChordImages) && fullSongObj.ChordImages.length > 0)));
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
@@ -2049,66 +1996,142 @@ export default function Gigs() {
 
                       return (
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
-                          {/* Image Top Info Bar */}
-                          <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                            <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
+                          {/* Image Top Info Bar (Fixed 56px height) */}
+                          <div style={{
+                            height: '56px',
+                            minHeight: '56px',
+                            maxHeight: '56px',
+                            padding: '0 1.25rem',
+                            background: 'rgba(0, 0, 0, 0.75)',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            boxSizing: 'border-box'
+                          }}>
+                            {/* Left: Song Info */}
+                            <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem', display: 'flex', alignItems: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {gigSong.SongTitle}
                               </span>
                               {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
-                                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                                <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginLeft: '0.5rem', flexShrink: 0 }}>
                                   - {gigSong.ArtistNames}
                                 </span>
                               )}
-                              {origKey && <span className="orig-key-badge">({origKey} Tonu)</span>}
+                              {origKey && <span className="orig-key-badge" style={{ marginLeft: '0.5rem', flexShrink: 0 }}>({origKey} Tonu)</span>}
                             </div>
 
-                            {/* Multi-page Red Indicator (24pt / Montserrat / Red) */}
-                            {hasMultiplePages && (
-                              <div 
-                                className="live-chord-multipage-badge"
+                            {/* Right: Controls Aligned in Top Bar */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+                              {hasMultiplePages && (
+                                <div 
+                                  className="live-chord-multipage-badge"
+                                  style={{
+                                    fontFamily: "'Montserrat', sans-serif",
+                                    fontSize: '20pt',
+                                    height: '38px',
+                                    fontWeight: 900,
+                                    color: '#ef4444',
+                                    lineHeight: 1,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '0 0.75rem',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                    border: '2px solid #ef4444',
+                                    borderRadius: '8px',
+                                    letterSpacing: '1.5px',
+                                    textShadow: '0 0 10px rgba(239, 68, 68, 0.5)',
+                                    flexShrink: 0
+                                  }}
+                                  title={`Toplam ${totalPages} sayfa. İleri/Geri kaydırarak veya yön tuşlarıyla sayfaları gezebilirsiniz.`}
+                                >
+                                  {liveChordPageIndex + 1}/{totalPages}
+                                </div>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => toggleSongPlayed(liveSongIndex)}
                                 style={{
                                   fontFamily: "'Montserrat', sans-serif",
-                                  fontSize: '24pt',
-                                  fontWeight: 900,
-                                  color: '#ef4444',
-                                  lineHeight: 1,
+                                  height: '38px',
+                                  minWidth: '135px',
+                                  width: '135px',
+                                  padding: '0 0.5rem',
+                                  borderRadius: '8px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.25)',
+                                  background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                                  color: gigSong.IsPlayed ? '#34d399' : '#f8fafc',
+                                  fontSize: '0.88rem',
+                                  whiteSpace: 'nowrap',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+                              </button>
+
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  if (hasLyr) {
+                                    setLiveViewMode('chords');
+                                  } else {
+                                    alert("Bu şarkının transpoze metni yoktur");
+                                  }
+                                }}
+                                style={{
+                                  height: '38px',
+                                  width: '38px',
+                                  minWidth: '38px',
+                                  padding: 0,
+                                  borderRadius: '8px',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  padding: '0.2rem 0.85rem',
-                                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                  border: '2px solid #ef4444',
-                                  borderRadius: '10px',
-                                  letterSpacing: '1.5px',
-                                  textShadow: '0 0 12px rgba(239, 68, 68, 0.5)',
-                                  flexShrink: 0,
-                                  marginRight: '1rem'
+                                  fontWeight: 800,
+                                  fontSize: '1.05rem',
+                                  cursor: 'pointer',
+                                  border: hasLyr ? '1px solid #10b981' : '1px solid rgba(239, 68, 68, 0.4)',
+                                  background: hasLyr ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.15)',
+                                  color: hasLyr ? '#10b981' : '#f87171'
                                 }}
-                                title={`Toplam ${totalPages} sayfa. İleri/Geri kaydırarak veya yön tuşlarıyla sayfaları gezebilirsiniz.`}
+                                title="Transpoze / Metin Ekranına Geç (T)"
                               >
-                                {liveChordPageIndex + 1}/{totalPages}
-                              </div>
-                            )}
+                                T
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() => toggleSongPlayed(liveSongIndex)}
-                              style={{
-                                marginRight: '125px', // Shifted left away from floating controls
-                                padding: '0.4rem 0.85rem',
-                                borderRadius: '8px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.25)',
-                                background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                                color: gigSong.IsPlayed ? '#34d399' : '#f8fafc',
-                                fontSize: '0.88rem',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
-                            </button>
+                              <button 
+                                type="button" 
+                                onClick={closeLiveMode}
+                                style={{
+                                  height: '38px',
+                                  width: '38px',
+                                  minWidth: '38px',
+                                  padding: 0,
+                                  borderRadius: '8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  background: 'rgba(239, 68, 68, 0.15)',
+                                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                                  color: '#f87171'
+                                }}
+                                title="Sahnem Ekranını Kapat (X / ESC)"
+                              >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                              </button>
+                            </div>
                           </div>
 
                           {/* Image Container */}
@@ -2143,25 +2166,87 @@ export default function Gigs() {
                           </span>
                           {origKey && <span className="orig-key-badge">({origKey} Tonu)</span>}
                           
-                          <button
-                            type="button"
-                            onClick={() => toggleSongPlayed(liveSongIndex)}
-                            style={{
-                              marginLeft: 'auto',
-                              marginRight: '125px', // Shifted left away from floating controls
-                              padding: '0.35rem 0.75rem',
-                              borderRadius: '8px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid var(--border-strong)',
-                              background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.2)' : 'var(--surface)',
-                              color: gigSong.IsPlayed ? '#10b981' : 'var(--text-main)',
-                              fontSize: '0.85rem',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
-                          </button>
+                          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => toggleSongPlayed(liveSongIndex)}
+                              style={{
+                                fontFamily: "'Montserrat', sans-serif",
+                                height: '38px',
+                                minWidth: '135px',
+                                width: '135px',
+                                padding: '0 0.5rem',
+                                borderRadius: '8px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid var(--border-strong)',
+                                background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.2)' : 'var(--surface)',
+                                color: gigSong.IsPlayed ? '#10b981' : 'var(--text-main)',
+                                fontSize: '0.88rem',
+                                whiteSpace: 'nowrap',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+                            </button>
+
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                if (hasChordImg) {
+                                  setLiveViewMode('image');
+                                } else {
+                                  alert("Bu şarkının akor görseli yoktur");
+                                }
+                              }}
+                              style={{
+                                height: '38px',
+                                width: '38px',
+                                minWidth: '38px',
+                                padding: 0,
+                                borderRadius: '8px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 800,
+                                fontSize: '1.05rem',
+                                cursor: 'pointer',
+                                border: hasChordImg ? '1px solid #10b981' : '1px solid rgba(239, 68, 68, 0.4)',
+                                background: hasChordImg ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.15)',
+                                color: hasChordImg ? '#10b981' : '#f87171'
+                              }}
+                              title="Akor Görseline Geç (A)"
+                            >
+                              A
+                            </button>
+
+                            <button 
+                              type="button" 
+                              onClick={closeLiveMode}
+                              style={{
+                                height: '38px',
+                                width: '38px',
+                                minWidth: '38px',
+                                padding: 0,
+                                borderRadius: '8px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                color: '#f87171'
+                              }}
+                              title="Sahnem Ekranını Kapat (X / ESC)"
+                            >
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                         
                         <div className="toolbar-controls-row">
@@ -2263,7 +2348,32 @@ export default function Gigs() {
                 </div>
               );
             })() : (
-              <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
+              <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem', padding: '2rem', position: 'relative' }}>
+                <button 
+                  type="button" 
+                  onClick={closeLiveMode}
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    height: '38px',
+                    width: '38px',
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    color: '#f87171'
+                  }}
+                  title="Kapat (X / ESC)"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
                 <span style={{ fontSize: '2.5rem' }}>🎙️</span>
                 <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>Sahne listenizde henüz şarkı bulunmuyor.</span>
                 <button type="button" className="btn btn-primary" onClick={() => setIsLiveDrawerOpen(true)}>
