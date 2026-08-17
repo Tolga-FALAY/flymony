@@ -680,16 +680,6 @@ export default function Songs() {
       <div className="filters-panel">
         <div className="filter-group-row">
           <div className="filter-item">
-            <label htmlFor="filterSongLyricsReact">Serbest Arama (Şarkı Sözü)</label>
-            <input 
-              type="text" 
-              id="filterSongLyricsReact" 
-              placeholder="Şarkı sözlerinde ara..." 
-              value={filterLyricsSearch}
-              onChange={(e) => setFilterLyricsSearch(e.target.value)}
-            />
-          </div>
-          <div className="filter-item">
             <label htmlFor="filterSongTitleReact">Şarkı Adı</label>
             <input 
               type="text" 
@@ -707,6 +697,16 @@ export default function Songs() {
               placeholder="Sanatçı adı ara..." 
               value={filterArtist}
               onChange={(e) => setFilterArtist(e.target.value)}
+            />
+          </div>
+          <div className="filter-item">
+            <label htmlFor="filterSongLyricsReact">Serbest Arama (Şarkı Sözü)</label>
+            <input 
+              type="text" 
+              id="filterSongLyricsReact" 
+              placeholder="Şarkı sözlerinde ara..." 
+              value={filterLyricsSearch}
+              onChange={(e) => setFilterLyricsSearch(e.target.value)}
             />
           </div>
           <div className="filter-item" style={{ flex: '0 1 150px' }}>
