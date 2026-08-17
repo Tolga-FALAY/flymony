@@ -4833,6 +4833,15 @@ let liveGigTheme = 'dark';
 let liveGigSingleScreen = false;
 let liveGigDrawerOpen = false;
 
+function formatLiveGigDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const datePart = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dayName = d.toLocaleDateString('tr-TR', { weekday: 'long' });
+  return `${datePart}, ${dayName}`;
+}
+
 function startLiveGig(gigId) {
   const gig = DB.gigs.find(g => g.id === gigId);
   if (!gig) return;
@@ -4844,6 +4853,8 @@ function startLiveGig(gigId) {
   liveGigTheme = 'dark';
   liveGigSingleScreen = false;
   liveGigDrawerOpen = false;
+  liveSortField = 'no';
+  liveSortOrder = 'asc';
   // Always default to chord image ('image') mode on stage opening!
   liveGigViewMode = 'image';
 
@@ -4853,6 +4864,8 @@ function startLiveGig(gigId) {
 
   const venueTitle = document.getElementById('gigLiveVenueTitle');
   if (venueTitle) venueTitle.innerText = gig.venueName;
+  const venueDate = document.getElementById('gigLiveVenueDate');
+  if (venueDate) venueDate.innerText = formatLiveGigDate(gig.gigDate);
   
   const searchInput = document.getElementById('gigLiveRequestSearch');
   if (searchInput) searchInput.value = '';
@@ -4964,10 +4977,44 @@ function toggleLiveViewMode() {
   renderLiveGigSong();
 }
 
+let liveSortField = 'no'; // 'no', 'sarki', 'sanatci'
+let liveSortOrder = 'asc'; // 'asc', 'desc'
+
+function setLiveSort(field) {
+  if (liveSortField === field) {
+    liveSortOrder = liveSortOrder === 'asc' ? 'desc' : 'asc';
+  } else {
+    liveSortField = field;
+    liveSortOrder = 'asc';
+  }
+  renderLiveGigPlaylist();
+}
+
 function renderLiveGigPlaylist() {
   const container = document.getElementById('gigLivePlaylist');
   const totalCountEl = document.getElementById('gigLiveSongTotalCount');
   const counterBadge = document.getElementById('gigLiveCounterBadge');
+
+  // Update Sort Header Buttons & Icons
+  const btnNo = document.getElementById('btnLiveSortNo');
+  const iconNo = document.getElementById('iconLiveSortNo');
+  const btnSarki = document.getElementById('btnLiveSortSarki');
+  const iconSarki = document.getElementById('iconLiveSortSarki');
+  const btnSanatci = document.getElementById('btnLiveSortSanatci');
+  const iconSanatci = document.getElementById('iconLiveSortSanatci');
+
+  if (btnNo && iconNo) {
+    btnNo.className = `live-sort-btn ${liveSortField === 'no' ? 'active' : ''}`;
+    iconNo.innerText = liveSortField === 'no' ? (liveSortOrder === 'asc' ? '▲' : '▼') : '';
+  }
+  if (btnSarki && iconSarki) {
+    btnSarki.className = `live-sort-btn ${liveSortField === 'sarki' ? 'active' : ''}`;
+    iconSarki.innerText = liveSortField === 'sarki' ? (liveSortOrder === 'asc' ? '▲' : '▼') : '';
+  }
+  if (btnSanatci && iconSanatci) {
+    btnSanatci.className = `live-sort-btn ${liveSortField === 'sanatci' ? 'active' : ''}`;
+    iconSanatci.innerText = liveSortField === 'sanatci' ? (liveSortOrder === 'asc' ? '▲' : '▼') : '';
+  }
 
   if (!container || !liveGigObj) return;
   container.innerHTML = '';
@@ -4981,18 +5028,35 @@ function renderLiveGigPlaylist() {
     return;
   }
 
-  liveGigObj.songs.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const sortedList = liveGigObj.songs
+    .map((song, originalIdx) => ({ song, originalIdx }))
+    .sort((a, b) => {
+      if (liveSortField === 'no') {
+        const valA = Number(a.song.sortOrder || 0);
+        const valB = Number(b.song.sortOrder || 0);
+        return liveSortOrder === 'asc' ? valA - valB : valB - valA;
+      } else if (liveSortField === 'sarki') {
+        const valA = (a.song.title || '').toLocaleLowerCase('tr-TR');
+        const valB = (b.song.title || '').toLocaleLowerCase('tr-TR');
+        return liveSortOrder === 'asc' ? valA.localeCompare(valB, 'tr') : valB.localeCompare(valA, 'tr');
+      } else if (liveSortField === 'sanatci') {
+        const valA = (a.song.artistNames || '').toLocaleLowerCase('tr-TR');
+        const valB = (b.song.artistNames || '').toLocaleLowerCase('tr-TR');
+        return liveSortOrder === 'asc' ? valA.localeCompare(valB, 'tr') : valB.localeCompare(valA, 'tr');
+      }
+      return 0;
+    });
 
-  liveGigObj.songs.forEach((song, idx) => {
+  sortedList.forEach(({ song, originalIdx }) => {
     const item = document.createElement('div');
-    item.className = `live-stage-song-item ${idx === liveGigSongIndex ? 'active' : ''}`;
+    item.className = `live-stage-song-item ${originalIdx === liveGigSongIndex ? 'active' : ''}`;
 
     const infoDiv = document.createElement('div');
     infoDiv.className = 'live-song-item-info';
 
     const numSpan = document.createElement('span');
     numSpan.className = 'live-song-num';
-    numSpan.innerText = `${idx + 1}.`;
+    numSpan.innerText = `${song.sortOrder || originalIdx + 1}.`;
     infoDiv.appendChild(numSpan);
 
     const textDiv = document.createElement('div');
@@ -5030,7 +5094,7 @@ function renderLiveGigPlaylist() {
     playedBtn.title = song.isPlayed ? 'Çalınmadı yap' : 'Çalındı yap';
     playedBtn.onclick = (e) => {
       e.stopPropagation();
-      toggleLiveSongPlayedIdx(idx);
+      toggleLiveSongPlayedIdx(originalIdx);
     };
     actionsDiv.appendChild(playedBtn);
 
@@ -5041,14 +5105,14 @@ function renderLiveGigPlaylist() {
     delBtn.title = 'Şarkıyı Listeden Çıkar';
     delBtn.onclick = (e) => {
       e.stopPropagation();
-      removeLiveGigSong(idx);
+      removeLiveGigSong(originalIdx);
     };
     actionsDiv.appendChild(delBtn);
 
     item.appendChild(actionsDiv);
 
     item.onclick = () => {
-      liveGigSongIndex = idx;
+      liveGigSongIndex = originalIdx;
       liveGigTransposeShift = 0;
       liveGigViewMode = 'image';
       closeLiveDrawer();

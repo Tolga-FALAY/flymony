@@ -63,6 +63,8 @@ export default function Gigs() {
   const [liveIsSingleScreen, setLiveIsSingleScreen] = useState(false);
   const [liveSearchQuery, setLiveSearchQuery] = useState('');
   const [liveSearchResults, setLiveSearchResults] = useState([]);
+  const [liveSortField, setLiveSortField] = useState('no'); // 'no', 'sarki', 'sanatci'
+  const [liveSortOrder, setLiveSortOrder] = useState('asc'); // 'asc', 'desc'
 
   const liveChordContentRef = useRef(null);
 
@@ -632,9 +634,20 @@ export default function Gigs() {
     setLiveIsSingleScreen(false);
     setLiveSearchQuery('');
     setLiveSearchResults([]);
+    setLiveSortField('no');
+    setLiveSortOrder('asc');
     // Always default to chord image ('image') mode on stage opening!
     setLiveViewMode('image');
     setIsLiveMode(true);
+  };
+
+  const handleLiveSort = (field) => {
+    if (liveSortField === field) {
+      setLiveSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setLiveSortField(field);
+      setLiveSortOrder('asc');
+    }
   };
 
   const closeLiveMode = async () => {
@@ -888,8 +901,18 @@ export default function Gigs() {
     });
   });
 
+  const formatLiveGigDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const datePart = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dayName = d.toLocaleDateString('tr-TR', { weekday: 'long' });
+    return `${datePart}, ${dayName}`;
+  };
+
   return (
     <section id="gigs" className="tab-content active">
+      {/* HEADER CONTROLS */}
       <div className="section-header">
         <h2>Sahnelerim ({filteredGigs.length})</h2>
         <button className="btn btn-primary" onClick={handleCreateNew}>+ Yeni Sahne</button>
@@ -1514,11 +1537,16 @@ export default function Gigs() {
           <div className={`live-stage-drawer ${isLiveDrawerOpen ? 'open' : ''}`}>
             {/* Drawer Header */}
             <div className="live-stage-drawer-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '1.2rem' }}>🎙️</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span style={{ fontSize: '1.3rem' }}>🎙️</span>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>{liveGig.VenueName}</h3>
-                  <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Repertuvar ({liveGig.Songs?.length || 0} Şarkı)</span>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>{liveGig.VenueName}</h3>
+                  {liveGig.GigDate && (
+                    <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>
+                      {formatLiveGigDate(liveGig.GigDate)}
+                    </div>
+                  )}
+                  <span style={{ fontSize: '0.72rem', opacity: 0.65 }}>Repertuvar ({liveGig.Songs?.length || 0} Şarkı)</span>
                 </div>
               </div>
               <button 
@@ -1573,55 +1601,112 @@ export default function Gigs() {
               )}
             </div>
 
+            {/* MINI SORTABLE HEADERS (NO, ŞARKI, SANATÇI) */}
+            <div className="live-stage-list-sort-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
+                <button 
+                  type="button" 
+                  className={`live-sort-btn ${liveSortField === 'no' ? 'active' : ''}`}
+                  onClick={() => handleLiveSort('no')}
+                  title="Sıra Numarasına Göre Sırala (NO)"
+                  style={{ minWidth: '34px' }}
+                >
+                  NO {liveSortField === 'no' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
+                </button>
+                <button 
+                  type="button" 
+                  className={`live-sort-btn ${liveSortField === 'sarki' ? 'active' : ''}`}
+                  onClick={() => handleLiveSort('sarki')}
+                  title="Şarkı İsmine Göre Sırala"
+                  style={{ flex: 1, justifyContent: 'flex-start' }}
+                >
+                  ŞARKI {liveSortField === 'sarki' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
+                </button>
+                <button 
+                  type="button" 
+                  className={`live-sort-btn ${liveSortField === 'sanatci' ? 'active' : ''}`}
+                  onClick={() => handleLiveSort('sanatci')}
+                  title="Sanatçı İsmine Göre Sırala"
+                  style={{ flex: 1, justifyContent: 'flex-start' }}
+                >
+                  SANATÇI {liveSortField === 'sanatci' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
+                </button>
+              </div>
+              <div style={{ width: '54px', textAlign: 'right', opacity: 0.6, fontSize: '0.68rem', paddingRight: '4px' }}>
+                DURUM
+              </div>
+            </div>
+
             {/* PLAYLIST REPERTOIRE LIST */}
             <div className="live-stage-song-list">
-              {liveGig.Songs && liveGig.Songs.map((gSong, idx) => (
-                <div 
-                  key={gSong.GigSongID || gSong.SongID || idx}
-                  onClick={() => {
-                    setLiveSongIndex(idx);
-                    setLiveTransposeShift(0);
-                    setLiveViewMode('image');
-                    setIsLiveDrawerOpen(false);
-                  }}
-                  className={`live-stage-song-item ${idx === liveSongIndex ? 'active' : ''}`}
-                >
-                  <div className="live-song-item-info">
-                    <span className="live-song-num">{idx + 1}.</span>
-                    <div className="live-song-text">
-                      <div className={`live-song-title ${gSong.IsPlayed ? 'played' : ''}`}>
-                        {gSong.SongTitle}
-                      </div>
-                      {gSong.ArtistNames && <div className="live-song-artist">{gSong.ArtistNames}</div>}
-                    </div>
-                    {gSong.IsRequest === 1 && (
-                      <span className="live-request-tag">İstek</span>
-                    )}
-                  </div>
+              {(() => {
+                const songsToDisplay = [...(liveGig.Songs || [])]
+                  .map((song, originalIdx) => ({ song, originalIdx }))
+                  .sort((a, b) => {
+                    if (liveSortField === 'no') {
+                      const valA = Number(a.song.SortOrder || 0);
+                      const valB = Number(b.song.SortOrder || 0);
+                      return liveSortOrder === 'asc' ? valA - valB : valB - valA;
+                    } else if (liveSortField === 'sarki') {
+                      const valA = (a.song.SongTitle || '').toLocaleLowerCase('tr-TR');
+                      const valB = (b.song.SongTitle || '').toLocaleLowerCase('tr-TR');
+                      return liveSortOrder === 'asc' ? valA.localeCompare(valB, 'tr') : valB.localeCompare(valA, 'tr');
+                    } else if (liveSortField === 'sanatci') {
+                      const valA = (a.song.ArtistNames || '').toLocaleLowerCase('tr-TR');
+                      const valB = (b.song.ArtistNames || '').toLocaleLowerCase('tr-TR');
+                      return liveSortOrder === 'asc' ? valA.localeCompare(valB, 'tr') : valB.localeCompare(valA, 'tr');
+                    }
+                    return 0;
+                  });
 
-                  <div className="live-song-item-actions">
-                    <button 
-                      type="button"
-                      className={`live-played-indicator-btn ${gSong.IsPlayed ? 'is-played' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSongPlayed(idx);
-                      }}
-                      title={gSong.IsPlayed ? 'Çalınmadı yap' : 'Çalındı yap'}
-                    >
-                      {gSong.IsPlayed ? '✓' : '◯'}
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(idx); }}
-                      className="live-song-del-btn"
-                      title="Şarkıyı Listeden Çıkar"
-                    >
-                      &times;
-                    </button>
+                return songsToDisplay.map(({ song: gSong, originalIdx }) => (
+                  <div 
+                    key={gSong.GigSongID || gSong.SongID || originalIdx}
+                    onClick={() => {
+                      setLiveSongIndex(originalIdx);
+                      setLiveTransposeShift(0);
+                      setLiveViewMode('image');
+                      setIsLiveDrawerOpen(false);
+                    }}
+                    className={`live-stage-song-item ${originalIdx === liveSongIndex ? 'active' : ''}`}
+                  >
+                    <div className="live-song-item-info">
+                      <span className="live-song-num">{gSong.SortOrder || originalIdx + 1}.</span>
+                      <div className="live-song-text">
+                        <div className={`live-song-title ${gSong.IsPlayed ? 'played' : ''}`}>
+                          {gSong.SongTitle}
+                        </div>
+                        {gSong.ArtistNames && <div className="live-song-artist">{gSong.ArtistNames}</div>}
+                      </div>
+                      {gSong.IsRequest === 1 && (
+                        <span className="live-request-tag">İstek</span>
+                      )}
+                    </div>
+
+                    <div className="live-song-item-actions">
+                      <button 
+                        type="button"
+                        className={`live-played-indicator-btn ${gSong.IsPlayed ? 'is-played' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSongPlayed(originalIdx);
+                        }}
+                        title={gSong.IsPlayed ? 'Çalınmadı yap' : 'Çalındı yap'}
+                      >
+                        {gSong.IsPlayed ? '✓' : '◯'}
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(originalIdx); }}
+                        className="live-song-del-btn"
+                        title="Şarkıyı Listeden Çıkar"
+                      >
+                        &times;
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
               {(!liveGig.Songs || liveGig.Songs.length === 0) && (
                 <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.6, fontSize: '0.85rem' }}>
                   Henüz şarkı eklenmemiş. Yukarıdaki arama kutusundan şarkı arayıp ekleyebilirsiniz.

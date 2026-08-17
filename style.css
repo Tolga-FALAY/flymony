@@ -2430,11 +2430,64 @@ body.dark-mode .rich-editor-content {
   background: rgba(14, 165, 233, 0.2);
 }
 
+/* Mini Sortable Headers for Drawer Song List (NO, ŞARKI, SANATÇI) */
+.live-stage-list-sort-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 1rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.theme-light .live-stage-list-sort-header {
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2eaf3;
+  color: #64748b;
+}
+
+.theme-dark .live-stage-list-sort-header,
+.theme-chord .live-stage-list-sort-header {
+  color: #94a3b8;
+}
+
+.live-sort-btn {
+  background: none;
+  border: none;
+  padding: 3px 6px;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.live-sort-btn:hover {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.live-sort-btn.active {
+  color: #38bdf8;
+  font-weight: 900;
+  background: rgba(56, 189, 248, 0.15);
+}
+
 /* Song list inside drawer */
 .live-stage-song-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
 }
 
 .live-stage-song-item {
