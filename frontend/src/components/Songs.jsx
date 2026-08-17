@@ -23,6 +23,7 @@ export default function Songs() {
   const [filterMinYear, setFilterMinYear] = useState('');
   const [filterMaxYear, setFilterMaxYear] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('');
+  const [filterChordStatus, setFilterChordStatus] = useState(''); // '' (Tümü), 'has_chord', 'no_chord'
 
   // Audio Preview & Live Recording States
   const [audioPreviewUrl, setAudioPreviewUrl] = useState('');
@@ -48,6 +49,7 @@ export default function Songs() {
     setFilterMinYear('');
     setFilterMaxYear('');
     setFilterLanguage('');
+    setFilterChordStatus('');
   };
 
   const [formData, setFormData] = useState({
@@ -674,6 +676,11 @@ export default function Songs() {
     if (filterLanguage) {
       if (String(song.LanguageID) !== filterLanguage) return false;
     }
+    if (filterChordStatus) {
+      const hasChord = Boolean((song.ChordImagePath && song.ChordImagePath.trim()) || (Array.isArray(song.ChordImages) && song.ChordImages.length > 0) || hasLyricsContent(song.Lyrics));
+      if (filterChordStatus === 'has_chord' && !hasChord) return false;
+      if (filterChordStatus === 'no_chord' && hasChord) return false;
+    }
     const songYearNum = song.SongYear ? parseInt(song.SongYear) : null;
     if (filterMinYear || filterMaxYear) {
       if (songYearNum === null || isNaN(songYearNum)) return false;
@@ -743,9 +750,9 @@ export default function Songs() {
           </div>
         </div>
 
-        {/* Row 2: Dil, Min Yıl, Max Yıl, Temizle */}
+        {/* Row 2: Dil, Min Yıl, Max Yıl, Akor Durumu, Temizle */}
         <div className="filter-group-row" style={{ display: 'flex', gap: '0.75rem', width: '100%', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div className="filter-item" style={{ flex: '1 1 180px', minWidth: '140px' }}>
+          <div className="filter-item" style={{ flex: '0 1 110px', minWidth: '90px' }}>
             <label htmlFor="filterSongLanguageReact">Dil</label>
             <select
               id="filterSongLanguageReact"
@@ -753,7 +760,7 @@ export default function Songs() {
               onChange={(e) => setFilterLanguage(e.target.value)}
               style={{
                 width: '100%',
-                padding: '0.65rem 0.5rem',
+                padding: '0.65rem 0.4rem',
                 border: '1px solid var(--border-strong)',
                 borderRadius: '8px',
                 backgroundColor: 'var(--surface)',
@@ -767,7 +774,7 @@ export default function Songs() {
               ))}
             </select>
           </div>
-          <div className="filter-item" style={{ flex: '0 1 120px', minWidth: '100px' }}>
+          <div className="filter-item" style={{ flex: '0 1 90px', minWidth: '75px' }}>
             <label htmlFor="filterSongMinYearReact">Min Yıl</label>
             <input 
               type="number" 
@@ -775,10 +782,10 @@ export default function Songs() {
               placeholder="Min" 
               value={filterMinYear}
               onChange={(e) => setFilterMinYear(e.target.value)}
-              style={{ padding: '0.6rem 0.5rem', width: '100%', height: '42px' }}
+              style={{ padding: '0.6rem 0.4rem', width: '100%', height: '42px' }}
             />
           </div>
-          <div className="filter-item" style={{ flex: '0 1 120px', minWidth: '100px' }}>
+          <div className="filter-item" style={{ flex: '0 1 90px', minWidth: '75px' }}>
             <label htmlFor="filterSongMaxYearReact">Max Yıl</label>
             <input 
               type="number" 
@@ -786,8 +793,29 @@ export default function Songs() {
               placeholder="Max" 
               value={filterMaxYear}
               onChange={(e) => setFilterMaxYear(e.target.value)}
-              style={{ padding: '0.6rem 0.5rem', width: '100%', height: '42px' }}
+              style={{ padding: '0.6rem 0.4rem', width: '100%', height: '42px' }}
             />
+          </div>
+          <div className="filter-item" style={{ flex: '0 1 160px', minWidth: '135px' }}>
+            <label htmlFor="filterSongChordStatusReact">Akor Durumu</label>
+            <select
+              id="filterSongChordStatusReact"
+              value={filterChordStatus}
+              onChange={(e) => setFilterChordStatus(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.65rem 0.5rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--surface)',
+                color: 'var(--text)',
+                height: '42px'
+              }}
+            >
+              <option value="">Tümü</option>
+              <option value="has_chord">Akoru Olanlar</option>
+              <option value="no_chord">Akoru Olmayanlar</option>
+            </select>
           </div>
           <div className="filter-item filter-actions" style={{ flex: '0 0 auto', marginLeft: 'auto' }}>
             <button 
