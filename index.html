@@ -1256,13 +1256,13 @@
     <div id="gigLiveMainDisplay" class="live-stage-body">
       <!-- Chord Image Fullscreen View -->
       <div id="gigLiveImageView" style="display: none; flex: 1; flex-direction: column; height: 100%; width: 100%; overflow: hidden;">
-        <div style="padding: 0.85rem 1.5rem; padding-left: 110px; padding-right: 120px; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-          <div style="min-width: 0; flex: 1;">
+        <div style="padding: 0.75rem 1.25rem; background: rgba(0,0,0,0.6); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <div style="min-width: 0; flex: 1; padding-right: 1rem;">
             <span id="gigLiveImgSongTitle" style="font-size: 1.2rem; font-weight: 800; color: #ffffff;">-</span>
             <span id="gigLiveImgSongArtist" style="font-size: 0.85rem; color: #94a3b8; margin-left: 0.5rem;">-</span>
             <span id="gigLiveImgOrigKey" class="orig-key-badge" style="margin-left: 0.5rem; display: none;">-</span>
           </div>
-          <button type="button" id="btnToggleLivePlayedImg" onclick="toggleLiveSongPlayed()" style="padding: 0.4rem 0.85rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.1); color: #f8fafc; font-size: 0.88rem;">
+          <button type="button" id="btnToggleLivePlayedImg" onclick="toggleLiveSongPlayed()" style="margin-right: 125px; padding: 0.4rem 0.85rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.1); color: #f8fafc; font-size: 0.88rem; white-space: nowrap;">
             ◯ Çalınmadı
           </button>
         </div>
@@ -1272,11 +1272,11 @@
       <!-- Transpose & Lyrics Fullscreen View -->
       <div id="gigLiveTransposeView" class="fullscreen-transpose-wrapper" style="display: flex;">
         <!-- Transpose Toolbar -->
-        <div class="fullscreen-transpose-toolbar" style="padding-left: 110px;">
-          <div class="toolbar-section">
+        <div class="fullscreen-transpose-toolbar" style="padding-left: 1.25rem;">
+          <div class="toolbar-section" style="padding-right: 10px;">
             <span id="gigLiveSongTitle" class="song-title-label">-</span>
             <span id="gigLiveOrigKeyBadge" class="orig-key-badge" style="display: none;">-</span>
-            <button type="button" id="btnToggleLivePlayed" onclick="toggleLiveSongPlayed()" style="margin-left: auto; padding: 0.35rem 0.75rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-main); font-size: 0.85rem;">
+            <button type="button" id="btnToggleLivePlayed" onclick="toggleLiveSongPlayed()" style="margin-left: auto; margin-right: 125px; padding: 0.35rem 0.75rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-main); font-size: 0.85rem; white-space: nowrap;">
               ◯ Çalınmadı
             </button>
           </div>

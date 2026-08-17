@@ -4844,19 +4844,8 @@ function startLiveGig(gigId) {
   liveGigTheme = 'dark';
   liveGigSingleScreen = false;
   liveGigDrawerOpen = false;
-
-  // Determine initial view mode from the first song
-  if (liveGigSongIndex !== -1 && gig.songs && gig.songs[0]) {
-    const firstSong = DB.songs.find(s => s.id === gig.songs[0].songId);
-    const hasLyrics = Boolean(firstSong && firstSong.lyrics && firstSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
-    if (firstSong && !hasLyrics && firstSong.chordImagePath) {
-      liveGigViewMode = 'image';
-    } else {
-      liveGigViewMode = 'chords';
-    }
-  } else {
-    liveGigViewMode = 'chords';
-  }
+  // Always default to chord image ('image') mode on stage opening!
+  liveGigViewMode = 'image';
 
   const modal = document.getElementById('gigLiveModal');
   modal.className = `live-stage-overlay theme-${liveGigTheme}`;
@@ -5061,6 +5050,7 @@ function renderLiveGigPlaylist() {
     item.onclick = () => {
       liveGigSongIndex = idx;
       liveGigTransposeShift = 0;
+      liveGigViewMode = 'image';
       closeLiveDrawer();
       renderLiveGigPlaylist();
       renderLiveGigSong();
@@ -5429,17 +5419,8 @@ function goToLiveNextSong() {
   if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
   liveGigSongIndex = (liveGigSongIndex + 1) % liveGigObj.songs.length;
   liveGigTransposeShift = 0;
-
-  const nextGigSong = liveGigObj.songs[liveGigSongIndex];
-  const nextFullSong = DB.songs.find(s => s.id === nextGigSong.songId);
-  if (nextFullSong) {
-    const hasLyrics = Boolean(nextFullSong.lyrics && nextFullSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
-    if (liveGigViewMode === 'chords' && !hasLyrics && nextFullSong.chordImagePath) {
-      liveGigViewMode = 'image';
-    } else if (liveGigViewMode === 'image' && !nextFullSong.chordImagePath && hasLyrics) {
-      liveGigViewMode = 'chords';
-    }
-  }
+  // Always default/reset to chord image ('image') mode on song switch!
+  liveGigViewMode = 'image';
 
   renderLiveGigPlaylist();
   renderLiveGigSong();
@@ -5449,17 +5430,8 @@ function goToLivePrevSong() {
   if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
   liveGigSongIndex = (liveGigSongIndex - 1 + liveGigObj.songs.length) % liveGigObj.songs.length;
   liveGigTransposeShift = 0;
-
-  const prevGigSong = liveGigObj.songs[liveGigSongIndex];
-  const prevFullSong = DB.songs.find(s => s.id === prevGigSong.songId);
-  if (prevFullSong) {
-    const hasLyrics = Boolean(prevFullSong.lyrics && prevFullSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
-    if (liveGigViewMode === 'chords' && !hasLyrics && prevFullSong.chordImagePath) {
-      liveGigViewMode = 'image';
-    } else if (liveGigViewMode === 'image' && !prevFullSong.chordImagePath && hasLyrics) {
-      liveGigViewMode = 'chords';
-    }
-  }
+  // Always default/reset to chord image ('image') mode on song switch!
+  liveGigViewMode = 'image';
 
   renderLiveGigPlaylist();
   renderLiveGigSong();
@@ -5515,6 +5487,7 @@ async function selectLiveRequestSong(songId, title, artistNames) {
   if (existingIdx !== -1) {
     liveGigSongIndex = existingIdx;
     liveGigTransposeShift = 0;
+    liveGigViewMode = 'image';
     closeLiveDrawer();
     renderLiveGigPlaylist();
     renderLiveGigSong();
@@ -5555,6 +5528,7 @@ async function selectLiveRequestSong(songId, title, artistNames) {
       liveGigObj.songs = newSongsList;
       liveGigSongIndex = newSongsList.length - 1;
       liveGigTransposeShift = 0;
+      liveGigViewMode = 'image';
       closeLiveDrawer();
       renderLiveGigPlaylist();
       renderLiveGigSong();

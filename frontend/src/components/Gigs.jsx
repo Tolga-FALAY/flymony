@@ -632,19 +632,8 @@ export default function Gigs() {
     setLiveIsSingleScreen(false);
     setLiveSearchQuery('');
     setLiveSearchResults([]);
-
-    // Determine initial view mode from the first song
-    if (initialIndex !== -1 && gig.Songs && gig.Songs[0]) {
-      const firstSongObj = songs.find(s => s.SongID === gig.Songs[0].SongID);
-      if (firstSongObj && !hasLyricsContent(firstSongObj.Lyrics) && firstSongObj.ChordImagePath) {
-        setLiveViewMode('image');
-      } else {
-        setLiveViewMode('chords');
-      }
-    } else {
-      setLiveViewMode('chords');
-    }
-
+    // Always default to chord image ('image') mode on stage opening!
+    setLiveViewMode('image');
     setIsLiveMode(true);
   };
 
@@ -663,14 +652,8 @@ export default function Gigs() {
     const nextIdx = (liveSongIndex + 1) % liveGig.Songs.length;
     setLiveSongIndex(nextIdx);
     setLiveTransposeShift(0);
-    const nextSongObj = songs.find(s => s.SongID === liveGig.Songs[nextIdx]?.SongID);
-    if (nextSongObj) {
-      if (liveViewMode === 'chords' && !hasLyricsContent(nextSongObj.Lyrics) && nextSongObj.ChordImagePath) {
-        setLiveViewMode('image');
-      } else if (liveViewMode === 'image' && !nextSongObj.ChordImagePath && hasLyricsContent(nextSongObj.Lyrics)) {
-        setLiveViewMode('chords');
-      }
-    }
+    // Always default/reset to chord image ('image') mode on song switch!
+    setLiveViewMode('image');
   };
 
   const goToPrevSong = () => {
@@ -678,14 +661,8 @@ export default function Gigs() {
     const prevIdx = (liveSongIndex - 1 + liveGig.Songs.length) % liveGig.Songs.length;
     setLiveSongIndex(prevIdx);
     setLiveTransposeShift(0);
-    const prevSongObj = songs.find(s => s.SongID === liveGig.Songs[prevIdx]?.SongID);
-    if (prevSongObj) {
-      if (liveViewMode === 'chords' && !hasLyricsContent(prevSongObj.Lyrics) && prevSongObj.ChordImagePath) {
-        setLiveViewMode('image');
-      } else if (liveViewMode === 'image' && !prevSongObj.ChordImagePath && hasLyricsContent(prevSongObj.Lyrics)) {
-        setLiveViewMode('chords');
-      }
-    }
+    // Always default/reset to chord image ('image') mode on song switch!
+    setLiveViewMode('image');
   };
 
   const handleRemoveLiveSong = async (songIndex) => {
@@ -809,6 +786,7 @@ export default function Gigs() {
         setLiveGig(prev => ({ ...prev, Songs: newSongsList }));
         setLiveSongIndex(newSongsList.length - 1);
         setLiveTransposeShift(0);
+        setLiveViewMode('image');
       } catch (err) {
         alert('İstek ekleme hatası: ' + err.message);
       }
@@ -1603,6 +1581,7 @@ export default function Gigs() {
                   onClick={() => {
                     setLiveSongIndex(idx);
                     setLiveTransposeShift(0);
+                    setLiveViewMode('image');
                     setIsLiveDrawerOpen(false);
                   }}
                   className={`live-stage-song-item ${idx === liveSongIndex ? 'active' : ''}`}
@@ -1696,8 +1675,8 @@ export default function Gigs() {
                     /* CHORD IMAGE FULLSCREEN VIEW */
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
                       {/* Image Top Info Bar */}
-                      <div style={{ padding: '0.85rem 1.5rem', paddingLeft: '110px', paddingRight: '120px', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                        <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                        <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem' }}>
                           <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
                             {gigSong.SongTitle}
                           </span>
@@ -1712,6 +1691,7 @@ export default function Gigs() {
                           type="button"
                           onClick={() => toggleSongPlayed(liveSongIndex)}
                           style={{
+                            marginRight: '125px', // Shifted left away from floating controls
                             padding: '0.4rem 0.85rem',
                             borderRadius: '8px',
                             fontWeight: 700,
@@ -1719,7 +1699,8 @@ export default function Gigs() {
                             border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.25)',
                             background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)',
                             color: gigSong.IsPlayed ? '#34d399' : '#f8fafc',
-                            fontSize: '0.88rem'
+                            fontSize: '0.88rem',
+                            whiteSpace: 'nowrap'
                           }}
                         >
                           {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
@@ -1749,8 +1730,8 @@ export default function Gigs() {
                     <div className="fullscreen-transpose-wrapper">
                       
                       {/* Transpose Toolbar */}
-                      <div className="fullscreen-transpose-toolbar" style={{ paddingLeft: '110px' }}>
-                        <div className="toolbar-section">
+                      <div className="fullscreen-transpose-toolbar" style={{ paddingLeft: '1.25rem' }}>
+                        <div className="toolbar-section" style={{ paddingRight: '10px' }}>
                           <span className="song-title-label">
                             {gigSong.SongTitle} {gigSong.ArtistNames && gigSong.ArtistNames !== '-' ? ` - ${gigSong.ArtistNames}` : ''}
                           </span>
@@ -1761,6 +1742,7 @@ export default function Gigs() {
                             onClick={() => toggleSongPlayed(liveSongIndex)}
                             style={{
                               marginLeft: 'auto',
+                              marginRight: '125px', // Shifted left away from floating controls
                               padding: '0.35rem 0.75rem',
                               borderRadius: '8px',
                               fontWeight: 700,
@@ -1768,7 +1750,8 @@ export default function Gigs() {
                               border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid var(--border-strong)',
                               background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.2)' : 'var(--surface)',
                               color: gigSong.IsPlayed ? '#10b981' : 'var(--text-main)',
-                              fontSize: '0.85rem'
+                              fontSize: '0.85rem',
+                              whiteSpace: 'nowrap'
                             }}
                           >
                             {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
