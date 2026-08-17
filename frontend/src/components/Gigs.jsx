@@ -782,7 +782,8 @@ export default function Gigs() {
         IsPlayed: 0,
         IsRequest: 1,
         SongTitle: song.SongTitle,
-        ArtistNames: song.ArtistNames
+        ArtistNames: song.ArtistNames,
+        ChordImagePath: song.ChordImagePath || ''
       };
       
       const newSongsList = [...liveGig.Songs, newLiveSong];
@@ -1157,7 +1158,7 @@ export default function Gigs() {
                               style={{ width: '100%', margin: 0, padding: '0.45rem 0.65rem', fontSize: '0.82rem' }}
                             />
                             {songSearchText.trim() && (
-                              <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                              <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '280px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                                 {songs
                                   .filter(s => {
                                     const query = songSearchText.toLocaleLowerCase('tr-TR');
@@ -1165,16 +1166,41 @@ export default function Gigs() {
                                     const artistMatch = s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(query);
                                     return titleMatch || artistMatch;
                                   })
-                                  .map(s => (
-                                    <div 
-                                      key={s.SongID} 
-                                      onClick={() => addSongToGig(s)}
-                                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-soft)', fontSize: '0.85rem' }}
-                                      className="autocomplete-item-hover"
-                                    >
-                                      {s.SongTitle} ({s.ArtistNames})
-                                    </div>
-                                  ))
+                                  .slice(0, 10)
+                                  .map(s => {
+                                    const hasChord = Boolean(s.ChordImagePath && s.ChordImagePath.trim());
+                                    return (
+                                      <div 
+                                        key={s.SongID} 
+                                        onClick={() => addSongToGig(s)}
+                                        style={{ 
+                                          padding: '0.5rem 0.75rem', 
+                                          cursor: 'pointer', 
+                                          borderBottom: '1px solid var(--border-soft)', 
+                                          fontSize: '0.85rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          gap: '0.5rem'
+                                        }}
+                                        className="autocomplete-item-hover"
+                                      >
+                                        <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                          <span style={{ fontWeight: !hasChord ? 700 : 'normal', color: !hasChord ? '#dc2626' : 'inherit' }}>
+                                            {s.SongTitle}
+                                          </span>
+                                          {s.ArtistNames && (
+                                            <span style={{ opacity: 0.75, fontSize: '0.78rem', marginLeft: '6px', color: !hasChord ? '#ef4444' : 'var(--text-muted)' }}>
+                                              ({s.ArtistNames})
+                                            </span>
+                                          )}
+                                        </div>
+                                        {!hasChord && (
+                                          <span className="live-no-chord-badge">Akor Yok</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })
                                 }
                               </div>
                             )}
@@ -1201,6 +1227,7 @@ export default function Gigs() {
                           const songObj = songs.find(s => s.SongID === gSong.SongID);
                           if (!songObj) return null;
                           const isPlayed = Boolean(gSong.IsPlayed);
+                          const hasChord = Boolean((songObj.ChordImagePath && songObj.ChordImagePath.trim()) || (gSong.ChordImagePath && gSong.ChordImagePath.trim()));
                           return (
                             <div key={gSong.SongID} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', background: isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent', gap: '0.5rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0, overflow: 'hidden' }}>
@@ -1211,14 +1238,23 @@ export default function Gigs() {
                                 <span style={{ 
                                   textOverflow: 'ellipsis', 
                                   overflow: 'hidden', 
-                                  whiteSpace: 'nowrap',
+                                  whiteSpace: 'nowrap', 
                                   textDecoration: isPlayed ? 'line-through' : 'none',
-                                  color: isPlayed ? 'var(--text-muted)' : 'inherit',
+                                  color: isPlayed ? 'var(--text-muted)' : (!hasChord ? '#dc2626' : 'inherit'),
+                                  fontWeight: !hasChord && !isPlayed ? 700 : 'normal',
                                   flex: 1,
                                   minWidth: 0
                                 }} title={songObj.SongTitle}>
                                   {songObj.SongTitle}
+                                  {songObj.ArtistNames && songObj.ArtistNames !== '-' && (
+                                    <span style={{ opacity: 0.75, fontSize: '0.75rem', marginLeft: '6px', color: !hasChord && !isPlayed ? '#ef4444' : 'var(--text-muted)' }}>
+                                      ({songObj.ArtistNames})
+                                    </span>
+                                  )}
                                 </span>
+                                {!hasChord && (
+                                  <span className="live-no-chord-tag" style={{ fontSize: '0.65rem', padding: '1px 5px', flexShrink: 0 }}>Akor Yok</span>
+                                )}
                               </div>
                               
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
@@ -1669,16 +1705,26 @@ export default function Gigs() {
                           {formatLiveGigDate(liveGig.GigDate)}
                         </div>
                       )}
-                      <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px', color: '#ffffff' }}>
-                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 400 }}>
-                          Repertuvar ({repPlayed}/{repTotal}) - kalan {repRemaining}
-                        </div>
-                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 400 }}>
-                          İstekler ({reqPlayed}/{reqTotal}) - kalan {reqRemaining}
-                        </div>
-                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 400 }}>
-                          Toplam ({grandPlayed}/{grandTotal}) - kalan {grandRemaining}
-                        </div>
+                      <div style={{ 
+                        marginTop: '8px', 
+                        display: 'grid', 
+                        gridTemplateColumns: 'auto auto auto', 
+                        columnGap: '8px', 
+                        rowGap: '3px', 
+                        fontSize: '0.74rem', 
+                        alignItems: 'center' 
+                      }}>
+                        <span style={{ opacity: 0.85, fontWeight: 500 }}>Repertuvar</span>
+                        <span style={{ fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>({repPlayed}/{repTotal})</span>
+                        <span style={{ opacity: 0.75 }}>- kalan {repRemaining}</span>
+
+                        <span style={{ opacity: 0.85, fontWeight: 500 }}>İstekler</span>
+                        <span style={{ fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>({reqPlayed}/{reqTotal})</span>
+                        <span style={{ opacity: 0.75 }}>- kalan {reqRemaining}</span>
+
+                        <span style={{ fontWeight: 700 }}>Toplam</span>
+                        <span style={{ fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>({grandPlayed}/{grandTotal})</span>
+                        <span style={{ fontWeight: 600, opacity: 0.9 }}>- kalan {grandRemaining}</span>
                       </div>
                     </div>
                   </div>
@@ -1719,19 +1765,27 @@ export default function Gigs() {
               {/* Instant Autocomplete Results */}
               {liveSearchResults.length > 0 && (
                 <div className="live-stage-search-results">
-                  {liveSearchResults.map(s => (
-                    <div 
-                      key={s.SongID} 
-                      onClick={() => {
-                        playRequestSongDirect(s);
-                        setIsLiveDrawerOpen(false);
-                      }}
-                      className="live-stage-search-item"
-                    >
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{s.SongTitle}</div>
-                      <div style={{ fontSize: '0.75rem', opacity: 0.75 }}>{s.ArtistNames || '-'}</div>
-                    </div>
-                  ))}
+                  {liveSearchResults.map(s => {
+                    const hasChord = Boolean(s.ChordImagePath && s.ChordImagePath.trim());
+                    return (
+                      <div 
+                        key={s.SongID} 
+                        onClick={() => {
+                          playRequestSongDirect(s);
+                          setIsLiveDrawerOpen(false);
+                        }}
+                        className={`live-stage-search-item ${!hasChord ? 'no-chord' : ''}`}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{s.SongTitle}</div>
+                          {!hasChord && (
+                            <span className="live-no-chord-badge">Akor Yok</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.75 }}>{s.ArtistNames || '-'}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1795,53 +1849,65 @@ export default function Gigs() {
                     return 0;
                   });
 
-                return songsToDisplay.map(({ song: gSong, originalIdx }) => (
-                  <div 
-                    key={gSong.GigSongID || gSong.SongID || originalIdx}
-                    onClick={() => {
-                      setLiveSongIndex(originalIdx);
-                      setLiveTransposeShift(0);
-                      setLiveViewMode('image');
-                      setIsLiveDrawerOpen(false);
-                    }}
-                    className={`live-stage-song-item ${originalIdx === liveSongIndex ? 'active' : ''}`}
-                  >
-                    <div className="live-song-item-info">
-                      <span className="live-song-num">{gSong.SortOrder || originalIdx + 1}.</span>
-                      <div className="live-song-text">
-                        <div className={`live-song-title ${gSong.IsPlayed ? 'played' : ''}`}>
-                          {gSong.SongTitle}
-                        </div>
-                        {gSong.ArtistNames && <div className="live-song-artist">{gSong.ArtistNames}</div>}
-                      </div>
-                      {gSong.IsRequest === 1 && (
-                        <span className="live-request-tag">İstek</span>
-                      )}
-                    </div>
+                return songsToDisplay.map(({ song: gSong, originalIdx }) => {
+                  const fullSong = songs.find(s => s.SongID === gSong.SongID) || gSong;
+                  const hasChord = Boolean((fullSong.ChordImagePath && fullSong.ChordImagePath.trim()) || (gSong.ChordImagePath && gSong.ChordImagePath.trim()));
 
-                    <div className="live-song-item-actions">
-                      <button 
-                        type="button"
-                        className={`live-played-indicator-btn ${gSong.IsPlayed ? 'is-played' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSongPlayed(originalIdx);
-                        }}
-                        title={gSong.IsPlayed ? 'Çalınmadı yap' : 'Çalındı yap'}
-                      >
-                        {gSong.IsPlayed ? '✓' : '◯'}
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(originalIdx); }}
-                        className="live-song-del-btn"
-                        title="Şarkıyı Listeden Çıkar"
-                      >
-                        &times;
-                      </button>
+                  return (
+                    <div 
+                      key={gSong.GigSongID || gSong.SongID || originalIdx}
+                      onClick={() => {
+                        setLiveSongIndex(originalIdx);
+                        setLiveTransposeShift(0);
+                        setLiveViewMode('image');
+                        setIsLiveDrawerOpen(false);
+                      }}
+                      className={`live-stage-song-item ${originalIdx === liveSongIndex ? 'active' : ''} ${!hasChord ? 'no-chord' : ''}`}
+                    >
+                      <div className="live-song-item-info">
+                        <span className="live-song-num">{gSong.SortOrder || originalIdx + 1}.</span>
+                        <div className="live-song-text">
+                          <div className={`live-song-title ${gSong.IsPlayed ? 'played' : ''} ${!hasChord ? 'no-chord' : ''}`}>
+                            {gSong.SongTitle}
+                          </div>
+                          {gSong.ArtistNames && (
+                            <div className={`live-song-artist ${!hasChord ? 'no-chord' : ''}`}>
+                              {gSong.ArtistNames}
+                            </div>
+                          )}
+                        </div>
+                        {!hasChord && (
+                          <span className="live-no-chord-tag">Akor Yok</span>
+                        )}
+                        {gSong.IsRequest === 1 && (
+                          <span className="live-request-tag">İstek</span>
+                        )}
+                      </div>
+
+                      <div className="live-song-item-actions">
+                        <button 
+                          type="button"
+                          className={`live-played-indicator-btn ${gSong.IsPlayed ? 'is-played' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSongPlayed(originalIdx);
+                          }}
+                          title={gSong.IsPlayed ? 'Çalınmadı yap' : 'Çalındı yap'}
+                        >
+                          {gSong.IsPlayed ? '✓' : '◯'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(originalIdx); }}
+                          className="live-song-del-btn"
+                          title="Şarkıyı Listeden Çıkar"
+                        >
+                          &times;
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ));
+                  );
+                });
               })()}
               {(!liveGig.Songs || liveGig.Songs.length === 0) && (
                 <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.6, fontSize: '0.85rem' }}>

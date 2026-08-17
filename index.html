@@ -1137,7 +1137,7 @@
                 
                 <div class="form-group" style="position: relative; margin: 0;">
                   <input type="text" id="gigSongSearch" placeholder="Şarkı ara ve ekle..." oninput="searchSongsForGig()" style="width: 100%; margin: 0; padding: 0.45rem 0.65rem; font-size: 0.82rem;">
-                  <div id="gigSongAutocomplete" class="listbox-container" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: white; border: 1px solid var(--border); border-radius: 8px; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"></div>
+                  <div id="gigSongAutocomplete" class="listbox-container" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: white; border: 1px solid var(--border); border-radius: 8px; max-height: 280px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"></div>
                 </div>
               </div>
 
@@ -1247,10 +1247,18 @@
           <div>
             <h3 id="gigLiveVenueTitle" style="margin: 0; font-size: 0.98rem; font-weight: 800;">-</h3>
             <div id="gigLiveVenueDate" style="font-size: 0.78rem; color: #38bdf8; font-weight: 700; margin-top: 2px;">-</div>
-            <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 2px; color: #ffffff;">
-              <div id="gigLiveRepStats" style="font-size: 0.74rem; opacity: 0.9; font-weight: 400;">Repertuvar (0/0) - kalan 0</div>
-              <div id="gigLiveReqStats" style="font-size: 0.74rem; opacity: 0.9; font-weight: 400;">İstekler (0/0) - kalan 0</div>
-              <div id="gigLiveTotalStats" style="font-size: 0.74rem; opacity: 0.9; font-weight: 400;">Toplam (0/0) - kalan 0</div>
+            <div id="gigLiveStatsGrid" style="margin-top: 8px; display: grid; grid-template-columns: auto auto auto; column-gap: 8px; row-gap: 3px; font-size: 0.74rem; align-items: center;">
+              <span style="opacity: 0.85; font-weight: 500;">Repertuvar</span>
+              <span id="gigLiveRepCount" style="font-weight: 600; text-align: right; font-variant-numeric: tabular-nums;">(0/0)</span>
+              <span id="gigLiveRepRem" style="opacity: 0.75;">- kalan 0</span>
+
+              <span style="opacity: 0.85; font-weight: 500;">İstekler</span>
+              <span id="gigLiveReqCount" style="font-weight: 600; text-align: right; font-variant-numeric: tabular-nums;">(0/0)</span>
+              <span id="gigLiveReqRem" style="opacity: 0.75;">- kalan 0</span>
+
+              <span style="font-weight: 700;">Toplam</span>
+              <span id="gigLiveTotalCount" style="font-weight: 700; text-align: right; font-variant-numeric: tabular-nums;">(0/0)</span>
+              <span id="gigLiveTotalRem" style="font-weight: 600; opacity: 0.9;">- kalan 0</span>
             </div>
           </div>
         </div>

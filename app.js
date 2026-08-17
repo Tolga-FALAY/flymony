@@ -4164,6 +4164,9 @@ function renderEditorGigSongs() {
 
   editorGigSongs.forEach((song, idx) => {
     const isPlayed = Boolean(song.isPlayed);
+    const fullSong = DB.songs.find(s => s.id === song.songId) || song;
+    const hasChord = Boolean(fullSong && fullSong.chordImagePath && fullSong.chordImagePath.trim());
+
     const div = document.createElement('div');
     div.style.cssText = `display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; background: ${isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent'}; gap: 0.5rem;`;
     
@@ -4171,9 +4174,11 @@ function renderEditorGigSongs() {
       <div style="display: flex; align-items: center; gap: 0.35rem; flex: 1; min-width: 0; overflow: hidden;">
         <span style="font-weight: bold; color: var(--text-muted); width: 22px; flex-shrink: 0;">${song.sortOrder}.</span>
         ${Number(song.isRequest) === 1 ? '<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #0284c7; font-weight: 700; flex-shrink: 0;">İstek</span>' : ''}
-        <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; ${isPlayed ? 'text-decoration: line-through; color: var(--text-muted);' : ''} flex: 1; min-width: 0;" title="${song.title}">
+        <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; ${isPlayed ? 'text-decoration: line-through; color: var(--text-muted);' : (!hasChord ? 'color: #dc2626; font-weight: 700;' : '')} flex: 1; min-width: 0;" title="${song.title}">
           ${song.title}
+          ${song.artistNames && song.artistNames !== '-' ? `<span style="opacity: 0.75; font-size: 0.75rem; margin-left: 6px; color: ${!hasChord && !isPlayed ? '#ef4444' : 'var(--text-muted)'};">(${song.artistNames})</span>` : ''}
         </span>
+        ${!hasChord ? '<span class="live-no-chord-tag" style="font-size: 0.65rem; padding: 1px 5px; flex-shrink: 0;">Akor Yok</span>' : ''}
       </div>
       <div style="display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0;">
         <button type="button" 
@@ -4692,13 +4697,20 @@ function searchSongsForGig() {
     return;
   }
 
-  autocomplete.innerHTML = matches.slice(0, 10).map(song => `
-    <div style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border-soft); font-size: 0.85rem;" 
-         onclick="addSongToGigList(${song.id}, '${song.title.replace(/'/g, "\\'")}', '${song.artistNames.replace(/'/g, "\\'")}')"
-         class="autocomplete-item-hover">
-      ${song.title} (${song.artistNames})
-    </div>
-  `).join('');
+  autocomplete.innerHTML = matches.slice(0, 10).map(song => {
+    const hasChord = Boolean(song.chordImagePath && song.chordImagePath.trim());
+    return `
+      <div style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border-soft); font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;" 
+           onclick="addSongToGigList(${song.id}, '${song.title.replace(/'/g, "\\'")}', '${song.artistNames.replace(/'/g, "\\'")}')"
+           class="autocomplete-item-hover">
+        <div>
+          <span style="font-weight: ${!hasChord ? '700' : 'normal'}; color: ${!hasChord ? '#dc2626' : 'inherit'};">${song.title}</span>
+          <span style="opacity: 0.75; font-size: 0.78rem; margin-left: 6px; color: ${!hasChord ? '#ef4444' : 'var(--text-muted)'};">(${song.artistNames})</span>
+        </div>
+        ${!hasChord ? '<span class="live-no-chord-badge">Akor Yok</span>' : ''}
+      </div>
+    `;
+  }).join('');
   autocomplete.style.display = 'block';
 }
 
@@ -5068,15 +5080,19 @@ function renderLiveGigPlaylist() {
     const grandPlayed = allSongs.filter(s => Number(s.isPlayed) === 1).length;
     const grandRemaining = Math.max(0, grandTotal - grandPlayed);
 
-    if (repStatsEl) {
-      repStatsEl.innerText = `Repertuvar (${repPlayed}/${repTotal}) - kalan ${repRemaining}`;
-    }
-    if (reqStatsEl) {
-      reqStatsEl.innerText = `İstekler (${reqPlayed}/${reqTotal}) - kalan ${reqRemaining}`;
-    }
-    if (totalStatsEl) {
-      totalStatsEl.innerText = `Toplam (${grandPlayed}/${grandTotal}) - kalan ${grandRemaining}`;
-    }
+    const repCountEl = document.getElementById('gigLiveRepCount');
+    const repRemEl = document.getElementById('gigLiveRepRem');
+    const reqCountEl = document.getElementById('gigLiveReqCount');
+    const reqRemEl = document.getElementById('gigLiveReqRem');
+    const totalCountEl = document.getElementById('gigLiveTotalCount');
+    const totalRemEl = document.getElementById('gigLiveTotalRem');
+
+    if (repCountEl) repCountEl.innerText = `(${repPlayed}/${repTotal})`;
+    if (repRemEl) repRemEl.innerText = `- kalan ${repRemaining}`;
+    if (reqCountEl) reqCountEl.innerText = `(${reqPlayed}/${reqTotal})`;
+    if (reqRemEl) reqRemEl.innerText = `- kalan ${reqRemaining}`;
+    if (totalCountEl) totalCountEl.innerText = `(${grandPlayed}/${grandTotal})`;
+    if (totalRemEl) totalRemEl.innerText = `- kalan ${grandRemaining}`;
   }
 
   // Update Sort Header Buttons & Icons
@@ -5143,8 +5159,11 @@ function renderLiveGigPlaylist() {
     });
 
   sortedList.forEach(({ song, originalIdx }) => {
+    const fullSong = DB.songs.find(s => s.id === song.songId) || song;
+    const hasChord = Boolean(fullSong && fullSong.chordImagePath && fullSong.chordImagePath.trim());
+
     const item = document.createElement('div');
-    item.className = `live-stage-song-item ${originalIdx === liveGigSongIndex ? 'active' : ''}`;
+    item.className = `live-stage-song-item ${originalIdx === liveGigSongIndex ? 'active' : ''} ${!hasChord ? 'no-chord' : ''}`;
 
     const infoDiv = document.createElement('div');
     infoDiv.className = 'live-song-item-info';
@@ -5158,17 +5177,24 @@ function renderLiveGigPlaylist() {
     textDiv.className = 'live-song-text';
 
     const titleDiv = document.createElement('div');
-    titleDiv.className = `live-song-title ${song.isPlayed ? 'played' : ''}`;
+    titleDiv.className = `live-song-title ${song.isPlayed ? 'played' : ''} ${!hasChord ? 'no-chord' : ''}`;
     titleDiv.innerText = song.title;
     textDiv.appendChild(titleDiv);
 
     if (song.artistNames && song.artistNames !== '-') {
       const artistDiv = document.createElement('div');
-      artistDiv.className = 'live-song-artist';
+      artistDiv.className = `live-song-artist ${!hasChord ? 'no-chord' : ''}`;
       artistDiv.innerText = song.artistNames;
       textDiv.appendChild(artistDiv);
     }
     infoDiv.appendChild(textDiv);
+
+    if (!hasChord) {
+      const noChordSpan = document.createElement('span');
+      noChordSpan.className = 'live-no-chord-tag';
+      noChordSpan.innerText = 'Akor Yok';
+      infoDiv.appendChild(noChordSpan);
+    }
 
     if (song.isRequest) {
       const reqSpan = document.createElement('span');
@@ -5621,13 +5647,19 @@ function searchLiveRequestSongs() {
     return;
   }
 
-  autocomplete.innerHTML = matches.slice(0, 10).map(s => `
-    <div onclick="selectLiveRequestSong(${s.id}, '${s.title.replace(/'/g, "\\'")}', '${(s.artistNames || '').replace(/'/g, "\\'")}')" 
-         class="live-stage-search-item">
-      <div style="font-weight: 700; font-size: 0.85rem;">${s.title}</div>
-      <div style="font-size: 0.75rem; opacity: 0.75;">${s.artistNames || '-'}</div>
-    </div>
-  `).join('');
+  autocomplete.innerHTML = matches.slice(0, 10).map(s => {
+    const hasChord = Boolean(s.chordImagePath && s.chordImagePath.trim());
+    return `
+      <div onclick="selectLiveRequestSong(${s.id}, '${s.title.replace(/'/g, "\\'")}', '${(s.artistNames || '').replace(/'/g, "\\'")}')" 
+           class="live-stage-search-item ${!hasChord ? 'no-chord' : ''}">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+          <div style="font-weight: 700; font-size: 0.85rem;">${s.title}</div>
+          ${!hasChord ? '<span class="live-no-chord-badge">Akor Yok</span>' : ''}
+        </div>
+        <div style="font-size: 0.75rem; opacity: 0.75;">${s.artistNames || '-'}</div>
+      </div>
+    `;
+  }).join('');
   autocomplete.style.display = 'block';
 }
 

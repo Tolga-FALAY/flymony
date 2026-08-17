@@ -2397,7 +2397,7 @@ body.dark-mode .rich-editor-content {
   top: 100%;
   left: 1rem;
   right: 1rem;
-  max-height: 240px;
+  max-height: min(520px, calc(100vh - 200px));
   overflow-y: auto;
   z-index: 10020;
   border-radius: 8px;
@@ -2428,6 +2428,36 @@ body.dark-mode .rich-editor-content {
 
 .live-stage-search-item:hover {
   background: rgba(14, 165, 233, 0.2);
+}
+
+.live-stage-search-item.no-chord {
+  color: #f87171;
+}
+
+.theme-light .live-stage-search-item.no-chord {
+  color: #dc2626;
+}
+
+.live-stage-search-item.no-chord:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.live-no-chord-badge {
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  border-radius: 4px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.theme-light .live-no-chord-badge {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
 }
 
 /* Mini Sortable & Filter Headers for Drawer Song List (NO, ŞARKI, SANATÇI, ÇALINMAMIŞ/TÜMÜ) */
@@ -2585,12 +2615,47 @@ body.dark-mode .rich-editor-content {
   color: #10b981;
 }
 
+.live-song-title.no-chord:not(.played) {
+  color: #f87171;
+}
+
+.theme-light .live-song-title.no-chord:not(.played) {
+  color: #dc2626;
+}
+
 .live-song-artist {
   font-size: 0.75rem;
   opacity: 0.65;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.live-song-artist.no-chord {
+  color: #fca5a5;
+  opacity: 0.85;
+}
+
+.theme-light .live-song-artist.no-chord {
+  color: #ef4444;
+  opacity: 0.9;
+}
+
+.live-no-chord-tag {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #f87171;
+  border-radius: 4px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.theme-light .live-no-chord-tag {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
 }
 
 .live-request-tag {

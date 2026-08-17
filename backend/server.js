@@ -966,7 +966,7 @@ app.get('/api/gigs', (req, res) => {
         
         const formattedGigs = gigs.map(gig => {
             const songs = db.prepare(`
-                SELECT gs.GigSongID, gs.SongID, gs.SortOrder, gs.IsPlayed, gs.IsRequest, s.SongTitle,
+                SELECT gs.GigSongID, gs.SongID, gs.SortOrder, gs.IsPlayed, gs.IsRequest, s.SongTitle, s.ChordImagePath,
                        (
                            SELECT GROUP_CONCAT(a.ArtistName, ', ')
                            FROM Song_Artists sa
@@ -984,7 +984,8 @@ app.get('/api/gigs', (req, res) => {
                 IsPlayed: Number(s.IsPlayed),
                 IsRequest: Number(s.IsRequest),
                 SongTitle: s.SongTitle,
-                ArtistNames: s.ArtistNames || '-'
+                ArtistNames: s.ArtistNames || '-',
+                ChordImagePath: s.ChordImagePath || ''
             }));
 
             const guests = db.prepare(`
