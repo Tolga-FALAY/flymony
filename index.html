@@ -1129,11 +1129,24 @@
           
           <!-- SONGS SECTION -->
           <div style="border-right: 1px solid var(--border); padding-right: 1.5rem; display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
-            <h3 style="margin-bottom: 0.5rem; color: var(--text-main);">🎵 Şarkı Listesi (<span id="gigSongsCount">0</span>)</h3>
-            
-            <div class="form-group" style="position: relative; margin-bottom: 0.5rem;">
-              <input type="text" id="gigSongSearch" placeholder="Şarkı ara ve ekle..." oninput="searchSongsForGig()">
-              <div id="gigSongAutocomplete" class="listbox-container" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: white; border: 1px solid var(--border); border-radius: 8px; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"></div>
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem;">
+              <div style="flex: 1 1 52%; min-width: 0;">
+                <h3 style="margin: 0 0 0.4rem 0; color: var(--text-main); font-size: 1rem; font-weight: 800;">
+                  🎵 Şarkı Listesi (<span id="gigSongsCount">0</span>)
+                </h3>
+                
+                <div class="form-group" style="position: relative; margin: 0;">
+                  <input type="text" id="gigSongSearch" placeholder="Şarkı ara ve ekle..." oninput="searchSongsForGig()" style="width: 100%; margin: 0; padding: 0.45rem 0.65rem; font-size: 0.82rem;">
+                  <div id="gigSongAutocomplete" class="listbox-container" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: white; border: 1px solid var(--border); border-radius: 8px; max-height: 150px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"></div>
+                </div>
+              </div>
+
+              <!-- Live Statistics on the Right -->
+              <div style="flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; text-align: right; padding-top: 2px;">
+                <div id="editorGigRepStats" style="font-size: 0.73rem; color: var(--text-main); font-weight: 500;">Repertuvar (0/0) - kalan 0</div>
+                <div id="editorGigReqStats" style="font-size: 0.73rem; color: var(--text-main); font-weight: 500;">İstekler (0/0) - kalan 0</div>
+                <div id="editorGigTotalStats" style="font-size: 0.73rem; color: var(--text-main); font-weight: 600;">Toplam (0/0) - kalan 0</div>
+              </div>
             </div>
 
             <div id="gigSongsList" style="flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem;"></div>

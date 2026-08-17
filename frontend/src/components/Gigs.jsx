@@ -1120,130 +1120,170 @@ export default function Gigs() {
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', marginTop: '1.5rem' }}>
                 
                 {/* SONGS SECTION */}
-                <div style={{ borderRight: '1px solid var(--border)', paddingRight: '1.5rem', minWidth: 0, overflow: 'hidden' }}>
-                  <h3 style={{ marginBottom: '0.75rem', color: 'var(--text-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>🎵 Şarkı Listesi ({formData.Songs.length})</span>
-                  </h3>
-                  
-                  {/* Add song dropdown search */}
-                  <div className="form-group" style={{ position: 'relative' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Şarkı ara ve listeye ekle..." 
-                      value={songSearchText}
-                      onChange={e => setSongSearchText(e.target.value)} 
-                    />
-                    {songSearchText.trim() && (
-                      <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                        {songs
-                          .filter(s => {
-                            const query = songSearchText.toLocaleLowerCase('tr-TR');
-                            const titleMatch = s.SongTitle && s.SongTitle.toLocaleLowerCase('tr-TR').includes(query);
-                            const artistMatch = s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(query);
-                            return titleMatch || artistMatch;
-                          })
-                          .map(s => (
-                            <div 
-                              key={s.SongID} 
-                              onClick={() => addSongToGig(s)}
-                              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-soft)', fontSize: '0.85rem' }}
-                              className="autocomplete-item-hover"
-                            >
-                              {s.SongTitle} ({s.ArtistNames})
-                            </div>
-                          ))
-                        }
-                      </div>
-                    )}
-                  </div>
+                {(() => {
+                  const allSongs = formData.Songs || [];
+                  const repSongs = allSongs.filter(s => Number(s.IsRequest) !== 1);
+                  const reqSongs = allSongs.filter(s => Number(s.IsRequest) === 1);
 
-                  {/* List of gig songs */}
-                  <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
-                    {formData.Songs.map((gSong, idx) => {
-                      const songObj = songs.find(s => s.SongID === gSong.SongID);
-                      if (!songObj) return null;
-                      const isPlayed = Boolean(gSong.IsPlayed);
-                      return (
-                        <div key={gSong.SongID} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', background: isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent', gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                            <span style={{ fontWeight: 'bold', color: 'var(--text-muted)', width: '22px', flexShrink: 0 }}>{gSong.SortOrder}.</span>
-                            {Number(gSong.IsRequest) === 1 && (
-                              <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', fontWeight: 700, flexShrink: 0 }}>İstek</span>
-                            )}
-                            <span style={{ 
-                              textOverflow: 'ellipsis', 
-                              overflow: 'hidden', 
-                              whiteSpace: 'nowrap',
-                              textDecoration: isPlayed ? 'line-through' : 'none',
-                              color: isPlayed ? 'var(--text-muted)' : 'inherit',
-                              flex: 1,
-                              minWidth: 0
-                            }} title={songObj.SongTitle}>
-                              {songObj.SongTitle}
-                            </span>
-                          </div>
+                  const repTotal = repSongs.length;
+                  const repPlayed = repSongs.filter(s => s.IsPlayed).length;
+                  const repRemaining = Math.max(0, repTotal - repPlayed);
+
+                  const reqTotal = reqSongs.length;
+                  const reqPlayed = reqSongs.filter(s => s.IsPlayed).length;
+                  const reqRemaining = Math.max(0, reqTotal - reqPlayed);
+
+                  const grandTotal = allSongs.length;
+                  const grandPlayed = allSongs.filter(s => s.IsPlayed).length;
+                  const grandRemaining = Math.max(0, grandTotal - grandPlayed);
+
+                  return (
+                    <div style={{ borderRight: '1px solid var(--border)', paddingRight: '1.5rem', minWidth: 0, overflow: 'hidden' }}>
+                      {/* Header and Live Stats Row */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        {/* Left Side: Title and Shortened Search Box */}
+                        <div style={{ flex: '1 1 52%', minWidth: 0 }}>
+                          <h3 style={{ margin: '0 0 0.4rem 0', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 800 }}>
+                            🎵 Şarkı Listesi ({formData.Songs.length})
+                          </h3>
                           
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-                            <button 
-                              type="button" 
-                              onClick={() => toggleGigModalSongPlayed(gSong.SongID)}
-                              style={{
-                                width: '24px',
-                                height: '24px',
-                                minWidth: '24px',
-                                padding: 0,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '0.82rem',
-                                fontWeight: 800,
-                                borderRadius: '50%',
-                                border: '1px solid',
-                                borderColor: isPlayed ? '#10b981' : 'var(--border)',
-                                background: isPlayed ? '#10b981' : 'transparent',
-                                color: isPlayed ? '#ffffff' : 'var(--text-muted)',
-                                cursor: 'pointer',
-                                flexShrink: 0
-                              }}
-                              title={isPlayed ? "Çalınmadı olarak işaretle" : "Çalındı olarak işaretle"}
-                            >
-                              {isPlayed ? '✓' : '◯'}
-                            </button>
-                            {/* Sequence shift input */}
+                          {/* Add song dropdown search */}
+                          <div className="form-group" style={{ position: 'relative', margin: 0 }}>
                             <input 
                               type="text" 
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={gSong.SortOrder}
-                              onChange={e => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                if (val) moveSongToOrder(idx, val);
-                              }}
-                              style={{ 
-                                width: '28px', 
-                                padding: '2px 0', 
-                                textAlign: 'center', 
-                                fontSize: '0.8rem', 
-                                height: '24px', 
-                                margin: 0,
-                                borderRadius: '4px',
-                                border: '1px solid var(--border)',
-                                flexShrink: 0
-                              }}
-                              title="Sıra Numarası"
+                              placeholder="Şarkı ara ve listeye ekle..." 
+                              value={songSearchText}
+                              onChange={e => setSongSearchText(e.target.value)} 
+                              style={{ width: '100%', margin: 0, padding: '0.45rem 0.65rem', fontSize: '0.82rem' }}
                             />
-                            <button type="button" className="btn btn-outline" style={{ padding: '2px 5px', fontSize: '0.72rem', height: '24px', flexShrink: 0 }} onClick={() => swapSongs(idx, idx - 1)} disabled={idx === 0}>▲</button>
-                            <button type="button" className="btn btn-outline" style={{ padding: '2px 5px', fontSize: '0.72rem', height: '24px', flexShrink: 0 }} onClick={() => swapSongs(idx, idx + 1)} disabled={idx === formData.Songs.length - 1}>▼</button>
-                            <button type="button" className="btn btn-sm btn-danger" style={{ padding: '2px 6px', fontSize: '0.75rem', height: '24px', borderRadius: '4px', flexShrink: 0 }} onClick={() => removeSongFromGig(gSong.SongID)}>&times;</button>
+                            {songSearchText.trim() && (
+                              <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                {songs
+                                  .filter(s => {
+                                    const query = songSearchText.toLocaleLowerCase('tr-TR');
+                                    const titleMatch = s.SongTitle && s.SongTitle.toLocaleLowerCase('tr-TR').includes(query);
+                                    const artistMatch = s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(query);
+                                    return titleMatch || artistMatch;
+                                  })
+                                  .map(s => (
+                                    <div 
+                                      key={s.SongID} 
+                                      onClick={() => addSongToGig(s)}
+                                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-soft)', fontSize: '0.85rem' }}
+                                      className="autocomplete-item-hover"
+                                    >
+                                      {s.SongTitle} ({s.ArtistNames})
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
-                    {formData.Songs.length === 0 && (
-                      <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Henüz şarkı eklenmedi.</div>
-                    )}
-                  </div>
-                </div>
+
+                        {/* Right Side: Live Statistics (Repertuvar, İstekler, Toplam) */}
+                        <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '3px', textAlign: 'right', paddingTop: '2px' }}>
+                          <div style={{ fontSize: '0.73rem', color: 'var(--text-main)', fontWeight: 500 }}>
+                            Repertuvar ({repPlayed}/{repTotal}) - kalan {repRemaining}
+                          </div>
+                          <div style={{ fontSize: '0.73rem', color: 'var(--text-main)', fontWeight: 500 }}>
+                            İstekler ({reqPlayed}/{reqTotal}) - kalan {reqRemaining}
+                          </div>
+                          <div style={{ fontSize: '0.73rem', color: 'var(--text-main)', fontWeight: 600 }}>
+                            Toplam ({grandPlayed}/{grandTotal}) - kalan {grandRemaining}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* List of gig songs */}
+                      <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
+                        {formData.Songs.map((gSong, idx) => {
+                          const songObj = songs.find(s => s.SongID === gSong.SongID);
+                          if (!songObj) return null;
+                          const isPlayed = Boolean(gSong.IsPlayed);
+                          return (
+                            <div key={gSong.SongID} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', background: isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                <span style={{ fontWeight: 'bold', color: 'var(--text-muted)', width: '22px', flexShrink: 0 }}>{gSong.SortOrder}.</span>
+                                {Number(gSong.IsRequest) === 1 && (
+                                  <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', fontWeight: 700, flexShrink: 0 }}>İstek</span>
+                                )}
+                                <span style={{ 
+                                  textOverflow: 'ellipsis', 
+                                  overflow: 'hidden', 
+                                  whiteSpace: 'nowrap',
+                                  textDecoration: isPlayed ? 'line-through' : 'none',
+                                  color: isPlayed ? 'var(--text-muted)' : 'inherit',
+                                  flex: 1,
+                                  minWidth: 0
+                                }} title={songObj.SongTitle}>
+                                  {songObj.SongTitle}
+                                </span>
+                              </div>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                                <button 
+                                  type="button" 
+                                  onClick={() => toggleGigModalSongPlayed(gSong.SongID)}
+                                  style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    minWidth: '24px',
+                                    padding: 0,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.82rem',
+                                    fontWeight: 800,
+                                    borderRadius: '50%',
+                                    border: '1px solid',
+                                    borderColor: isPlayed ? '#10b981' : 'var(--border)',
+                                    background: isPlayed ? '#10b981' : 'transparent',
+                                    color: isPlayed ? '#ffffff' : 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    flexShrink: 0
+                                  }}
+                                  title={isPlayed ? "Çalınmadı olarak işaretle" : "Çalındı olarak işaretle"}
+                                >
+                                  {isPlayed ? '✓' : '◯'}
+                                </button>
+                                {/* Sequence shift input */}
+                                <input 
+                                  type="text" 
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  value={gSong.SortOrder}
+                                  onChange={e => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    if (val) moveSongToOrder(idx, val);
+                                  }}
+                                  style={{ 
+                                    width: '28px', 
+                                    padding: '2px 0', 
+                                    textAlign: 'center', 
+                                    fontSize: '0.8rem', 
+                                    height: '24px', 
+                                    margin: 0,
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border)',
+                                    flexShrink: 0
+                                  }}
+                                  title="Sıra Numarası"
+                                />
+                                <button type="button" className="btn btn-outline" style={{ padding: '2px 5px', fontSize: '0.72rem', height: '24px', flexShrink: 0 }} onClick={() => swapSongs(idx, idx - 1)} disabled={idx === 0}>▲</button>
+                                <button type="button" className="btn btn-outline" style={{ padding: '2px 5px', fontSize: '0.72rem', height: '24px', flexShrink: 0 }} onClick={() => swapSongs(idx, idx + 1)} disabled={idx === formData.Songs.length - 1}>▼</button>
+                                <button type="button" className="btn btn-sm btn-danger" style={{ padding: '2px 6px', fontSize: '0.75rem', height: '24px', borderRadius: '4px', flexShrink: 0 }} onClick={() => removeSongFromGig(gSong.SongID)}>&times;</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {formData.Songs.length === 0 && (
+                          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Henüz şarkı eklenmedi.</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* GUESTS SECTION */}
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>

@@ -4130,7 +4130,34 @@ window.toggleEditorGigSongPlayed = toggleEditorGigSongPlayed;
 
 function renderEditorGigSongs() {
   const container = document.getElementById('gigSongsList');
-  document.getElementById('gigSongsCount').innerText = editorGigSongs.length;
+  const countEl = document.getElementById('gigSongsCount');
+  if (countEl) countEl.innerText = editorGigSongs.length;
+
+  const allSongs = editorGigSongs || [];
+  const repSongs = allSongs.filter(s => Number(s.isRequest) !== 1);
+  const reqSongs = allSongs.filter(s => Number(s.isRequest) === 1);
+
+  const repTotal = repSongs.length;
+  const repPlayed = repSongs.filter(s => s.isPlayed).length;
+  const repRemaining = Math.max(0, repTotal - repPlayed);
+
+  const reqTotal = reqSongs.length;
+  const reqPlayed = reqSongs.filter(s => s.isPlayed).length;
+  const reqRemaining = Math.max(0, reqTotal - reqPlayed);
+
+  const grandTotal = allSongs.length;
+  const grandPlayed = allSongs.filter(s => s.isPlayed).length;
+  const grandRemaining = Math.max(0, grandTotal - grandPlayed);
+
+  const repStatsEl = document.getElementById('editorGigRepStats');
+  const reqStatsEl = document.getElementById('editorGigReqStats');
+  const totalStatsEl = document.getElementById('editorGigTotalStats');
+
+  if (repStatsEl) repStatsEl.innerText = `Repertuvar (${repPlayed}/${repTotal}) - kalan ${repRemaining}`;
+  if (reqStatsEl) reqStatsEl.innerText = `İstekler (${reqPlayed}/${reqTotal}) - kalan ${reqRemaining}`;
+  if (totalStatsEl) totalStatsEl.innerText = `Toplam (${grandPlayed}/${grandTotal}) - kalan ${grandRemaining}`;
+
+  if (!container) return;
   container.innerHTML = '';
 
   editorGigSongs.sort((a, b) => a.sortOrder - b.sortOrder);
