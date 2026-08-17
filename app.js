@@ -3917,6 +3917,10 @@ function renderGigs() {
       comp = new Date(a.gigDate) - new Date(b.gigDate);
     } else if (gigsSortKey === 'venue') {
       comp = (a.venueName || '').toLocaleLowerCase('tr-TR').localeCompare((b.venueName || '').toLocaleLowerCase('tr-TR'), 'tr');
+    } else if (gigsSortKey === 'guests') {
+      const aCount = a.guests ? a.guests.reduce((sum, g) => sum + (Number(g.guestCount || g.GuestCount) || 1), 0) : 0;
+      const bCount = b.guests ? b.guests.reduce((sum, g) => sum + (Number(g.guestCount || g.GuestCount) || 1), 0) : 0;
+      comp = aCount - bCount;
     }
     return gigsSortDirection === 'asc' ? comp : -comp;
   });
@@ -4012,8 +4016,10 @@ function sortGigs(key) {
 
   const dateIcon = document.getElementById('sortIconGigDate');
   const venueIcon = document.getElementById('sortIconGigVenue');
-  if (dateIcon) dateIcon.innerText = gigsSortKey === 'date' ? (gigsSortDirection === 'asc' ? ' ⇅' : ' ⇅') : ' ⇅';
-  if (venueIcon) venueIcon.innerText = gigsSortKey === 'venue' ? (gigsSortDirection === 'asc' ? ' ⇅' : ' ⇅') : ' ⇅';
+  const guestsIcon = document.getElementById('sortIconGigGuests');
+  if (dateIcon) dateIcon.innerText = gigsSortKey === 'date' ? (gigsSortDirection === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+  if (venueIcon) venueIcon.innerText = gigsSortKey === 'venue' ? (gigsSortDirection === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+  if (guestsIcon) guestsIcon.innerText = gigsSortKey === 'guests' ? (gigsSortDirection === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
 
   renderGigs();
 }

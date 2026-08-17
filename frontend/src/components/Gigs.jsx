@@ -31,6 +31,17 @@ export default function Gigs() {
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
 
+  // Table Sort State
+  const [sortConfig, setSortConfig] = useState({ key: 'GigDate', direction: 'desc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   // Gig Editor Form State
   const [formData, setFormData] = useState({
     VenueID: '',
@@ -854,7 +865,7 @@ export default function Gigs() {
     touchEndY.current = null;
   };
 
-  // --- Filtering Gigs ---
+  // --- Filtering & Sorting Gigs ---
   const filteredGigs = gigs.filter(gig => {
     // 1. Serbest Arama (Mekân, Notlar, vb.)
     if (filterSearch) {
@@ -874,6 +885,22 @@ export default function Gigs() {
     if (filterEndDate && gig.GigDate > filterEndDate) return false;
 
     return true;
+  }).sort((a, b) => {
+    let comp = 0;
+    if (sortConfig.key === 'GigDate') {
+      const timeA = new Date(a.GigDate).getTime() || 0;
+      const timeB = new Date(b.GigDate).getTime() || 0;
+      comp = timeA - timeB;
+    } else if (sortConfig.key === 'VenueName') {
+      const aVal = (a.VenueName || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.VenueName || '').toLocaleLowerCase('tr-TR');
+      comp = aVal.localeCompare(bVal, 'tr');
+    } else if (sortConfig.key === 'GuestCount') {
+      const aGuests = a.Guests ? a.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
+      const bGuests = b.Guests ? b.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
+      comp = aGuests - bGuests;
+    }
+    return sortConfig.direction === 'asc' ? comp : -comp;
   });
 
   // Unique venues list for dropdown filter
@@ -981,10 +1008,16 @@ export default function Gigs() {
         <table>
           <thead>
             <tr>
-              <th>Tarih</th>
-              <th>Mekân</th>
+              <th onClick={() => handleSort('GigDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Tarih {sortConfig.key === 'GigDate' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '↕'}
+              </th>
+              <th onClick={() => handleSort('VenueName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Mekân {sortConfig.key === 'VenueName' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '↕'}
+              </th>
               <th style={{ textAlign: 'center' }}>Şarkı Sayısı</th>
-              <th style={{ textAlign: 'center' }}>MİSAFİRLERİM</th>
+              <th onClick={() => handleSort('GuestCount')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                MİSAFİRLERİM {sortConfig.key === 'GuestCount' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '↕'}
+              </th>
               <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>

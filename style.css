@@ -1294,20 +1294,22 @@ tr:hover td {
 
 .filter-group-row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: flex-end;
 }
 
 .filter-item {
-  flex: 1 1 140px;
+  flex: 1 1 130px;
+  min-width: 120px;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
 .filter-item.search-box {
-  flex: 1.8 1 200px;
+  flex: 1.8 1 180px;
+  min-width: 150px;
 }
 
 .filter-item label {
@@ -1326,6 +1328,15 @@ tr:hover td {
   border: 1px solid #cbd5e1;
   background: rgba(255, 255, 255, 0.85);
   width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 38px;
+}
+
+.filter-item input[type="date"] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .filter-item input:focus,
@@ -1337,6 +1348,16 @@ tr:hover td {
 .filter-actions {
   flex: 0 0 auto;
   align-self: flex-end;
+  display: flex;
+  align-items: flex-end;
+}
+
+.filter-actions .btn {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
