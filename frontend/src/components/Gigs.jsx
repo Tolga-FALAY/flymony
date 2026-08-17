@@ -1696,12 +1696,12 @@ export default function Gigs() {
 
               return (
                 <div className="live-stage-drawer-header">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '1.3rem', marginTop: '2px' }}>🎙️</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '1.45rem', marginTop: '2px' }}>🎙️</span>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>{liveGig.VenueName}</h3>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{liveGig.VenueName}</h3>
                       {liveGig.GigDate && (
-                        <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.86rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>
                           {formatLiveGigDate(liveGig.GigDate)}
                         </div>
                       )}
@@ -1709,9 +1709,9 @@ export default function Gigs() {
                         marginTop: '8px', 
                         display: 'grid', 
                         gridTemplateColumns: 'auto auto auto', 
-                        columnGap: '8px', 
-                        rowGap: '3px', 
-                        fontSize: '0.74rem', 
+                        columnGap: '10px', 
+                        rowGap: '4px', 
+                        fontSize: '0.82rem', 
                         alignItems: 'center' 
                       }}>
                         <span style={{ opacity: 0.85, fontWeight: 500 }}>Repertuvar</span>
@@ -1747,7 +1747,7 @@ export default function Gigs() {
                   type="text" 
                   placeholder="🔍 İstek bul ve hemen aç..." 
                   value={liveSearchQuery} 
-                  onChange={e => searchLiveRequests(e.target.value)}
+                  onChange={e => searchLiveRequests(e.target.value)} 
                   className="live-stage-search-input"
                 />
                 {liveSearchQuery && (
@@ -1777,12 +1777,12 @@ export default function Gigs() {
                         className={`live-stage-search-item ${!hasChord ? 'no-chord' : ''}`}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{s.SongTitle}</div>
+                          <div style={{ fontWeight: 700, fontSize: '0.96rem' }}>{s.SongTitle}</div>
                           {!hasChord && (
                             <span className="live-no-chord-badge">Akor Yok</span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.75 }}>{s.ArtistNames || '-'}</div>
+                        <div style={{ fontSize: '0.84rem', opacity: 0.75, marginTop: '2px' }}>{s.ArtistNames || '-'}</div>
                       </div>
                     );
                   })}
