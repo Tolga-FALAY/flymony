@@ -1556,6 +1556,10 @@ export default function Gigs() {
               const reqPlayed = reqSongs.filter(s => Number(s.IsPlayed) === 1).length;
               const reqRemaining = Math.max(0, reqTotal - reqPlayed);
 
+              const grandTotal = allSongs.length;
+              const grandPlayed = allSongs.filter(s => Number(s.IsPlayed) === 1).length;
+              const grandRemaining = Math.max(0, grandTotal - grandPlayed);
+
               return (
                 <div className="live-stage-drawer-header">
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
@@ -1567,12 +1571,15 @@ export default function Gigs() {
                           {formatLiveGigDate(liveGig.GigDate)}
                         </div>
                       )}
-                      <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <div style={{ fontSize: '0.74rem', opacity: 0.85, fontWeight: 600 }}>
+                      <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px', color: '#ffffff' }}>
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 600 }}>
                           Repertuvar ({repPlayed}/{repTotal}) - kalan {repRemaining}
                         </div>
-                        <div style={{ fontSize: '0.74rem', color: '#38bdf8', opacity: 0.95, fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 600 }}>
                           İstekler ({reqPlayed}/{reqTotal}) - kalan {reqRemaining}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 600 }}>
+                          Toplam ({grandPlayed}/{grandTotal}) - kalan {grandRemaining}
                         </div>
                       </div>
                     </div>

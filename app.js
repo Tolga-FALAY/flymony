@@ -4997,8 +4997,11 @@ function toggleLiveUnplayedFilter() {
   renderLiveGigPlaylist();
 }
 
+function renderLiveGigPlaylist() {
+  const container = document.getElementById('gigLivePlaylist');
   const repStatsEl = document.getElementById('gigLiveRepStats');
   const reqStatsEl = document.getElementById('gigLiveReqStats');
+  const totalStatsEl = document.getElementById('gigLiveTotalStats');
   const counterBadge = document.getElementById('gigLiveCounterBadge');
 
   if (liveGigObj && liveGigObj.songs) {
@@ -5014,11 +5017,18 @@ function toggleLiveUnplayedFilter() {
     const reqPlayed = reqSongs.filter(s => Number(s.isPlayed) === 1).length;
     const reqRemaining = Math.max(0, reqTotal - reqPlayed);
 
+    const grandTotal = allSongs.length;
+    const grandPlayed = allSongs.filter(s => Number(s.isPlayed) === 1).length;
+    const grandRemaining = Math.max(0, grandTotal - grandPlayed);
+
     if (repStatsEl) {
       repStatsEl.innerText = `Repertuvar (${repPlayed}/${repTotal}) - kalan ${repRemaining}`;
     }
     if (reqStatsEl) {
       reqStatsEl.innerText = `İstekler (${reqPlayed}/${reqTotal}) - kalan ${reqRemaining}`;
+    }
+    if (totalStatsEl) {
+      totalStatsEl.innerText = `Toplam (${grandPlayed}/${grandTotal}) - kalan ${grandRemaining}`;
     }
   }
 
