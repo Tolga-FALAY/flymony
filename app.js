@@ -4138,29 +4138,33 @@ function renderEditorGigSongs() {
   editorGigSongs.forEach((song, idx) => {
     const isPlayed = Boolean(song.isPlayed);
     const div = document.createElement('div');
-    div.style.cssText = `display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; background: ${isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent'};`;
+    div.style.cssText = `display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; background: ${isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent'}; gap: 0.5rem;`;
     
     div.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0;">
-        <span style="font-weight: bold; color: var(--text-muted); width: 20px;">${song.sortOrder}.</span>
-        <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; ${isPlayed ? 'text-decoration: line-through; color: var(--text-muted);' : ''}" title="${song.title}">
+      <div style="display: flex; align-items: center; gap: 0.35rem; flex: 1; min-width: 0; overflow: hidden;">
+        <span style="font-weight: bold; color: var(--text-muted); width: 22px; flex-shrink: 0;">${song.sortOrder}.</span>
+        ${Number(song.isRequest) === 1 ? '<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #0284c7; font-weight: 700; flex-shrink: 0;">İstek</span>' : ''}
+        <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; ${isPlayed ? 'text-decoration: line-through; color: var(--text-muted);' : ''} flex: 1; min-width: 0;" title="${song.title}">
           ${song.title}
         </span>
-        ${Number(song.isRequest) === 1 ? '<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #0284c7; font-weight: 700;">İstek</span>' : ''}
       </div>
-      <div style="display: flex; align-items: center; gap: 0.35rem;">
+      <div style="display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0;">
         <button type="button" 
                 onclick="toggleEditorGigSongPlayed(${idx})"
-                style="padding: 2px 8px; font-size: 0.72rem; font-weight: 700; height: 24px; border-radius: 4px; border: 1px solid ${isPlayed ? '#10b981' : 'var(--border)'}; background: ${isPlayed ? '#ecfdf5' : 'transparent'}; color: ${isPlayed ? '#059669' : 'var(--text-muted)'}; cursor: pointer; white-space: nowrap;"
+                style="width: 24px; height: 24px; min-width: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 800; border-radius: 50%; border: 1px solid ${isPlayed ? '#10b981' : 'var(--border)'}; background: ${isPlayed ? '#10b981' : 'transparent'}; color: ${isPlayed ? '#ffffff' : 'var(--text-muted)'}; cursor: pointer; flex-shrink: 0;"
                 title="${isPlayed ? 'Çalınmadı olarak işaretle' : 'Çalındı olarak işaretle'}">
-          ${isPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+          ${isPlayed ? '✓' : '◯'}
         </button>
-        <input type="number" min="1" max="${editorGigSongs.length}" value="${song.sortOrder}" 
-               onchange="changeSongSortOrder(${idx}, this.value)" 
-               style="width: 45px; padding: 2px 4px; text-align: center; font-size: 0.8rem; height: 24px; margin: 0;">
-        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 24px;" onclick="moveSongGigOrderArrow(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
-        <button type="button" class="btn btn-outline" style="padding: 2px 6px; font-size: 0.75rem; height: 24px;" onclick="moveSongGigOrderArrow(${idx}, 1)" ${idx === editorGigSongs.length - 1 ? 'disabled' : ''}>▼</button>
-        <button type="button" class="btn btn-sm btn-danger" style="padding: 2px 6px; font-size: 0.75rem; height: 24px; border-radius: 4px;" onclick="removeSongFromGigList(${song.songId})">&times;</button>
+        <input type="text" 
+               inputmode="numeric" 
+               pattern="[0-9]*" 
+               value="${song.sortOrder}" 
+               onchange="changeSongSortOrder(${idx}, this.value.replace(/[^0-9]/g, ''))" 
+               style="width: 28px; padding: 2px 0; text-align: center; font-size: 0.8rem; height: 24px; margin: 0; border-radius: 4px; border: 1px solid var(--border); flex-shrink: 0;"
+               title="Sıra Numarası">
+        <button type="button" class="btn btn-outline" style="padding: 2px 5px; font-size: 0.72rem; height: 24px; flex-shrink: 0;" onclick="moveSongGigOrderArrow(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="btn btn-outline" style="padding: 2px 5px; font-size: 0.72rem; height: 24px; flex-shrink: 0;" onclick="moveSongGigOrderArrow(${idx}, 1)" ${idx === editorGigSongs.length - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="btn btn-sm btn-danger" style="padding: 2px 6px; font-size: 0.75rem; height: 24px; border-radius: 4px; flex-shrink: 0;" onclick="removeSongFromGigList(${song.songId})">&times;</button>
       </div>
     `;
     container.appendChild(div);
