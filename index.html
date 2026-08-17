@@ -1229,12 +1229,15 @@
     <div id="gigLiveDrawer" class="live-stage-drawer">
       <!-- Drawer Header -->
       <div class="live-stage-drawer-header">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span style="font-size: 1.3rem;">🎙️</span>
+        <div style="display: flex; align-items: flex-start; gap: 0.6rem;">
+          <span style="font-size: 1.3rem; margin-top: 2px;">🎙️</span>
           <div>
             <h3 id="gigLiveVenueTitle" style="margin: 0; font-size: 0.98rem; font-weight: 800;">-</h3>
             <div id="gigLiveVenueDate" style="font-size: 0.78rem; color: #38bdf8; font-weight: 700; margin-top: 2px;">-</div>
-            <span id="gigLiveSongTotalCount" style="font-size: 0.72rem; opacity: 0.65;">Repertuvar (0 Şarkı)</span>
+            <div style="margin-top: 5px; display: flex; flex-direction: column; gap: 2px;">
+              <div id="gigLiveRepStats" style="font-size: 0.74rem; opacity: 0.85; font-weight: 600;">Repertuvar (0/0) - kalan 0</div>
+              <div id="gigLiveReqStats" style="font-size: 0.74rem; color: #38bdf8; opacity: 0.95; font-weight: 600;">İstekler (0/0) - kalan 0</div>
+            </div>
           </div>
         </div>
         <button type="button" class="live-drawer-close-btn" onclick="closeLiveDrawer()" title="Menüyü Kapat">&times;</button>

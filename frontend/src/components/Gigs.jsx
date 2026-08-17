@@ -1543,28 +1543,51 @@ export default function Gigs() {
           )}
           <div className={`live-stage-drawer ${isLiveDrawerOpen ? 'open' : ''}`}>
             {/* Drawer Header */}
-            <div className="live-stage-drawer-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ fontSize: '1.3rem' }}>🎙️</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>{liveGig.VenueName}</h3>
-                  {liveGig.GigDate && (
-                    <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>
-                      {formatLiveGigDate(liveGig.GigDate)}
+            {(() => {
+              const allSongs = liveGig.Songs || [];
+              const repSongs = allSongs.filter(s => Number(s.IsRequest) !== 1);
+              const reqSongs = allSongs.filter(s => Number(s.IsRequest) === 1);
+
+              const repTotal = repSongs.length;
+              const repPlayed = repSongs.filter(s => Number(s.IsPlayed) === 1).length;
+              const repRemaining = Math.max(0, repTotal - repPlayed);
+
+              const reqTotal = reqSongs.length;
+              const reqPlayed = reqSongs.filter(s => Number(s.IsPlayed) === 1).length;
+              const reqRemaining = Math.max(0, reqTotal - reqPlayed);
+
+              return (
+                <div className="live-stage-drawer-header">
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '1.3rem', marginTop: '2px' }}>🎙️</span>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>{liveGig.VenueName}</h3>
+                      {liveGig.GigDate && (
+                        <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>
+                          {formatLiveGigDate(liveGig.GigDate)}
+                        </div>
+                      )}
+                      <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ fontSize: '0.74rem', opacity: 0.85, fontWeight: 600 }}>
+                          Repertuvar ({repPlayed}/{repTotal}) - kalan {repRemaining}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: '#38bdf8', opacity: 0.95, fontWeight: 600 }}>
+                          İstekler ({reqPlayed}/{reqTotal}) - kalan {reqRemaining}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <span style={{ fontSize: '0.72rem', opacity: 0.65 }}>Repertuvar ({liveGig.Songs?.length || 0} Şarkı)</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="live-drawer-close-btn" 
+                    onClick={() => setIsLiveDrawerOpen(false)}
+                    title="Menüyü Kapat"
+                  >
+                    &times;
+                  </button>
                 </div>
-              </div>
-              <button 
-                type="button" 
-                className="live-drawer-close-btn" 
-                onClick={() => setIsLiveDrawerOpen(false)}
-                title="Menüyü Kapat"
-              >
-                &times;
-              </button>
-            </div>
+              );
+            })()}
 
             {/* INSTANT REQUEST SEARCH (AT THE VERY TOP OF DRAWER) */}
             <div className="live-stage-search-box">

@@ -4997,10 +4997,30 @@ function toggleLiveUnplayedFilter() {
   renderLiveGigPlaylist();
 }
 
-function renderLiveGigPlaylist() {
-  const container = document.getElementById('gigLivePlaylist');
-  const totalCountEl = document.getElementById('gigLiveSongTotalCount');
+  const repStatsEl = document.getElementById('gigLiveRepStats');
+  const reqStatsEl = document.getElementById('gigLiveReqStats');
   const counterBadge = document.getElementById('gigLiveCounterBadge');
+
+  if (liveGigObj && liveGigObj.songs) {
+    const allSongs = liveGigObj.songs;
+    const repSongs = allSongs.filter(s => Number(s.isRequest) !== 1);
+    const reqSongs = allSongs.filter(s => Number(s.isRequest) === 1);
+
+    const repTotal = repSongs.length;
+    const repPlayed = repSongs.filter(s => Number(s.isPlayed) === 1).length;
+    const repRemaining = Math.max(0, repTotal - repPlayed);
+
+    const reqTotal = reqSongs.length;
+    const reqPlayed = reqSongs.filter(s => Number(s.isPlayed) === 1).length;
+    const reqRemaining = Math.max(0, reqTotal - reqPlayed);
+
+    if (repStatsEl) {
+      repStatsEl.innerText = `Repertuvar (${repPlayed}/${repTotal}) - kalan ${repRemaining}`;
+    }
+    if (reqStatsEl) {
+      reqStatsEl.innerText = `İstekler (${reqPlayed}/${reqTotal}) - kalan ${reqRemaining}`;
+    }
+  }
 
   // Update Sort Header Buttons & Icons
   const btnNo = document.getElementById('btnLiveSortNo');
