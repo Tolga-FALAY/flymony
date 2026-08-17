@@ -1203,60 +1203,125 @@
   </div>
 
   <!-- Sahne Canlı Performans Modu ("Sahnem") -->
-  <div id="gigLiveModal" class="chord-fullscreen-overlay" style="display: none; z-index: 2100; flex-direction: column; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0;">
-    <!-- Live Header -->
-    <div id="gigLiveHeader" style="padding: 0.75rem 1.5rem; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;">
-      <div>
-        <h2 id="gigLiveTitle" style="font-size: 1.2rem; margin: 0; font-weight: bold;">🎙️ Sahnem: -</h2>
-        <span id="gigLiveDate" style="font-size: 0.8rem;">-</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-        <button type="button" class="chord-action-btn" id="btnToggleLiveViewMode" onclick="toggleLiveViewMode()" style="background: rgba(14, 165, 233, 0.2); border: 1px solid #38bdf8; font-weight: 700;">📄 Akor Metni</button>
-        <button type="button" class="chord-action-btn" onclick="adjustLiveFontSize(-1)">A-</button>
-        <button type="button" class="chord-action-btn" onclick="adjustLiveFontSize(1)">A+</button>
-        <button type="button" class="chord-action-btn" onclick="toggleLiveTheme()">Görünüm: <span id="gigLiveThemeLabel">Koyu</span></button>
-        <button type="button" class="chord-action-btn btn-close-toggle" style="background: #ef4444 !important; color: white !important;" onclick="closeLiveGig()">&times;</button>
-      </div>
+  <div id="gigLiveModal" class="live-stage-overlay theme-dark" style="display: none;">
+    <!-- Floating Top-Left: Hamburger Drawer Toggle -->
+    <div class="live-stage-floating-left">
+      <button type="button" class="viewer-btn-float live-stage-drawer-btn" id="btnLiveDrawerToggle" onclick="toggleLiveDrawer()" title="Repertuvar Sırası (Şarkı Listesi)">
+        <span style="font-size: 1.25rem;">☰</span>
+        <span class="live-stage-counter-badge" id="gigLiveCounterBadge">0/0</span>
+      </button>
     </div>
 
-    <!-- Live Main Body -->
-    <div style="display: grid; grid-template-columns: 260px 1fr; flex: 1; overflow: hidden; height: calc(100vh - 60px);">
-      <!-- Left Sidebar: Playlist -->
-      <div id="gigLiveSidebar" style="display: flex; flex-direction: column; height: 100%; overflow-y: auto;">
-        <div style="padding: 0.75rem; font-weight: bold; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.1);">REPERTUVAR SIRASI</div>
-        <div id="gigLivePlaylist" style="flex: 1; overflow-y: auto;"></div>
-        
-        <!-- Live Request Search -->
-        <div style="padding: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); position: relative;">
-          <input type="text" id="gigLiveRequestSearch" placeholder="İstek bul ve aç..." oninput="searchLiveRequestSongs()" style="font-size: 0.8rem; padding: 0.4rem; margin: 0; width: 100%; box-sizing: border-box;">
-          <div id="gigLiveRequestAutocomplete" class="listbox-container" style="display: none; position: absolute; bottom: 100%; left: 0.75rem; right: 0.75rem; max-height: 150px; overflow-y: auto; z-index: 100; box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.2);"></div>
+    <!-- Floating Top-Right: A/T Mode Switcher & Close Button -->
+    <div class="fullscreen-viewer-floating-controls">
+      <button type="button" class="viewer-btn-float" id="btnToggleLiveViewMode" onclick="toggleLiveViewMode()" title="Görünüm Değiştir">
+        A
+      </button>
+      <button type="button" class="viewer-btn-float btn-close-toggle" onclick="closeLiveGig()" title="Sahnem Ekranını Kapat (X)">
+        &times;
+      </button>
+    </div>
+
+    <!-- Backdrop Overlay for Drawer -->
+    <div id="gigLiveBackdrop" class="live-stage-backdrop" style="display: none;" onclick="closeLiveDrawer()"></div>
+
+    <!-- Left Off-Canvas Repertoire Drawer -->
+    <div id="gigLiveDrawer" class="live-stage-drawer">
+      <!-- Drawer Header -->
+      <div class="live-stage-drawer-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.2rem;">🎙️</span>
+          <div>
+            <h3 id="gigLiveVenueTitle" style="margin: 0; font-size: 0.95rem; font-weight: 800;">-</h3>
+            <span id="gigLiveSongTotalCount" style="font-size: 0.75rem; opacity: 0.7;">Repertuvar (0 Şarkı)</span>
+          </div>
+        </div>
+        <button type="button" class="live-drawer-close-btn" onclick="closeLiveDrawer()" title="Menüyü Kapat">&times;</button>
+      </div>
+
+      <!-- Instant Request Search at the TOP of drawer -->
+      <div class="live-stage-search-box">
+        <div class="live-search-input-wrapper">
+          <input type="text" id="gigLiveRequestSearch" placeholder="🔍 İstek bul ve hemen aç..." oninput="searchLiveRequestSongs()" class="live-stage-search-input">
+          <button type="button" id="btnLiveSearchClear" class="live-search-clear-btn" style="display: none;" onclick="clearLiveRequestSearch()">&times;</button>
+        </div>
+        <div id="gigLiveRequestAutocomplete" class="live-stage-search-results" style="display: none;"></div>
+      </div>
+
+      <!-- Scrollable Playlist in Drawer -->
+      <div id="gigLivePlaylist" class="live-stage-song-list"></div>
+    </div>
+
+    <!-- Main Stage 100% Fullscreen Chord Display -->
+    <div id="gigLiveMainDisplay" class="live-stage-body">
+      <!-- Chord Image Fullscreen View -->
+      <div id="gigLiveImageView" style="display: none; flex: 1; flex-direction: column; height: 100%; width: 100%; overflow: hidden;">
+        <div style="padding: 0.85rem 1.5rem; padding-left: 110px; padding-right: 120px; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <div style="min-width: 0; flex: 1;">
+            <span id="gigLiveImgSongTitle" style="font-size: 1.2rem; font-weight: 800; color: #ffffff;">-</span>
+            <span id="gigLiveImgSongArtist" style="font-size: 0.85rem; color: #94a3b8; margin-left: 0.5rem;">-</span>
+            <span id="gigLiveImgOrigKey" class="orig-key-badge" style="margin-left: 0.5rem; display: none;">-</span>
+          </div>
+          <button type="button" id="btnToggleLivePlayedImg" onclick="toggleLiveSongPlayed()" style="padding: 0.4rem 0.85rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.1); color: #f8fafc; font-size: 0.88rem;">
+            ◯ Çalınmadı
+          </button>
+        </div>
+        <div class="fullscreen-chord-image-wrapper" id="gigLiveImgContainer"></div>
+      </div>
+
+      <!-- Transpose & Lyrics Fullscreen View -->
+      <div id="gigLiveTransposeView" class="fullscreen-transpose-wrapper" style="display: flex;">
+        <!-- Transpose Toolbar -->
+        <div class="fullscreen-transpose-toolbar" style="padding-left: 110px;">
+          <div class="toolbar-section">
+            <span id="gigLiveSongTitle" class="song-title-label">-</span>
+            <span id="gigLiveOrigKeyBadge" class="orig-key-badge" style="display: none;">-</span>
+            <button type="button" id="btnToggleLivePlayed" onclick="toggleLiveSongPlayed()" style="margin-left: auto; padding: 0.35rem 0.75rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-main); font-size: 0.85rem;">
+              ◯ Çalınmadı
+            </button>
+          </div>
+
+          <div class="toolbar-controls-row">
+            <div class="control-group">
+              <button type="button" class="btn btn-sm btn-outline" onclick="adjustLiveTranspose(-1)">-1 Semiton</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="adjustLiveTranspose(1)">+1 Semiton</button>
+              <button type="button" class="btn btn-sm btn-outline btn-danger-soft" onclick="resetLiveTranspose()">Sıfırla</button>
+              <span id="gigLiveTransposeBadge" class="transpose-badge">0 Semiton</span>
+            </div>
+
+            <div class="control-group">
+              <button type="button" class="btn btn-sm btn-outline" onclick="adjustLiveFontSize(-1)">A-</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="adjustLiveFontSize(1)">A+</button>
+              <button type="button" class="btn btn-sm btn-outline" id="btnToggleLiveTheme" onclick="toggleLiveTheme()">Açık Tema</button>
+            </div>
+
+            <div class="control-group autofit-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="gigLiveSingleScreen" onchange="toggleLiveSingleScreen(this.checked)">
+                Tek Ekran
+              </label>
+              <button type="button" id="btnLiveAutoFit" class="btn btn-sm btn-outline" style="display: none;" onclick="triggerLiveAutoFit()">Sığdır</button>
+            </div>
+          </div>
+
+          <!-- Target Keys -->
+          <div id="gigLiveTargetKeyRow" class="toolbar-target-keys" style="display: none;">
+            <span class="target-key-label">Hedef Ton:</span>
+            <div id="gigLiveTransposeKeyButtons" class="target-key-buttons"></div>
+          </div>
+        </div>
+
+        <!-- Chord Sheet Content -->
+        <div id="gigLiveChordSheetBox" class="fullscreen-chord-sheet-box">
+          <pre id="gigLiveChordContent" class="chord-sheet-pre"></pre>
         </div>
       </div>
 
-      <!-- Right Panel: Chord Display -->
-      <div id="gigLiveMainDisplay" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
-        <!-- Top Toolbar -->
-        <div id="gigLiveSongToolbar" style="padding: 0.6rem 1.5rem; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; flex-shrink: 0;">
-          <div>
-            <h3 id="gigLiveSongTitle" style="margin: 0; font-size: 1.1rem; font-weight: bold;">-</h3>
-            <span id="gigLiveSongArtist" style="font-size: 0.8rem;">-</span>
-          </div>
-          <div>
-            <button type="button" id="btnToggleLivePlayed" onclick="toggleLiveSongPlayed()" style="padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 700; cursor: pointer; border: 1px solid transparent; font-size: 0.88rem; transition: all 0.2s ease;">
-              <span id="gigLivePlayedLabel">◯ Çalınmadı</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Chord Area -->
-        <div id="gigLiveChordContent" class="chord-lyrics-display-area" style="flex: 1; overflow-y: auto; padding: 1.5rem 2rem; font-family: monospace; white-space: pre-wrap; line-height: 1.5; box-sizing: border-box;"></div>
-
-        <!-- Footer Navigation -->
-        <div id="gigLiveFooter" style="padding: 0.6rem 1.5rem; display: flex; justify-content: space-between; box-sizing: border-box; flex-shrink: 0;">
-          <button type="button" class="btn btn-outline" onclick="goToLivePrevSong()">◀ Önceki</button>
-          <span id="gigLiveSongCounter" style="font-size: 0.9rem; align-self: center; font-weight: bold;">- / -</span>
-          <button type="button" class="btn btn-outline" onclick="goToLiveNextSong()">Sonraki ▶</button>
-        </div>
+      <!-- Bottom Footer Navigation -->
+      <div id="gigLiveFooter" class="live-stage-footer-nav">
+        <button type="button" class="btn btn-outline" onclick="goToLivePrevSong()">◀ Önceki</button>
+        <span id="gigLiveSongCounter" style="font-size: 0.92rem; font-weight: 800; opacity: 0.85;">- / -</span>
+        <button type="button" class="btn btn-outline" onclick="goToLiveNextSong()">Sonraki ▶</button>
       </div>
     </div>
   </div>

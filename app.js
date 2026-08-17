@@ -4824,125 +4824,249 @@ async function deleteGig(gigId) {
   }
 }
 
+let liveGigObj = null;
+let liveGigSongIndex = -1;
+let liveGigViewMode = 'chords'; // 'chords' vs 'image'
+let liveGigTransposeShift = 0;
+let liveGigFontSize = 16;
+let liveGigTheme = 'dark';
+let liveGigSingleScreen = false;
+let liveGigDrawerOpen = false;
+
 function startLiveGig(gigId) {
   const gig = DB.gigs.find(g => g.id === gigId);
   if (!gig) return;
 
   liveGigObj = gig;
   liveGigSongIndex = gig.songs && gig.songs.length > 0 ? 0 : -1;
-  liveGigFontSize = 1.1;
+  liveGigTransposeShift = 0;
+  liveGigFontSize = 16;
   liveGigTheme = 'dark';
+  liveGigSingleScreen = false;
+  liveGigDrawerOpen = false;
 
-  document.getElementById('gigLiveTitle').innerText = `🎙️ Sahnem: ${gig.venueName}`;
-  document.getElementById('gigLiveDate').innerText = new Date(gig.gigDate).toLocaleDateString('tr-TR');
-  
+  // Determine initial view mode from the first song
+  if (liveGigSongIndex !== -1 && gig.songs && gig.songs[0]) {
+    const firstSong = DB.songs.find(s => s.id === gig.songs[0].songId);
+    const hasLyrics = Boolean(firstSong && firstSong.lyrics && firstSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
+    if (firstSong && !hasLyrics && firstSong.chordImagePath) {
+      liveGigViewMode = 'image';
+    } else {
+      liveGigViewMode = 'chords';
+    }
+  } else {
+    liveGigViewMode = 'chords';
+  }
+
   const modal = document.getElementById('gigLiveModal');
-  modal.className = 'chord-fullscreen-overlay';
-  modal.style.background = '#0f172a';
-  modal.style.color = '#f1f5f9';
-  document.getElementById('gigLiveThemeLabel').innerText = 'Koyu';
+  modal.className = `live-stage-overlay theme-${liveGigTheme}`;
+  modal.style.display = 'flex';
 
-  document.getElementById('gigLiveRequestSearch').value = '';
-  document.getElementById('gigLiveRequestAutocomplete').style.display = 'none';
+  const venueTitle = document.getElementById('gigLiveVenueTitle');
+  if (venueTitle) venueTitle.innerText = gig.venueName;
+  
+  const searchInput = document.getElementById('gigLiveRequestSearch');
+  if (searchInput) searchInput.value = '';
+  const searchAutocomplete = document.getElementById('gigLiveRequestAutocomplete');
+  if (searchAutocomplete) searchAutocomplete.style.display = 'none';
+  const clearBtn = document.getElementById('btnLiveSearchClear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  
+  closeLiveDrawer();
 
+  // Attach touch swipe handlers to main stage body
+  const stageBody = document.getElementById('gigLiveMainDisplay');
   let touchStartXCoord = null;
+  let touchStartYCoord = null;
   let touchEndXCoord = null;
+  let touchEndYCoord = null;
 
-  modal.ontouchstart = (e) => {
+  stageBody.ontouchstart = (e) => {
     touchStartXCoord = e.targetTouches[0].clientX;
+    touchStartYCoord = e.targetTouches[0].clientY;
+    touchEndXCoord = null;
+    touchEndYCoord = null;
   };
-  modal.ontouchmove = (e) => {
+  stageBody.ontouchmove = (e) => {
     touchEndXCoord = e.targetTouches[0].clientX;
+    touchEndYCoord = e.targetTouches[0].clientY;
   };
-  modal.ontouchend = () => {
-    if (!touchStartXCoord || !touchEndXCoord) return;
-    const diff = touchStartXCoord - touchEndXCoord;
-    if (diff > 60) {
-      goToLiveNextSong();
-    } else if (diff < -60) {
-      goToLivePrevSong();
+  stageBody.ontouchend = () => {
+    if (touchStartXCoord === null || touchEndXCoord === null) return;
+    const diffX = touchStartXCoord - touchEndXCoord;
+    const diffY = (touchStartYCoord !== null && touchEndYCoord !== null)
+      ? touchStartYCoord - touchEndYCoord
+      : 0;
+
+    const minSwipe = 45;
+    if (Math.abs(diffX) > minSwipe && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+      if (diffX > 0) {
+        goToLiveNextSong();
+      } else {
+        goToLivePrevSong();
+      }
     }
     touchStartXCoord = null;
+    touchStartYCoord = null;
     touchEndXCoord = null;
+    touchEndYCoord = null;
   };
 
   renderLiveGigPlaylist();
   renderLiveGigSong();
-
-  modal.style.display = 'flex';
 }
 
 function closeLiveGig() {
   document.getElementById('gigLiveModal').style.display = 'none';
+  closeLiveDrawer();
+  liveGigObj = null;
+  liveGigSongIndex = -1;
   DB.loadFromFirestore(true).then(() => {
     renderAllTables();
   });
 }
 
-let liveGigViewMode = 'chords';
+function toggleLiveDrawer() {
+  if (liveGigDrawerOpen) {
+    closeLiveDrawer();
+  } else {
+    openLiveDrawer();
+  }
+}
+
+function openLiveDrawer() {
+  liveGigDrawerOpen = true;
+  const drawer = document.getElementById('gigLiveDrawer');
+  if (drawer) drawer.classList.add('open');
+  const backdrop = document.getElementById('gigLiveBackdrop');
+  if (backdrop) backdrop.style.display = 'block';
+}
+
+function closeLiveDrawer() {
+  liveGigDrawerOpen = false;
+  const drawer = document.getElementById('gigLiveDrawer');
+  if (drawer) drawer.classList.remove('open');
+  const backdrop = document.getElementById('gigLiveBackdrop');
+  if (backdrop) backdrop.style.display = 'none';
+}
 
 function toggleLiveViewMode() {
-  liveGigViewMode = liveGigViewMode === 'chords' ? 'image' : 'chords';
-  const btn = document.getElementById('btnToggleLiveViewMode');
-  if (btn) {
-    btn.innerText = liveGigViewMode === 'chords' ? '📄 Akor Metni' : '🖼️ Akor Görseli';
+  if (liveGigSongIndex === -1 || !liveGigObj || !liveGigObj.songs || !liveGigObj.songs[liveGigSongIndex]) return;
+  const gigSong = liveGigObj.songs[liveGigSongIndex];
+  const fullSong = DB.songs.find(s => s.id === gigSong.songId);
+  const hasChordImg = Boolean(fullSong && fullSong.chordImagePath);
+  const hasLyrics = Boolean(fullSong && fullSong.lyrics && fullSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
+
+  if (liveGigViewMode === 'image') {
+    if (hasLyrics) {
+      liveGigViewMode = 'chords';
+    } else {
+      alert("Bu şarkının transpoze bilgisi yoktur");
+      return;
+    }
+  } else {
+    if (hasChordImg) {
+      liveGigViewMode = 'image';
+    } else {
+      alert("Bu şarkının akor görseli yoktur");
+      return;
+    }
   }
   renderLiveGigSong();
 }
 
 function renderLiveGigPlaylist() {
   const container = document.getElementById('gigLivePlaylist');
-  if (!container) return;
+  const totalCountEl = document.getElementById('gigLiveSongTotalCount');
+  const counterBadge = document.getElementById('gigLiveCounterBadge');
+
+  if (!container || !liveGigObj) return;
   container.innerHTML = '';
 
-  liveGigObj.songs.sort((a, b) => a.sortOrder - b.sortOrder);
+  const totalSongs = liveGigObj.songs ? liveGigObj.songs.length : 0;
+  if (totalCountEl) totalCountEl.innerText = `Repertuvar (${totalSongs} Şarkı)`;
+  if (counterBadge) counterBadge.innerText = liveGigSongIndex !== -1 ? `${liveGigSongIndex + 1}/${totalSongs}` : `0/${totalSongs}`;
+
+  if (!liveGigObj.songs || liveGigObj.songs.length === 0) {
+    container.innerHTML = '<div style="padding: 2rem 1rem; text-align: center; opacity: 0.6; font-size: 0.85rem;">Henüz şarkı eklenmemiş. Yukarıdaki arama kutusundan arayıp ekleyebilirsiniz.</div>';
+    return;
+  }
+
+  liveGigObj.songs.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
   liveGigObj.songs.forEach((song, idx) => {
-    const div = document.createElement('div');
-    div.style.cssText = `padding: 0.6rem 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.82rem;`;
-    if (idx === liveGigSongIndex) {
-      div.style.background = 'rgba(255,255,255,0.1)';
-    }
+    const item = document.createElement('div');
+    item.className = `live-stage-song-item ${idx === liveGigSongIndex ? 'active' : ''}`;
 
-    const titleSpan = document.createElement('span');
-    titleSpan.style.cssText = 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap;';
-    if (song.isPlayed) {
-      titleSpan.style.textDecoration = 'line-through';
-      titleSpan.style.color = '#059669';
-    }
-    titleSpan.innerText = `${song.sortOrder}. ${song.title}`;
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'live-song-item-info';
 
-    const leftGroup = document.createElement('div');
-    leftGroup.style.cssText = 'display: flex; align-items: center; gap: 0.4rem; min-width: 0; flex: 1;';
-    leftGroup.appendChild(titleSpan);
+    const numSpan = document.createElement('span');
+    numSpan.className = 'live-song-num';
+    numSpan.innerText = `${idx + 1}.`;
+    infoDiv.appendChild(numSpan);
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'live-song-text';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = `live-song-title ${song.isPlayed ? 'played' : ''}`;
+    titleDiv.innerText = song.title;
+    textDiv.appendChild(titleDiv);
+
+    if (song.artistNames && song.artistNames !== '-') {
+      const artistDiv = document.createElement('div');
+      artistDiv.className = 'live-song-artist';
+      artistDiv.innerText = song.artistNames;
+      textDiv.appendChild(artistDiv);
+    }
+    infoDiv.appendChild(textDiv);
 
     if (song.isRequest) {
-      const badge = document.createElement('span');
-      badge.style.cssText = 'font-size: 0.7rem; padding: 1px 4px; background: #38bdf8; color: white; border-radius: 3px; font-weight: bold; flex-shrink: 0;';
-      badge.innerText = 'İst.';
-      leftGroup.appendChild(badge);
+      const reqSpan = document.createElement('span');
+      reqSpan.className = 'live-request-tag';
+      reqSpan.innerText = 'İstek';
+      infoDiv.appendChild(reqSpan);
     }
 
-    div.appendChild(leftGroup);
+    item.appendChild(infoDiv);
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.style.cssText = 'background: none; border: none; color: #ef4444; cursor: pointer; font-weight: bold; font-size: 0.9rem; padding: 0 4px; margin-left: 4px;';
-    deleteBtn.innerHTML = '&times;';
-    deleteBtn.title = 'Şarkıyı Canlı Listeden Sil';
-    deleteBtn.onclick = (e) => {
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'live-song-item-actions';
+
+    const playedBtn = document.createElement('button');
+    playedBtn.type = 'button';
+    playedBtn.className = `live-played-indicator-btn ${song.isPlayed ? 'is-played' : ''}`;
+    playedBtn.innerText = song.isPlayed ? '✓' : '◯';
+    playedBtn.title = song.isPlayed ? 'Çalınmadı yap' : 'Çalındı yap';
+    playedBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleLiveSongPlayedIdx(idx);
+    };
+    actionsDiv.appendChild(playedBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'live-song-del-btn';
+    delBtn.innerHTML = '&times;';
+    delBtn.title = 'Şarkıyı Listeden Çıkar';
+    delBtn.onclick = (e) => {
       e.stopPropagation();
       removeLiveGigSong(idx);
     };
-    div.appendChild(deleteBtn);
+    actionsDiv.appendChild(delBtn);
 
-    div.onclick = () => {
+    item.appendChild(actionsDiv);
+
+    item.onclick = () => {
       liveGigSongIndex = idx;
+      liveGigTransposeShift = 0;
+      closeLiveDrawer();
       renderLiveGigPlaylist();
       renderLiveGigSong();
     };
 
-    container.appendChild(div);
+    container.appendChild(item);
   });
 }
 
@@ -4957,6 +5081,7 @@ async function removeLiveGigSong(idx) {
   if (liveGigSongIndex >= liveGigObj.songs.length) {
     liveGigSongIndex = liveGigObj.songs.length - 1;
   }
+  liveGigTransposeShift = 0;
 
   const payload = {
     VenueID: liveGigObj.venueId,
@@ -4967,11 +5092,11 @@ async function removeLiveGigSong(idx) {
     Songs: liveGigObj.songs.map(s => ({
       SongID: s.songId,
       SortOrder: s.sortOrder,
-      IsPlayed: s.isPlayed,
-      IsRequest: s.isRequest
+      IsPlayed: s.isPlayed ? 1 : 0,
+      IsRequest: s.isRequest ? 1 : 0
     })),
     Guests: (liveGigObj.guests || []).map(g => ({
-      GuestID: g.guestId,
+      GuestID: (g.guestId && Number(g.guestId) > 0) ? Number(g.guestId) : null,
       IsAnonymous: g.isAnonymous ? 1 : 0,
       TableName: g.tableName,
       Description: g.description,
@@ -4988,107 +5113,11 @@ async function removeLiveGigSong(idx) {
   }
 }
 
-function renderLiveGigSong() {
-  const title = document.getElementById('gigLiveSongTitle');
-  const artist = document.getElementById('gigLiveSongArtist');
-  const counter = document.getElementById('gigLiveSongCounter');
-  const playedBtn = document.getElementById('btnToggleLivePlayed');
-  const playedLabel = document.getElementById('gigLivePlayedLabel');
-  const chordContent = document.getElementById('gigLiveChordContent');
-
-  if (liveGigSongIndex === -1 || !liveGigObj.songs || liveGigObj.songs.length === 0) {
-    title.innerText = '-';
-    artist.innerText = '-';
-    counter.innerText = '- / -';
-    if (playedBtn && playedLabel) {
-      playedBtn.style.background = 'rgba(255, 255, 255, 0.08)';
-      playedBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-      playedBtn.style.color = 'inherit';
-      playedLabel.innerText = '◯ Çalınmadı';
-    }
-    chordContent.innerHTML = '<div style="text-align: center; margin-top: 3rem; color: var(--text-muted);">Lütfen bir şarkı seçin.</div>';
-    return;
-  }
-
-  const gigSong = liveGigObj.songs[liveGigSongIndex];
-  title.innerText = gigSong.title;
-  artist.innerText = gigSong.artistNames || '-';
-  counter.innerText = `${liveGigSongIndex + 1} / ${liveGigObj.songs.length}`;
-
-  if (playedBtn && playedLabel) {
-    if (gigSong.isPlayed) {
-      playedBtn.style.background = 'rgba(16, 185, 129, 0.25)';
-      playedBtn.style.borderColor = '#10b981';
-      playedBtn.style.color = '#34d399';
-      playedLabel.innerText = '✓ Çalındı (Değiştir ↺)';
-    } else {
-      playedBtn.style.background = 'rgba(255, 255, 255, 0.08)';
-      playedBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-      playedBtn.style.color = liveGigTheme === 'dark' ? '#cbd5e1' : '#475569';
-      playedLabel.innerText = '◯ Çalınmadı (Çalındı Yap)';
-    }
-  }
-
-  const fullSong = DB.songs.find(s => s.id === gigSong.songId);
-  chordContent.style.fontSize = `${liveGigFontSize}rem`;
-  chordContent.style.fontFamily = 'monospace';
-
-  if (!fullSong) {
-    chordContent.innerText = 'Bu şarkının bilgisi bulunmamaktadır.';
-    return;
-  }
-
-  if (liveGigViewMode === 'image') {
-    if (fullSong.chordImagePath) {
-      chordContent.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted); padding: 1rem;">
-          <span style="font-weight: 600; color: #38bdf8;">🖼️ Akor Görseli:</span>
-          <img src="${fullSong.chordImagePath}" style="max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);">
-        </div>
-      `;
-    } else {
-      chordContent.innerHTML = `
-        <div style="text-align: center; margin-top: 3rem; color: #f59e0b; font-weight: 600;">
-          ⚠️ Bu şarkı için henüz akor görseli yüklenmemiş.<br>
-          <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); margin-top: 0.5rem; display: inline-block;">Akor Metni moduna geçebilirsiniz.</span>
-        </div>
-      `;
-    }
-  } else {
-    // Default 'chords' mode
-    if (fullSong.lyrics) {
-      const cleanLyrics = fullSong.lyrics.replace(/<[^>]*>/g, '').trim();
-      if (cleanLyrics && cleanLyrics.length > 5) {
-        chordContent.innerHTML = fullSong.lyrics;
-      } else if (fullSong.chordImagePath) {
-        chordContent.innerHTML = `
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted);">
-            <span>Bu şarkının akor görseli mevcuttur:</span>
-            <img src="${fullSong.chordImagePath}" style="max-width: 100%; max-height: 60vh; object-fit: contain;">
-          </div>
-        `;
-      } else {
-        chordContent.innerText = 'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.';
-      }
-    } else if (fullSong.chordImagePath) {
-      chordContent.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted);">
-          <span>Bu şarkının akor görseli mevcuttur:</span>
-          <img src="${fullSong.chordImagePath}" style="max-width: 100%; max-height: 60vh; object-fit: contain;">
-        </div>
-      `;
-    } else {
-      chordContent.innerText = 'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.';
-    }
-  }
-}
-
-async function toggleLiveSongPlayed() {
-  if (liveGigSongIndex === -1 || !liveGigObj.songs || !liveGigObj.songs[liveGigSongIndex]) return;
-  const targetSong = liveGigObj.songs[liveGigSongIndex];
-  
+async function toggleLiveSongPlayedIdx(songIndex) {
+  if (!liveGigObj || !liveGigObj.songs || !liveGigObj.songs[songIndex]) return;
+  const targetSong = liveGigObj.songs[songIndex];
   targetSong.isPlayed = targetSong.isPlayed ? 0 : 1;
-  
+
   const payload = {
     VenueID: liveGigObj.venueId,
     GigDate: liveGigObj.gigDate,
@@ -5119,9 +5148,299 @@ async function toggleLiveSongPlayed() {
   }
 }
 
+async function toggleLiveSongPlayed() {
+  if (liveGigSongIndex === -1) return;
+  await toggleLiveSongPlayedIdx(liveGigSongIndex);
+}
+
+function renderLiveGigSong() {
+  const counterBadge = document.getElementById('gigLiveCounterBadge');
+  const toggleViewBtn = document.getElementById('btnToggleLiveViewMode');
+  const imageView = document.getElementById('gigLiveImageView');
+  const transposeView = document.getElementById('gigLiveTransposeView');
+  const footerCounter = document.getElementById('gigLiveSongCounter');
+
+  if (liveGigSongIndex === -1 || !liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) {
+    if (counterBadge) counterBadge.innerText = '0/0';
+    if (footerCounter) footerCounter.innerText = '- / -';
+    if (imageView) imageView.style.display = 'none';
+    if (transposeView) {
+      transposeView.style.display = 'flex';
+      document.getElementById('gigLiveSongTitle').innerText = 'Şarkı seçilmedi';
+      document.getElementById('gigLiveOrigKeyBadge').style.display = 'none';
+      document.getElementById('gigLiveChordContent').innerHTML = '<div style="text-align: center; margin-top: 3rem; color: var(--text-muted);">Sahne listenizde henüz şarkı bulunmuyor veya şarkı seçilmedi.</div>';
+    }
+    return;
+  }
+
+  const gigSong = liveGigObj.songs[liveGigSongIndex];
+  const fullSong = DB.songs.find(s => s.id === gigSong.songId);
+  const totalSongs = liveGigObj.songs.length;
+
+  if (counterBadge) counterBadge.innerText = `${liveGigSongIndex + 1}/${totalSongs}`;
+  if (footerCounter) footerCounter.innerText = `${liveGigSongIndex + 1} / ${totalSongs}`;
+
+  const hasChordImg = Boolean(fullSong && fullSong.chordImagePath);
+  const hasLyrics = Boolean(fullSong && fullSong.lyrics && fullSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
+
+  // Update Floating A / T Switcher Button
+  if (toggleViewBtn) {
+    if (liveGigViewMode === 'image') {
+      toggleViewBtn.innerText = 'T';
+      toggleViewBtn.title = 'Transpoze / Akor Metnine Geç (T)';
+      toggleViewBtn.className = `viewer-btn-float ${hasLyrics ? 'btn-status-success' : 'btn-status-danger'}`;
+    } else {
+      toggleViewBtn.innerText = 'A';
+      toggleViewBtn.title = 'Akor Görseline Geç (A)';
+      toggleViewBtn.className = `viewer-btn-float ${hasChordImg ? 'btn-status-success' : 'btn-status-danger'}`;
+    }
+  }
+
+  const artistNames = gigSong.artistNames || (fullSong ? DB.song_artists.filter(sa => sa.songId === fullSong.id).map(sa => (DB.artists.find(a => a.id === sa.artistId) || {}).name).filter(Boolean).join(', ') : '-');
+  const origKey = fullSong ? fullSong.originalKey : '';
+
+  if (liveGigViewMode === 'image') {
+    if (imageView) imageView.style.display = 'flex';
+    if (transposeView) transposeView.style.display = 'none';
+
+    document.getElementById('gigLiveImgSongTitle').innerText = gigSong.title;
+    document.getElementById('gigLiveImgSongArtist').innerText = artistNames ? `- ${artistNames}` : '';
+    const imgKeyBadge = document.getElementById('gigLiveImgOrigKey');
+    if (imgKeyBadge) {
+      if (origKey) {
+        imgKeyBadge.innerText = `(${origKey} Tonu)`;
+        imgKeyBadge.style.display = 'inline-block';
+      } else {
+        imgKeyBadge.style.display = 'none';
+      }
+    }
+
+    const playedBtnImg = document.getElementById('btnToggleLivePlayedImg');
+    if (playedBtnImg) {
+      if (gigSong.isPlayed) {
+        playedBtnImg.innerText = '✓ Çalındı';
+        playedBtnImg.style.background = 'rgba(16, 185, 129, 0.3)';
+        playedBtnImg.style.borderColor = '#10b981';
+        playedBtnImg.style.color = '#34d399';
+      } else {
+        playedBtnImg.innerText = '◯ Çalınmadı';
+        playedBtnImg.style.background = 'rgba(255, 255, 255, 0.1)';
+        playedBtnImg.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+        playedBtnImg.style.color = '#f8fafc';
+      }
+    }
+
+    const imgContainer = document.getElementById('gigLiveImgContainer');
+    if (imgContainer) {
+      if (fullSong && fullSong.chordImagePath) {
+        imgContainer.innerHTML = `<img src="${fullSong.chordImagePath}" alt="Akor Görseli" class="fullscreen-chord-image">`;
+      } else {
+        imgContainer.innerHTML = `
+          <div style="text-align: center; color: #f59e0b; font-weight: 600;">
+            ⚠️ Bu şarkı için akor görseli bulunmuyor.<br>
+            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); margin-top: 0.5rem; display: inline-block;">
+              Sağ üstteki "T" butonuna basarak transpoze metnine geçebilirsiniz.
+            </span>
+          </div>
+        `;
+      }
+    }
+  } else {
+    // Transpose View
+    if (imageView) imageView.style.display = 'none';
+    if (transposeView) transposeView.style.display = 'flex';
+
+    document.getElementById('gigLiveSongTitle').innerText = `${gigSong.title}${artistNames ? ` - ${artistNames}` : ''}`;
+    const origKeyBadge = document.getElementById('gigLiveOrigKeyBadge');
+    if (origKeyBadge) {
+      if (origKey) {
+        origKeyBadge.innerText = `(${origKey} Tonu)`;
+        origKeyBadge.style.display = 'inline-block';
+      } else {
+        origKeyBadge.style.display = 'none';
+      }
+    }
+
+    const playedBtn = document.getElementById('btnToggleLivePlayed');
+    if (playedBtn) {
+      if (gigSong.isPlayed) {
+        playedBtn.innerText = '✓ Çalındı';
+        playedBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+        playedBtn.style.borderColor = '#10b981';
+        playedBtn.style.color = '#10b981';
+      } else {
+        playedBtn.innerText = '◯ Çalınmadı';
+        playedBtn.style.background = 'var(--surface)';
+        playedBtn.style.borderColor = 'var(--border-strong)';
+        playedBtn.style.color = 'var(--text-main)';
+      }
+    }
+
+    document.getElementById('gigLiveTransposeBadge').innerText = `${liveGigTransposeShift > 0 ? `+${liveGigTransposeShift}` : liveGigTransposeShift} Semiton`;
+
+    // Target Scale Calculation
+    let targetScale = sharpScale;
+    let origRoot = '';
+    let suffix = '';
+    let origSemitone = null;
+
+    if (origKey) {
+      const match = origKey.match(/^([A-G][#b]?)(.*)$/i);
+      if (match) {
+        origRoot = match[1];
+        suffix = match[2];
+        const origRootUpper = origRoot.charAt(0).toUpperCase() + origRoot.slice(1).toLowerCase();
+        origSemitone = noteToSemitone[origRootUpper];
+
+        if (origSemitone !== null && origSemitone !== undefined) {
+          let targetSemitone = (origSemitone + liveGigTransposeShift) % 12;
+          if (targetSemitone < 0) targetSemitone += 12;
+          const targetRoot = sharpScale[targetSemitone];
+          targetScale = getScaleForTargetKey(targetRoot);
+        }
+      }
+    }
+
+    const htmlContent = renderTransposedTextAsHTML(fullSong ? fullSong.lyrics : '', liveGigTransposeShift, targetScale);
+    const pre = document.getElementById('gigLiveChordContent');
+    if (pre) {
+      pre.className = liveGigSingleScreen ? 'chord-sheet-pre-single' : 'chord-sheet-pre';
+      pre.style.fontSize = liveGigSingleScreen ? '' : `${liveGigFontSize}px`;
+      pre.innerHTML = htmlContent;
+    }
+
+    const box = document.getElementById('gigLiveChordSheetBox');
+    if (box) {
+      if (liveGigSingleScreen) {
+        box.classList.add('single-screen');
+      } else {
+        box.classList.remove('single-screen');
+      }
+    }
+
+    drawLiveTransposeKeyButtons(origKey, origSemitone, suffix);
+
+    if (liveGigSingleScreen) {
+      setTimeout(triggerLiveAutoFit, 50);
+    }
+  }
+}
+
+function drawLiveTransposeKeyButtons(origKey, origSemitone, suffix) {
+  const row = document.getElementById('gigLiveTargetKeyRow');
+  const container = document.getElementById('gigLiveTransposeKeyButtons');
+  if (!row || !container) return;
+
+  if (!origKey || origSemitone === null || origSemitone === undefined) {
+    row.style.display = 'none';
+    return;
+  }
+
+  row.style.display = 'flex';
+  container.innerHTML = '';
+
+  const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  standardScale.forEach(targetRoot => {
+    const targetSemitone = noteToSemitone[targetRoot];
+    let diff = targetSemitone - origSemitone;
+    if (diff < 0) diff += 12;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'target-key-btn';
+    const displayName = targetRoot + suffix;
+    btn.innerText = displayName;
+
+    let normalizedShift = liveGigTransposeShift % 12;
+    if (normalizedShift < 0) normalizedShift += 12;
+    if (diff === normalizedShift) {
+      btn.classList.add('active');
+    }
+
+    btn.onclick = () => {
+      liveGigTransposeShift = diff;
+      renderLiveGigSong();
+    };
+
+    container.appendChild(btn);
+  });
+}
+
+function adjustLiveTranspose(delta) {
+  liveGigTransposeShift += delta;
+  renderLiveGigSong();
+}
+
+function resetLiveTranspose() {
+  liveGigTransposeShift = 0;
+  renderLiveGigSong();
+}
+
+function adjustLiveFontSize(delta) {
+  liveGigFontSize = Math.max(10, Math.min(36, liveGigFontSize + delta));
+  const pre = document.getElementById('gigLiveChordContent');
+  if (pre && !liveGigSingleScreen) {
+    pre.style.fontSize = `${liveGigFontSize}px`;
+  }
+}
+
+function toggleLiveTheme() {
+  const modal = document.getElementById('gigLiveModal');
+  const themeBtn = document.getElementById('btnToggleLiveTheme');
+  if (liveGigTheme === 'dark') {
+    liveGigTheme = 'light';
+    if (modal) {
+      modal.classList.remove('theme-dark');
+      modal.classList.add('theme-light');
+    }
+    if (themeBtn) themeBtn.innerText = 'Koyu Tema';
+  } else {
+    liveGigTheme = 'dark';
+    if (modal) {
+      modal.classList.remove('theme-light');
+      modal.classList.add('theme-dark');
+    }
+    if (themeBtn) themeBtn.innerText = 'Açık Tema';
+  }
+}
+
+function toggleLiveSingleScreen(checked) {
+  liveGigSingleScreen = checked;
+  const fitBtn = document.getElementById('btnLiveAutoFit');
+  if (fitBtn) fitBtn.style.display = checked ? 'inline-block' : 'none';
+  renderLiveGigSong();
+}
+
+function triggerLiveAutoFit() {
+  const pre = document.getElementById('gigLiveChordContent');
+  if (!pre) return;
+  let fontSize = 24;
+  pre.style.fontSize = fontSize + 'px';
+  const maxIterations = 50;
+  let iterations = 0;
+  while ((pre.scrollWidth > pre.clientWidth || pre.scrollHeight > pre.clientHeight) && fontSize > 8 && iterations < maxIterations) {
+    fontSize--;
+    pre.style.fontSize = fontSize + 'px';
+    iterations++;
+  }
+}
+
 function goToLiveNextSong() {
   if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
   liveGigSongIndex = (liveGigSongIndex + 1) % liveGigObj.songs.length;
+  liveGigTransposeShift = 0;
+
+  const nextGigSong = liveGigObj.songs[liveGigSongIndex];
+  const nextFullSong = DB.songs.find(s => s.id === nextGigSong.songId);
+  if (nextFullSong) {
+    const hasLyrics = Boolean(nextFullSong.lyrics && nextFullSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
+    if (liveGigViewMode === 'chords' && !hasLyrics && nextFullSong.chordImagePath) {
+      liveGigViewMode = 'image';
+    } else if (liveGigViewMode === 'image' && !nextFullSong.chordImagePath && hasLyrics) {
+      liveGigViewMode = 'chords';
+    }
+  }
+
   renderLiveGigPlaylist();
   renderLiveGigSong();
 }
@@ -5129,39 +5448,33 @@ function goToLiveNextSong() {
 function goToLivePrevSong() {
   if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
   liveGigSongIndex = (liveGigSongIndex - 1 + liveGigObj.songs.length) % liveGigObj.songs.length;
+  liveGigTransposeShift = 0;
+
+  const prevGigSong = liveGigObj.songs[liveGigSongIndex];
+  const prevFullSong = DB.songs.find(s => s.id === prevGigSong.songId);
+  if (prevFullSong) {
+    const hasLyrics = Boolean(prevFullSong.lyrics && prevFullSong.lyrics.replace(/<[^>]*>/g, '').trim().length > 0);
+    if (liveGigViewMode === 'chords' && !hasLyrics && prevFullSong.chordImagePath) {
+      liveGigViewMode = 'image';
+    } else if (liveGigViewMode === 'image' && !prevFullSong.chordImagePath && hasLyrics) {
+      liveGigViewMode = 'chords';
+    }
+  }
+
   renderLiveGigPlaylist();
   renderLiveGigSong();
-}
-
-function adjustLiveFontSize(dir) {
-  liveGigFontSize = Math.max(0.6, Math.min(2.5, liveGigFontSize + (dir * 0.1)));
-  renderLiveGigSong();
-}
-
-function toggleLiveTheme() {
-  const modal = document.getElementById('gigLiveModal');
-  const label = document.getElementById('gigLiveThemeLabel');
-  
-  if (liveGigTheme === 'dark') {
-    liveGigTheme = 'light';
-    modal.style.background = '#ffffff';
-    modal.style.color = '#1e293b';
-    label.innerText = 'Aydınlık';
-  } else {
-    liveGigTheme = 'dark';
-    modal.style.background = '#0f172a';
-    modal.style.color = '#f1f5f9';
-    label.innerText = 'Koyu';
-  }
 }
 
 function searchLiveRequestSongs() {
   const input = document.getElementById('gigLiveRequestSearch');
   const autocomplete = document.getElementById('gigLiveRequestAutocomplete');
+  const clearBtn = document.getElementById('btnLiveSearchClear');
   const query = input.value.trim().toLocaleLowerCase('tr-TR');
 
+  if (clearBtn) clearBtn.style.display = query ? 'flex' : 'none';
+
   if (!query) {
-    autocomplete.style.display = 'none';
+    if (autocomplete) autocomplete.style.display = 'none';
     return;
   }
 
@@ -5173,18 +5486,27 @@ function searchLiveRequestSongs() {
   });
 
   if (matches.length === 0) {
-    autocomplete.style.display = 'none';
+    if (autocomplete) autocomplete.style.display = 'none';
     return;
   }
 
   autocomplete.innerHTML = matches.slice(0, 10).map(s => `
-    <div style="padding: 0.4rem 0.6rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.78rem;" 
-         onclick="selectLiveRequestSong(${s.id}, '${s.title.replace(/'/g, "\\'")}', '${s.artistNames.replace(/'/g, "\\'")}')" 
-         class="autocomplete-item-hover">
-      ${s.title} (${s.artistNames})
+    <div onclick="selectLiveRequestSong(${s.id}, '${s.title.replace(/'/g, "\\'")}', '${(s.artistNames || '').replace(/'/g, "\\'")}')" 
+         class="live-stage-search-item">
+      <div style="font-weight: 700; font-size: 0.85rem;">${s.title}</div>
+      <div style="font-size: 0.75rem; opacity: 0.75;">${s.artistNames || '-'}</div>
     </div>
   `).join('');
   autocomplete.style.display = 'block';
+}
+
+function clearLiveRequestSearch() {
+  const input = document.getElementById('gigLiveRequestSearch');
+  if (input) input.value = '';
+  const autocomplete = document.getElementById('gigLiveRequestAutocomplete');
+  if (autocomplete) autocomplete.style.display = 'none';
+  const clearBtn = document.getElementById('btnLiveSearchClear');
+  if (clearBtn) clearBtn.style.display = 'none';
 }
 
 async function selectLiveRequestSong(songId, title, artistNames) {
@@ -5192,6 +5514,8 @@ async function selectLiveRequestSong(songId, title, artistNames) {
   
   if (existingIdx !== -1) {
     liveGigSongIndex = existingIdx;
+    liveGigTransposeShift = 0;
+    closeLiveDrawer();
     renderLiveGigPlaylist();
     renderLiveGigSong();
   } else {
@@ -5214,8 +5538,8 @@ async function selectLiveRequestSong(songId, title, artistNames) {
       Songs: newSongsList.map(s => ({
         SongID: s.songId,
         SortOrder: s.sortOrder,
-        IsPlayed: s.isPlayed,
-        IsRequest: s.isRequest
+        IsPlayed: s.isPlayed ? 1 : 0,
+        IsRequest: s.isRequest ? 1 : 0
       })),
       Guests: (liveGigObj.guests || []).map(g => ({
         GuestID: (g.guestId && Number(g.guestId) > 0) ? Number(g.guestId) : null,
@@ -5230,6 +5554,8 @@ async function selectLiveRequestSong(songId, title, artistNames) {
       await apiRequest(`/gigs/${liveGigObj.id}`, 'PUT', payload);
       liveGigObj.songs = newSongsList;
       liveGigSongIndex = newSongsList.length - 1;
+      liveGigTransposeShift = 0;
+      closeLiveDrawer();
       renderLiveGigPlaylist();
       renderLiveGigSong();
     } catch (err) {
@@ -5237,9 +5563,28 @@ async function selectLiveRequestSong(songId, title, artistNames) {
     }
   }
 
-  document.getElementById('gigLiveRequestSearch').value = '';
-  document.getElementById('gigLiveRequestAutocomplete').style.display = 'none';
+  clearLiveRequestSearch();
 }
+
+// Global keydown listener for Sahnem mode
+window.addEventListener('keydown', (e) => {
+  const modal = document.getElementById('gigLiveModal');
+  if (!modal || modal.style.display === 'none') return;
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+    e.preventDefault();
+    goToLiveNextSong();
+  } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+    e.preventDefault();
+    goToLivePrevSong();
+  } else if (e.key === 'Escape') {
+    if (liveGigDrawerOpen) {
+      closeLiveDrawer();
+    } else {
+      closeLiveGig();
+    }
+  }
+});
 
 // ==========================================
 // SYSTEM PARAMETERS (STATUSES, VENUES, CITIES)

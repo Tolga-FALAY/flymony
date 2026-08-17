@@ -2,7 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
-import { hasLyricsContent } from '../utils/chordUtils';
+import { 
+  noteToSemitone, 
+  sharpScale, 
+  flatScale, 
+  getScaleForTargetKey, 
+  renderTransposedTextAsHTML, 
+  hasLyricsContent, 
+  getUploadsUrl 
+} from '../utils/chordUtils';
 
 export default function Gigs() {
   const [gigs, setGigs] = useState([]);
@@ -47,15 +55,22 @@ export default function Gigs() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [liveGig, setLiveGig] = useState(null);
   const [liveSongIndex, setLiveSongIndex] = useState(-1);
-  const [liveFontSize, setLiveFontSize] = useState(1.1);
+  const [isLiveDrawerOpen, setIsLiveDrawerOpen] = useState(false);
+  const [liveFontSize, setLiveFontSize] = useState(16);
   const [liveTheme, setLiveTheme] = useState('dark');
   const [liveViewMode, setLiveViewMode] = useState('chords'); // 'chords' vs 'image'
+  const [liveTransposeShift, setLiveTransposeShift] = useState(0);
+  const [liveIsSingleScreen, setLiveIsSingleScreen] = useState(false);
   const [liveSearchQuery, setLiveSearchQuery] = useState('');
   const [liveSearchResults, setLiveSearchResults] = useState([]);
 
+  const liveChordContentRef = useRef(null);
+
   // Touch Swipe for Chord Slider
   const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
   const touchEndX = useRef(null);
+  const touchEndY = useRef(null);
 
   useEffect(() => {
     const syncFromStore = () => {
@@ -561,32 +576,116 @@ export default function Gigs() {
   };
 
   // --- Active Gig Performance ("Sahnem") Mode ---
+  const triggerLiveAutoFit = () => {
+    const pre = liveChordContentRef.current;
+    if (!pre) return;
+    let fontSize = 24;
+    pre.style.fontSize = fontSize + 'px';
+    const maxIterations = 50;
+    let iterations = 0;
+    while ((pre.scrollWidth > pre.clientWidth || pre.scrollHeight > pre.clientHeight) && fontSize > 8 && iterations < maxIterations) {
+      fontSize--;
+      pre.style.fontSize = fontSize + 'px';
+      iterations++;
+    }
+  };
+
+  useEffect(() => {
+    if (isLiveMode && liveViewMode === 'chords' && liveIsSingleScreen) {
+      const timer = setTimeout(triggerLiveAutoFit, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLiveMode, liveViewMode, liveIsSingleScreen, liveTransposeShift, liveSongIndex, liveFontSize]);
+
+  // Keyboard navigation for Sahnem mode
+  useEffect(() => {
+    if (!isLiveMode) return;
+    const handleKeyDown = (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        e.preventDefault();
+        goToNextSong();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        goToPrevSong();
+      } else if (e.key === 'Escape') {
+        if (isLiveDrawerOpen) {
+          setIsLiveDrawerOpen(false);
+        } else {
+          closeLiveMode();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode]);
+
   const startLiveMode = (gig) => {
+    if (!gig) return;
     setLiveGig(gig);
-    setLiveSongIndex(gig.Songs && gig.Songs.length > 0 ? 0 : -1);
-    setIsLiveMode(true);
-    setLiveFontSize(1.1);
+    const initialIndex = gig.Songs && gig.Songs.length > 0 ? 0 : -1;
+    setLiveSongIndex(initialIndex);
+    setIsLiveDrawerOpen(false);
+    setLiveFontSize(16);
     setLiveTheme('dark');
+    setLiveTransposeShift(0);
+    setLiveIsSingleScreen(false);
     setLiveSearchQuery('');
     setLiveSearchResults([]);
+
+    // Determine initial view mode from the first song
+    if (initialIndex !== -1 && gig.Songs && gig.Songs[0]) {
+      const firstSongObj = songs.find(s => s.SongID === gig.Songs[0].SongID);
+      if (firstSongObj && !hasLyricsContent(firstSongObj.Lyrics) && firstSongObj.ChordImagePath) {
+        setLiveViewMode('image');
+      } else {
+        setLiveViewMode('chords');
+      }
+    } else {
+      setLiveViewMode('chords');
+    }
+
+    setIsLiveMode(true);
   };
 
   const closeLiveMode = async () => {
     setIsLiveMode(false);
+    setIsLiveDrawerOpen(false);
     setLiveGig(null);
     setLiveSongIndex(-1);
+    setLiveTransposeShift(0);
     // Force store reload to keep database status synced
     await store.load(true);
   };
 
   const goToNextSong = () => {
     if (!liveGig || !liveGig.Songs || liveGig.Songs.length === 0) return;
-    setLiveSongIndex(prev => (prev + 1) % liveGig.Songs.length);
+    const nextIdx = (liveSongIndex + 1) % liveGig.Songs.length;
+    setLiveSongIndex(nextIdx);
+    setLiveTransposeShift(0);
+    const nextSongObj = songs.find(s => s.SongID === liveGig.Songs[nextIdx]?.SongID);
+    if (nextSongObj) {
+      if (liveViewMode === 'chords' && !hasLyricsContent(nextSongObj.Lyrics) && nextSongObj.ChordImagePath) {
+        setLiveViewMode('image');
+      } else if (liveViewMode === 'image' && !nextSongObj.ChordImagePath && hasLyricsContent(nextSongObj.Lyrics)) {
+        setLiveViewMode('chords');
+      }
+    }
   };
 
   const goToPrevSong = () => {
     if (!liveGig || !liveGig.Songs || liveGig.Songs.length === 0) return;
-    setLiveSongIndex(prev => (prev - 1 + liveGig.Songs.length) % liveGig.Songs.length);
+    const prevIdx = (liveSongIndex - 1 + liveGig.Songs.length) % liveGig.Songs.length;
+    setLiveSongIndex(prevIdx);
+    setLiveTransposeShift(0);
+    const prevSongObj = songs.find(s => s.SongID === liveGig.Songs[prevIdx]?.SongID);
+    if (prevSongObj) {
+      if (liveViewMode === 'chords' && !hasLyricsContent(prevSongObj.Lyrics) && prevSongObj.ChordImagePath) {
+        setLiveViewMode('image');
+      } else if (liveViewMode === 'image' && !prevSongObj.ChordImagePath && hasLyricsContent(prevSongObj.Lyrics)) {
+        setLiveViewMode('chords');
+      }
+    }
   };
 
   const handleRemoveLiveSong = async (songIndex) => {
@@ -674,6 +773,7 @@ export default function Gigs() {
     if (existingIdx !== -1) {
       // Switch to this song index
       setLiveSongIndex(existingIdx);
+      setLiveTransposeShift(0);
     } else {
       // Add as unplayed request at the end of the list
       const newOrder = liveGig.Songs.length + 1;
@@ -708,6 +808,7 @@ export default function Gigs() {
         await api.updateGig(liveGig.GigID, payload);
         setLiveGig(prev => ({ ...prev, Songs: newSongsList }));
         setLiveSongIndex(newSongsList.length - 1);
+        setLiveTransposeShift(0);
       } catch (err) {
         alert('İstek ekleme hatası: ' + err.message);
       }
@@ -718,26 +819,38 @@ export default function Gigs() {
     setLiveSearchResults([]);
   };
 
-  // Swiping Gesture implementation
+  // Swiping Gesture implementation (Vertical scroll friendly)
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+    touchEndX.current = null;
+    touchEndY.current = null;
   };
 
   const handleTouchMove = (e) => {
     touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
   };
 
   const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
-    const diff = touchStartX.current - touchEndX.current;
-    const minSwipe = 60; // Min px swipe threshold
-    if (diff > minSwipe) {
-      goToNextSong();
-    } else if (diff < -minSwipe) {
-      goToPrevSong();
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const diffX = touchStartX.current - touchEndX.current;
+    const diffY = (touchStartY.current !== null && touchEndY.current !== null)
+      ? touchStartY.current - touchEndY.current
+      : 0;
+
+    const minSwipe = 45;
+    if (Math.abs(diffX) > minSwipe && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+      if (diffX > 0) {
+        goToNextSong();
+      } else {
+        goToPrevSong();
+      }
     }
     touchStartX.current = null;
+    touchStartY.current = null;
     touchEndX.current = null;
+    touchEndY.current = null;
   };
 
   // --- Filtering Gigs ---
@@ -1344,212 +1457,431 @@ export default function Gigs() {
 
       {/* ACTIVE LIVE GIG MODE ("SAHNEM" fullscreen chord swiper) */}
       {isLiveMode && liveGig && createPortal(
-        <div className="chord-fullscreen-overlay" style={{ background: liveTheme === 'dark' ? '#0f172a' : '#f8fafc', color: liveTheme === 'dark' ? '#f1f5f9' : '#0f2742', zIndex: 2100 }}>
+        <div className={`fullscreen-viewer-overlay live-stage-overlay ${liveViewMode === 'image' ? 'theme-chord' : `theme-${liveTheme}`}`}>
           
-          {/* HEADER */}
-          <div className="chord-fullscreen-header" style={{ borderBottom: `1px solid ${liveTheme === 'dark' ? '#334155' : '#cbd5e1'}`, padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h2 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 'bold' }}>🎙️ Sahnem: {liveGig.VenueName}</h2>
-              <span style={{ fontSize: '0.8rem', color: liveTheme === 'dark' ? '#94a3b8' : '#64748b' }}>{new Date(liveGig.GigDate).toLocaleDateString('tr-TR')}</span>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button 
-                className="chord-action-btn" 
-                onClick={() => setLiveViewMode(prev => prev === 'chords' ? 'image' : 'chords')}
-                style={{ background: 'rgba(14, 165, 233, 0.2)', border: '1px solid #38bdf8', fontWeight: 700 }}
-              >
-                {liveViewMode === 'chords' ? '📄 Akor Metni' : '🖼️ Akor Görseli'}
-              </button>
-              {/* Font controls */}
-              <button className="chord-action-btn" onClick={() => setLiveFontSize(prev => Math.max(0.6, prev - 0.1))}>A-</button>
-              <button className="chord-action-btn" onClick={() => setLiveFontSize(prev => Math.min(2.5, prev + 0.1))}>A+</button>
-              {/* Theme toggle */}
-              <button className="chord-action-btn" onClick={() => setLiveTheme(prev => prev === 'dark' ? 'light' : 'dark')}>
-                {liveTheme === 'dark' ? 'Aydınlık' : 'Karanlık'}
-              </button>
-              {/* Close Button */}
-              <button className="chord-action-btn btn-close-toggle" style={{ background: '#ef4444', color: 'white' }} onClick={closeLiveMode}>&times;</button>
-            </div>
+          {/* FLOATING TOP-LEFT: HAMBURGER REPERTOIRE DRAWER BUTTON */}
+          <div className="live-stage-floating-left">
+            <button 
+              type="button" 
+              className="viewer-btn-float live-stage-drawer-btn" 
+              onClick={() => setIsLiveDrawerOpen(prev => !prev)}
+              title="Repertuvar Sırası (Şarkı Listesi)"
+            >
+              <span style={{ fontSize: '1.25rem' }}>☰</span>
+              <span className="live-stage-counter-badge">
+                {liveSongIndex !== -1 ? `${liveSongIndex + 1}/${liveGig.Songs?.length || 0}` : '0/0'}
+              </span>
+            </button>
           </div>
 
-          {/* INNER PERFORMANCE CONTAINER */}
-          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', flex: 1, overflow: 'hidden' }}>
-            
-            {/* SIDEBAR - GIG PLAYLIST */}
-            <div style={{ borderRight: `1px solid ${liveTheme === 'dark' ? '#334155' : '#cbd5e1'}`, display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-              <div style={{ padding: '0.75rem', fontWeight: 'bold', borderBottom: `1px solid ${liveTheme === 'dark' ? '#1e293b' : '#e2eaf3'}`, fontSize: '0.85rem' }}>REPERTUVAR SIRASI</div>
-              
-              <div style={{ flex: 1, overflowY: 'auto' }}>
-                {liveGig.Songs && liveGig.Songs.map((gSong, idx) => (
-                  <div 
-                    key={gSong.GigSongID || gSong.SongID}
-                    onClick={() => setLiveSongIndex(idx)}
-                    style={{ 
-                      padding: '0.6rem 0.75rem', 
-                      cursor: 'pointer', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      background: idx === liveSongIndex ? (liveTheme === 'dark' ? '#1e293b' : '#e3f2fd') : 'transparent',
-                      borderBottom: `1px solid ${liveTheme === 'dark' ? '#1e293b' : '#e2eaf3'}`,
-                      fontSize: '0.82rem'
+          {/* FLOATING TOP-RIGHT CONTROLS: A/T TOGGLE & CLOSE BUTTON */}
+          <div className="fullscreen-viewer-floating-controls">
+            {(() => {
+              const gigSong = liveGig.Songs && liveSongIndex !== -1 ? liveGig.Songs[liveSongIndex] : null;
+              const fullSongObj = gigSong ? (songs.find(s => s.SongID === gigSong.SongID) || gigSong) : null;
+              const hasChordImg = Boolean(fullSongObj && fullSongObj.ChordImagePath);
+              const hasLyr = Boolean(fullSongObj && hasLyricsContent(fullSongObj.Lyrics));
+
+              if (liveViewMode === 'image') {
+                return (
+                  <button 
+                    type="button" 
+                    className={`viewer-btn-float btn-transpose-toggle ${hasLyr ? 'btn-status-success' : 'btn-status-danger'}`}
+                    onClick={() => {
+                      if (hasLyr) {
+                        setLiveViewMode('chords');
+                      } else {
+                        alert("Bu şarkının transpoze bilgisi yoktur");
+                      }
                     }}
+                    title="Transpoze / Akor Metnine Geç (T)"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flex: 1 }}>
-                      <span style={{ fontWeight: 'bold', color: liveTheme === 'dark' ? '#94a3b8' : '#64748b' }}>{gSong.SortOrder}.</span>
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', textDecoration: gSong.IsPlayed ? 'line-through' : 'none', color: gSong.IsPlayed ? '#059669' : 'inherit' }}>
-                        {gSong.SongTitle}
-                      </span>
-                      {gSong.IsRequest === 1 && (
-                        <span style={{ fontSize: '0.7rem', padding: '1px 4px', background: '#38bdf8', color: 'white', borderRadius: '3px', fontWeight: 'bold', flexShrink: 0 }}>İst.</span>
-                      )}
-                    </div>
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(idx); }}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', padding: '0 4px', marginLeft: '4px' }}
-                      title="Şarkıyı Canlı Listeden Sil"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                ))}
+                    T
+                  </button>
+                );
+              } else {
+                return (
+                  <button 
+                    type="button" 
+                    className={`viewer-btn-float btn-chord-toggle ${hasChordImg ? 'btn-status-success' : 'btn-status-danger'}`}
+                    onClick={() => {
+                      if (hasChordImg) {
+                        setLiveViewMode('image');
+                      } else {
+                        alert("Bu şarkının akor görseli yoktur");
+                      }
+                    }}
+                    title="Akor Görseline Geç (A)"
+                  >
+                    A
+                  </button>
+                );
+              }
+            })()}
+
+            <button 
+              type="button" 
+              className="viewer-btn-float btn-close-toggle" 
+              onClick={closeLiveMode}
+              title="Sahnem Ekranını Kapat (X)"
+            >
+              &times;
+            </button>
+          </div>
+
+          {/* LEFT SLIDE-IN REPERTOIRE DRAWER */}
+          {isLiveDrawerOpen && (
+            <div className="live-stage-backdrop" onClick={() => setIsLiveDrawerOpen(false)} />
+          )}
+          <div className={`live-stage-drawer ${isLiveDrawerOpen ? 'open' : ''}`}>
+            {/* Drawer Header */}
+            <div className="live-stage-drawer-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.2rem' }}>🎙️</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>{liveGig.VenueName}</h3>
+                  <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Repertuvar ({liveGig.Songs?.length || 0} Şarkı)</span>
+                </div>
               </div>
-              
-              {/* LIVE REQUESTS CONTAINER */}
-              <div style={{ padding: '0.75rem', borderTop: `1px solid ${liveTheme === 'dark' ? '#334155' : '#cbd5e1'}`, position: 'relative' }}>
-                <input 
-                  type="text" 
-                  placeholder="İstek bul ve hemen aç..." 
-                  value={liveSearchQuery} 
-                  onChange={e => searchLiveRequests(e.target.value)}
-                  style={{ 
-                    fontSize: '0.8rem', 
-                    padding: '0.4rem', 
-                    margin: 0, 
-                    background: liveTheme === 'dark' ? '#1e293b' : 'white', 
-                    color: liveTheme === 'dark' ? 'white' : 'black',
-                    border: `1px solid ${liveTheme === 'dark' ? '#475569' : '#cbd5e1'}`
-                  }}
-                />
-                {liveSearchResults.length > 0 && (
-                  <div style={{ position: 'absolute', bottom: '100%', left: '0.75rem', right: '0.75rem', background: liveTheme === 'dark' ? '#1e293b' : 'white', border: `1px solid ${liveTheme === 'dark' ? '#475569' : '#cbd5e1'}`, borderRadius: '6px', maxHeight: '160px', overflowY: 'auto', zIndex: 10 }}>
-                    {liveSearchResults.map(s => (
-                      <div 
-                        key={s.SongID} 
-                        onClick={() => playRequestSongDirect(s)}
-                        style={{ padding: '0.4rem 0.6rem', cursor: 'pointer', borderBottom: `1px solid ${liveTheme === 'dark' ? '#334155' : '#e2eaf3'}`, fontSize: '0.78rem' }}
-                        className="autocomplete-item-hover"
-                      >
-                        {s.SongTitle} ({s.ArtistNames})
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <button 
+                type="button" 
+                className="live-drawer-close-btn" 
+                onClick={() => setIsLiveDrawerOpen(false)}
+                title="Menüyü Kapat"
+              >
+                &times;
+              </button>
             </div>
 
-            {/* MAIN PORT - FULLSCREEN CHORD SLIDER */}
-            <div 
-              style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
-              {liveSongIndex !== -1 && liveGig.Songs[liveSongIndex] ? (() => {
-                const gigSong = liveGig.Songs[liveSongIndex];
-                const fullSongObj = songs.find(s => s.SongID === gigSong.SongID);
-                return (
-                  <>
-                    {/* Song Toolbar */}
-                    <div style={{ padding: '0.6rem 1.5rem', background: liveTheme === 'dark' ? '#1e293b' : '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${liveTheme === 'dark' ? '#334155' : '#cbd5e1'}` }}>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{gigSong.SongTitle}</h3>
-                        <span style={{ fontSize: '0.8rem', color: liveTheme === 'dark' ? '#94a3b8' : '#64748b' }}>{gigSong.ArtistNames || '-'}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => toggleSongPlayed(liveSongIndex)}
-                          style={{
-                            padding: '0.4rem 0.8rem',
-                            borderRadius: '6px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.2)',
-                            background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-                            color: gigSong.IsPlayed ? '#34d399' : (liveTheme === 'dark' ? '#cbd5e1' : '#475569'),
-                            fontSize: '0.88rem'
-                          }}
-                        >
-                          {gigSong.IsPlayed ? '✓ Çalındı (Değiştir ↺)' : '◯ Çalınmadı (Çalındı Yap)'}
-                        </button>
-                      </div>
-                    </div>
+            {/* INSTANT REQUEST SEARCH (AT THE VERY TOP OF DRAWER) */}
+            <div className="live-stage-search-box">
+              <div className="live-search-input-wrapper">
+                <input 
+                  type="text" 
+                  placeholder="🔍 İstek bul ve hemen aç..." 
+                  value={liveSearchQuery} 
+                  onChange={e => searchLiveRequests(e.target.value)}
+                  className="live-stage-search-input"
+                />
+                {liveSearchQuery && (
+                  <button 
+                    type="button" 
+                    className="live-search-clear-btn" 
+                    onClick={() => { setLiveSearchQuery(''); setLiveSearchResults([]); }}
+                    title="Temizle"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
 
-                    {/* Chord Viewer Area */}
+              {/* Instant Autocomplete Results */}
+              {liveSearchResults.length > 0 && (
+                <div className="live-stage-search-results">
+                  {liveSearchResults.map(s => (
                     <div 
-                      className="chord-lyrics-display-area" 
-                      style={{ 
-                        flex: 1, 
-                        overflowY: 'auto', 
-                        padding: '1.5rem 2rem', 
-                        fontFamily: 'monospace', 
-                        fontSize: `${liveFontSize}rem`,
-                        lineHeight: 1.5,
-                        whiteSpace: 'pre-wrap',
-                        background: liveTheme === 'dark' ? '#0f172a' : '#ffffff',
-                        color: liveTheme === 'dark' ? '#cbd5e1' : '#1e293b'
+                      key={s.SongID} 
+                      onClick={() => {
+                        playRequestSongDirect(s);
+                        setIsLiveDrawerOpen(false);
                       }}
+                      className="live-stage-search-item"
                     >
-                      {liveViewMode === 'image' ? (
-                        fullSongObj && fullSongObj.ChordImagePath ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
-                            <span style={{ fontWeight: 600, color: '#38bdf8' }}>🖼️ Akor Görseli:</span>
-                            <img src={fullSongObj.ChordImagePath} alt="Akor Görseli" style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)' }} />
-                          </div>
-                        ) : (
-                          <div style={{ textAlign: 'center', marginTop: '3rem', color: '#f59e0b', fontWeight: 600 }}>
-                            ⚠️ Bu şarkı için henüz akor görseli yüklenmemiş.<br />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'inline-block' }}>Akor Metni moduna geçebilirsiniz.</span>
-                          </div>
-                        )
-                      ) : (
-                        fullSongObj && hasLyricsContent(fullSongObj.Lyrics) ? (
-                          <div dangerouslySetInnerHTML={{ __html: fullSongObj.Lyrics }} />
-                        ) : (
-                          <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--text-muted)' }}>
-                            {fullSongObj && fullSongObj.ChordImagePath ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                                <span>Bu şarkının akor görseli mevcuttur (🖼️ Akor Görseli butonuna basabilirsiniz):</span>
-                                <img src={fullSongObj.ChordImagePath} alt="Akor Görseli" style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
-                              </div>
-                            ) : (
-                              'Bu şarkının akor/transpoze bilgisi bulunmamaktadır.'
-                            )}
-                          </div>
-                        )
-                      )}
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{s.SongTitle}</div>
+                      <div style={{ fontSize: '0.75rem', opacity: 0.75 }}>{s.ArtistNames || '-'}</div>
                     </div>
-                    
-                    {/* Navigation footer */}
-                    <div style={{ padding: '0.6rem 1.5rem', display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${liveTheme === 'dark' ? '#334155' : '#cbd5e1'}`, background: liveTheme === 'dark' ? '#1e293b' : '#f1f5f9' }}>
-                      <button className="btn btn-outline" onClick={goToPrevSong}>◀ Önceki</button>
-                      <span style={{ fontSize: '0.9rem', alignSelf: 'center', fontWeight: 'bold' }}>
-                        {liveSongIndex + 1} / {liveGig.Songs.length}
-                      </span>
-                      <button className="btn btn-outline" onClick={goToNextSong}>Sonraki ▶</button>
-                    </div>
-                  </>
-                );
-              })() : (
-                <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                  Sahne listenizde henüz şarkı bulunmuyor veya şarkı seçilmedi.
+                  ))}
                 </div>
               )}
             </div>
 
+            {/* PLAYLIST REPERTOIRE LIST */}
+            <div className="live-stage-song-list">
+              {liveGig.Songs && liveGig.Songs.map((gSong, idx) => (
+                <div 
+                  key={gSong.GigSongID || gSong.SongID || idx}
+                  onClick={() => {
+                    setLiveSongIndex(idx);
+                    setLiveTransposeShift(0);
+                    setIsLiveDrawerOpen(false);
+                  }}
+                  className={`live-stage-song-item ${idx === liveSongIndex ? 'active' : ''}`}
+                >
+                  <div className="live-song-item-info">
+                    <span className="live-song-num">{idx + 1}.</span>
+                    <div className="live-song-text">
+                      <div className={`live-song-title ${gSong.IsPlayed ? 'played' : ''}`}>
+                        {gSong.SongTitle}
+                      </div>
+                      {gSong.ArtistNames && <div className="live-song-artist">{gSong.ArtistNames}</div>}
+                    </div>
+                    {gSong.IsRequest === 1 && (
+                      <span className="live-request-tag">İstek</span>
+                    )}
+                  </div>
+
+                  <div className="live-song-item-actions">
+                    <button 
+                      type="button"
+                      className={`live-played-indicator-btn ${gSong.IsPlayed ? 'is-played' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSongPlayed(idx);
+                      }}
+                      title={gSong.IsPlayed ? 'Çalınmadı yap' : 'Çalındı yap'}
+                    >
+                      {gSong.IsPlayed ? '✓' : '◯'}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(idx); }}
+                      className="live-song-del-btn"
+                      title="Şarkıyı Listeden Çıkar"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {(!liveGig.Songs || liveGig.Songs.length === 0) && (
+                <div style={{ padding: '2rem 1rem', textAlign: 'center', opacity: 0.6, fontSize: '0.85rem' }}>
+                  Henüz şarkı eklenmemiş. Yukarıdaki arama kutusundan şarkı arayıp ekleyebilirsiniz.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* MAIN 100% FULLSCREEN STAGE BODY */}
+          <div 
+            className="live-stage-body"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {liveSongIndex !== -1 && liveGig.Songs && liveGig.Songs[liveSongIndex] ? (() => {
+              const gigSong = liveGig.Songs[liveSongIndex];
+              const fullSongObj = songs.find(s => s.SongID === gigSong.SongID) || gigSong;
+
+              // Note Transposition logic
+              const origKey = fullSongObj.OriginalKey || fullSongObj.originalKey;
+              let origRoot = '';
+              let suffix = '';
+              let origSemitone = null;
+
+              if (origKey) {
+                const match = origKey.match(/^([A-G][#b]?)(.*)$/i);
+                if (match) {
+                  origRoot = match[1];
+                  suffix = match[2];
+                  const origRootUpper = origRoot.charAt(0).toUpperCase() + origRoot.slice(1).toLowerCase();
+                  origSemitone = noteToSemitone[origRootUpper];
+                }
+              }
+
+              let targetScale = sharpScale;
+              if (origSemitone !== null && origSemitone !== undefined) {
+                let targetSemitone = (origSemitone + liveTransposeShift) % 12;
+                if (targetSemitone < 0) targetSemitone += 12;
+                const targetRoot = sharpScale[targetSemitone];
+                targetScale = getScaleForTargetKey(targetRoot);
+              }
+
+              const htmlContent = renderTransposedTextAsHTML(fullSongObj.Lyrics, liveTransposeShift, targetScale);
+              const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
+                  
+                  {liveViewMode === 'image' ? (
+                    /* CHORD IMAGE FULLSCREEN VIEW */
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
+                      {/* Image Top Info Bar */}
+                      <div style={{ padding: '0.85rem 1.5rem', paddingLeft: '110px', paddingRight: '120px', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
+                            {gigSong.SongTitle}
+                          </span>
+                          {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
+                            <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginLeft: '0.5rem' }}>
+                              - {gigSong.ArtistNames}
+                            </span>
+                          )}
+                          {origKey && <span className="orig-key-badge" style={{ marginLeft: '0.5rem' }}>({origKey} Tonu)</span>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleSongPlayed(liveSongIndex)}
+                          style={{
+                            padding: '0.4rem 0.85rem',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.25)',
+                            background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                            color: gigSong.IsPlayed ? '#34d399' : '#f8fafc',
+                            fontSize: '0.88rem'
+                          }}
+                        >
+                          {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+                        </button>
+                      </div>
+
+                      {/* Image Container */}
+                      <div className="fullscreen-chord-image-wrapper">
+                        {fullSongObj.ChordImagePath ? (
+                          <img 
+                            src={getUploadsUrl(fullSongObj.ChordImagePath)} 
+                            alt="Akor Görseli" 
+                            className="fullscreen-chord-image"
+                          />
+                        ) : (
+                          <div style={{ textAlign: 'center', color: '#f59e0b', fontWeight: 600 }}>
+                            ⚠️ Bu şarkı için akor görseli bulunmuyor.<br />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'inline-block' }}>
+                              Sağ üstteki "T" butonuna basarak transpoze metnine geçebilirsiniz.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* TRANSPOSE & LYRICS FULLSCREEN VIEW */
+                    <div className="fullscreen-transpose-wrapper">
+                      
+                      {/* Transpose Toolbar */}
+                      <div className="fullscreen-transpose-toolbar" style={{ paddingLeft: '110px' }}>
+                        <div className="toolbar-section">
+                          <span className="song-title-label">
+                            {gigSong.SongTitle} {gigSong.ArtistNames && gigSong.ArtistNames !== '-' ? ` - ${gigSong.ArtistNames}` : ''}
+                          </span>
+                          {origKey && <span className="orig-key-badge">({origKey} Tonu)</span>}
+                          
+                          <button
+                            type="button"
+                            onClick={() => toggleSongPlayed(liveSongIndex)}
+                            style={{
+                              marginLeft: 'auto',
+                              padding: '0.35rem 0.75rem',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid var(--border-strong)',
+                              background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.2)' : 'var(--surface)',
+                              color: gigSong.IsPlayed ? '#10b981' : 'var(--text-main)',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+                          </button>
+                        </div>
+                        
+                        <div className="toolbar-controls-row">
+                          <div className="control-group">
+                            <button type="button" className="btn btn-sm btn-outline" onClick={() => setLiveTransposeShift(prev => prev - 1)}>-1 Semiton</button>
+                            <button type="button" className="btn btn-sm btn-outline" onClick={() => setLiveTransposeShift(prev => prev + 1)}>+1 Semiton</button>
+                            <button 
+                              type="button" 
+                              className="btn btn-sm btn-outline btn-danger-soft" 
+                              onClick={() => setLiveTransposeShift(0)}
+                            >
+                              Sıfırla
+                            </button>
+                            <span className="transpose-badge">
+                              {liveTransposeShift > 0 ? `+${liveTransposeShift}` : liveTransposeShift} Semiton
+                            </span>
+                          </div>
+
+                          <div className="control-group">
+                            <button type="button" className="btn btn-sm btn-outline" onClick={() => setLiveFontSize(f => Math.max(10, f - 1))}>A-</button>
+                            <button type="button" className="btn btn-sm btn-outline" onClick={() => setLiveFontSize(f => Math.min(36, f + 1))}>A+</button>
+                            <button type="button" className="btn btn-sm btn-outline" onClick={() => setLiveTheme(t => t === 'dark' ? 'light' : 'dark')}>
+                              {liveTheme === 'dark' ? 'Açık Tema' : 'Koyu Tema'}
+                            </button>
+                          </div>
+
+                          <div className="control-group autofit-group">
+                            <label className="checkbox-label">
+                              <input 
+                                type="checkbox" 
+                                checked={liveIsSingleScreen} 
+                                onChange={(e) => setLiveIsSingleScreen(e.target.checked)} 
+                              />
+                              Tek Ekran
+                            </label>
+                            {liveIsSingleScreen && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm btn-outline" 
+                                onClick={triggerLiveAutoFit}
+                              >
+                                Sığdır
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Target Key Quick Jump */}
+                        {origKey && origSemitone !== null && (
+                          <div className="toolbar-target-keys">
+                            <span className="target-key-label">Hedef Ton:</span>
+                            <div className="target-key-buttons">
+                              {standardScale.map(targetRoot => {
+                                const targetSemitone = noteToSemitone[targetRoot];
+                                let diff = targetSemitone - origSemitone;
+                                if (diff < 0) diff += 12;
+                                
+                                const displayName = targetRoot + suffix;
+                                const isActive = (liveTransposeShift % 12 + 12) % 12 === diff;
+
+                                return (
+                                  <button
+                                    key={targetRoot}
+                                    type="button"
+                                    className={`target-key-btn ${isActive ? 'active' : ''}`}
+                                    onClick={() => setLiveTransposeShift(diff)}
+                                  >
+                                    {displayName}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chord Sheet Pre Area */}
+                      <div className={`fullscreen-chord-sheet-box ${liveIsSingleScreen ? 'single-screen' : ''}`}>
+                        <pre 
+                          ref={liveChordContentRef}
+                          className={liveIsSingleScreen ? 'chord-sheet-pre-single' : 'chord-sheet-pre'}
+                          style={liveIsSingleScreen ? {} : { fontSize: `${liveFontSize}px` }}
+                          dangerouslySetInnerHTML={{ __html: htmlContent }}
+                        />
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* BOTTOM FOOTER NAVIGATION */}
+                  <div className="live-stage-footer-nav">
+                    <button type="button" className="btn btn-outline" onClick={goToPrevSong}>◀ Önceki</button>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 800, opacity: 0.85 }}>
+                      {liveSongIndex + 1} / {liveGig.Songs.length}
+                    </span>
+                    <button type="button" className="btn btn-outline" onClick={goToNextSong}>Sonraki ▶</button>
+                  </div>
+
+                </div>
+              );
+            })() : (
+              <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem', padding: '2rem' }}>
+                <span style={{ fontSize: '2.5rem' }}>🎙️</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>Sahne listenizde henüz şarkı bulunmuyor.</span>
+                <button type="button" className="btn btn-primary" onClick={() => setIsLiveDrawerOpen(true)}>
+                  ☰ Şarkı Listesini Aç ve İstek Ara
+                </button>
+              </div>
+            )}
           </div>
 
         </div>,

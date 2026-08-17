@@ -1988,4 +1988,437 @@ body.dark-mode .rich-editor-content {
   }
 }
 
+/* ==========================================================================
+   SAHNEM (LIVE STAGE PERFORMANCE MODE) STYLES
+   ========================================================================== */
+
+.live-stage-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+.live-stage-floating-left {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 10005;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-stage-drawer-btn {
+  width: auto !important;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 24px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  border: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-chord .live-stage-drawer-btn,
+.theme-dark .live-stage-drawer-btn {
+  background: rgba(30, 41, 59, 0.9);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.theme-light .live-stage-drawer-btn {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f2742;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.live-stage-drawer-btn:hover {
+  transform: scale(1.05);
+}
+
+.live-stage-counter-badge {
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #ffffff;
+}
+
+/* Stage Backdrop */
+.live-stage-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10010;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+/* Off-canvas Stage Drawer */
+.live-stage-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 340px;
+  max-width: 88vw;
+  z-index: 10015;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.live-stage-drawer.open {
+  transform: translateX(0);
+}
+
+.theme-chord .live-stage-drawer,
+.theme-dark .live-stage-drawer {
+  background: #0f172a;
+  color: #f1f5f9;
+  border-right: 1px solid #334155;
+}
+
+.theme-light .live-stage-drawer {
+  background: #ffffff;
+  color: #0f2742;
+  border-right: 1px solid #e2eaf3;
+}
+
+/* Drawer Header */
+.live-stage-drawer-header {
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.theme-light .live-stage-drawer-header {
+  border-bottom: 1px solid #e2eaf3;
+}
+
+.live-drawer-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.live-drawer-close-btn:hover {
+  opacity: 1;
+}
+
+/* Instant Request Search at the TOP of drawer */
+.live-stage-search-box {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.theme-light .live-stage-search-box {
+  border-bottom: 1px solid #e2eaf3;
+  background: #f8fafc;
+}
+
+.live-search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.live-stage-search-input {
+  width: 100%;
+  padding: 0.65rem 2.2rem 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.theme-chord .live-stage-search-input,
+.theme-dark .live-stage-search-input {
+  background: #1e293b;
+  color: #ffffff;
+  border: 1px solid #475569;
+}
+
+.theme-chord .live-stage-search-input:focus,
+.theme-dark .live-stage-search-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.theme-light .live-stage-search-input {
+  background: #ffffff;
+  color: #0f2742;
+  border: 1px solid #cbd5e1;
+}
+
+.live-search-clear-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Autocomplete search results inside drawer */
+.live-stage-search-results {
+  position: absolute;
+  top: 100%;
+  left: 1rem;
+  right: 1rem;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 10020;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.theme-chord .live-stage-search-results,
+.theme-dark .live-stage-search-results {
+  background: #1e293b;
+  border: 1px solid #475569;
+}
+
+.theme-light .live-stage-search-results {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+.live-stage-search-item {
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.15s;
+}
+
+.theme-light .live-stage-search-item {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.live-stage-search-item:hover {
+  background: rgba(14, 165, 233, 0.2);
+}
+
+/* Song list inside drawer */
+.live-stage-song-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+
+.live-stage-song-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s;
+}
+
+.theme-light .live-stage-song-item {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.live-stage-song-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.theme-light .live-stage-song-item:hover {
+  background: #f8fafc;
+}
+
+.live-stage-song-item.active {
+  background: rgba(14, 165, 233, 0.2) !important;
+  border-left: 4px solid #38bdf8;
+}
+
+.live-song-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.live-song-num {
+  font-weight: 800;
+  font-size: 0.85rem;
+  opacity: 0.6;
+  min-width: 24px;
+}
+
+.live-song-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.live-song-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-song-title.played {
+  text-decoration: line-through;
+  opacity: 0.5;
+  color: #10b981;
+}
+
+.live-song-artist {
+  font-size: 0.75rem;
+  opacity: 0.65;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-request-tag {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  background: #0ea5e9;
+  color: #ffffff;
+  border-radius: 4px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.live-song-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+}
+
+.live-played-indicator-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  transition: all 0.15s;
+}
+
+.theme-light .live-played-indicator-btn {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.live-played-indicator-btn.is-played {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+  opacity: 1;
+}
+
+.live-song-del-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 2px 6px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.live-song-del-btn:hover {
+  opacity: 1;
+}
+
+/* Stage Main Body */
+.live-stage-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.live-stage-footer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.theme-dark .live-stage-footer-nav {
+  background: #0f172a;
+  border-top: 1px solid #334155;
+}
+
+.theme-light .live-stage-footer-nav {
+  background: #f8fafc;
+  border-top: 1px solid #e2eaf3;
+}
+
+.theme-chord .live-stage-footer-nav {
+  background: #000000;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 768px) {
+  .live-stage-floating-left {
+    top: 15px;
+    left: 15px;
+  }
+  
+  .live-stage-drawer-btn {
+    height: 44px;
+    padding: 0 12px;
+  }
+  
+  .live-stage-footer-nav {
+    padding: 0.5rem 1rem;
+  }
+}
+
+
 
