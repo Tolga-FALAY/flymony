@@ -4855,6 +4855,7 @@ function startLiveGig(gigId) {
   liveGigDrawerOpen = false;
   liveSortField = 'no';
   liveSortOrder = 'asc';
+  liveShowUnplayedOnly = false;
   // Always default to chord image ('image') mode on stage opening!
   liveGigViewMode = 'image';
 
@@ -4979,6 +4980,7 @@ function toggleLiveViewMode() {
 
 let liveSortField = 'no'; // 'no', 'sarki', 'sanatci'
 let liveSortOrder = 'asc'; // 'asc', 'desc'
+let liveShowUnplayedOnly = false;
 
 function setLiveSort(field) {
   if (liveSortField === field) {
@@ -4987,6 +4989,11 @@ function setLiveSort(field) {
     liveSortField = field;
     liveSortOrder = 'asc';
   }
+  renderLiveGigPlaylist();
+}
+
+function toggleLiveUnplayedFilter() {
+  liveShowUnplayedOnly = !liveShowUnplayedOnly;
   renderLiveGigPlaylist();
 }
 
@@ -5002,6 +5009,7 @@ function renderLiveGigPlaylist() {
   const iconSarki = document.getElementById('iconLiveSortSarki');
   const btnSanatci = document.getElementById('btnLiveSortSanatci');
   const iconSanatci = document.getElementById('iconLiveSortSanatci');
+  const btnFilter = document.getElementById('btnLiveFilterUnplayed');
 
   if (btnNo && iconNo) {
     btnNo.className = `live-sort-btn ${liveSortField === 'no' ? 'active' : ''}`;
@@ -5014,6 +5022,15 @@ function renderLiveGigPlaylist() {
   if (btnSanatci && iconSanatci) {
     btnSanatci.className = `live-sort-btn ${liveSortField === 'sanatci' ? 'active' : ''}`;
     iconSanatci.innerText = liveSortField === 'sanatci' ? (liveSortOrder === 'asc' ? '▲' : '▼') : '';
+  }
+  if (btnFilter) {
+    btnFilter.innerText = liveShowUnplayedOnly ? 'Tümü' : 'Çalınmamış';
+    btnFilter.title = liveShowUnplayedOnly ? 'Tüm Şarkıları Göster' : 'Sadece Çalınmamış Şarkıları Göster';
+    if (liveShowUnplayedOnly) {
+      btnFilter.classList.add('active');
+    } else {
+      btnFilter.classList.remove('active');
+    }
   }
 
   if (!container || !liveGigObj) return;
@@ -5030,6 +5047,7 @@ function renderLiveGigPlaylist() {
 
   const sortedList = liveGigObj.songs
     .map((song, originalIdx) => ({ song, originalIdx }))
+    .filter(({ song }) => !liveShowUnplayedOnly || !song.isPlayed)
     .sort((a, b) => {
       if (liveSortField === 'no') {
         const valA = Number(a.song.sortOrder || 0);

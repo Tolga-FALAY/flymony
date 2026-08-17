@@ -1249,22 +1249,20 @@
         <div id="gigLiveRequestAutocomplete" class="live-stage-search-results" style="display: none;"></div>
       </div>
 
-      <!-- Mini Sortable Headers: NO, ŞARKI, SANATÇI -->
+      <!-- Mini Sortable & Filter Headers: NO, ŞARKI, SANATÇI, ÇALINMAMIŞ/TÜMÜ -->
       <div class="live-stage-list-sort-header">
-        <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;">
-          <button type="button" class="live-sort-btn active" id="btnLiveSortNo" onclick="setLiveSort('no')" title="Sıra Numarasına Göre Sırala (NO)" style="min-width: 34px;">
-            NO <span id="iconLiveSortNo">▲</span>
-          </button>
-          <button type="button" class="live-sort-btn" id="btnLiveSortSarki" onclick="setLiveSort('sarki')" title="Şarkı İsmine Göre Sırala" style="flex: 1; justify-content: flex-start;">
-            ŞARKI <span id="iconLiveSortSarki"></span>
-          </button>
-          <button type="button" class="live-sort-btn" id="btnLiveSortSanatci" onclick="setLiveSort('sanatci')" title="Sanatçı İsmine Göre Sırala" style="flex: 1; justify-content: flex-start;">
-            SANATÇI <span id="iconLiveSortSanatci"></span>
-          </button>
-        </div>
-        <div style="width: 54px; text-align: right; opacity: 0.6; font-size: 0.68rem; padding-right: 4px;">
-          DURUM
-        </div>
+        <button type="button" class="live-sort-btn active" id="btnLiveSortNo" onclick="setLiveSort('no')" title="Sıra Numarasına Göre Sırala (NO)">
+          NO <span id="iconLiveSortNo">▲</span>
+        </button>
+        <button type="button" class="live-sort-btn" id="btnLiveSortSarki" onclick="setLiveSort('sarki')" title="Şarkı İsmine Göre Sırala">
+          ŞARKI <span id="iconLiveSortSarki"></span>
+        </button>
+        <button type="button" class="live-sort-btn" id="btnLiveSortSanatci" onclick="setLiveSort('sanatci')" title="Sanatçı İsmine Göre Sırala">
+          SANATÇI <span id="iconLiveSortSanatci"></span>
+        </button>
+        <button type="button" class="live-sort-btn live-filter-btn" id="btnLiveFilterUnplayed" onclick="toggleLiveUnplayedFilter()" title="Sadece Çalınmamış Şarkıları Göster">
+          Çalınmamış
+        </button>
       </div>
 
       <!-- Scrollable Playlist in Drawer -->

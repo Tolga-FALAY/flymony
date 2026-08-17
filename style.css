@@ -2430,17 +2430,19 @@ body.dark-mode .rich-editor-content {
   background: rgba(14, 165, 233, 0.2);
 }
 
-/* Mini Sortable Headers for Drawer Song List (NO, ŞARKI, SANATÇI) */
+/* Mini Sortable & Filter Headers for Drawer Song List (NO, ŞARKI, SANATÇI, ÇALINMAMIŞ/TÜMÜ) */
 .live-stage-list-sort-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.45rem 1rem;
+  gap: 6px;
+  padding: 0.45rem 0.85rem;
   background: rgba(0, 0, 0, 0.25);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: 'Montserrat', sans-serif;
   font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   user-select: none;
   flex-shrink: 0;
@@ -2461,14 +2463,17 @@ body.dark-mode .rich-editor-content {
   background: none;
   border: none;
   padding: 3px 6px;
-  font-size: inherit;
-  font-weight: inherit;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: inherit;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  border-radius: 4px;
+  gap: 3px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex: 0 0 auto;
   transition: all 0.15s;
 }
 
@@ -2479,8 +2484,37 @@ body.dark-mode .rich-editor-content {
 
 .live-sort-btn.active {
   color: #38bdf8;
-  font-weight: 900;
-  background: rgba(56, 189, 248, 0.15);
+  font-weight: 800;
+  background: rgba(56, 189, 248, 0.18);
+}
+
+.live-filter-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 3px 8px;
+  font-weight: 700;
+}
+
+.live-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.live-filter-btn.active {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #34d399;
+  font-weight: 800;
+}
+
+.theme-light .live-filter-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.theme-light .live-filter-btn.active {
+  background: #ecfdf5;
+  border-color: #10b981;
+  color: #059669;
 }
 
 /* Song list inside drawer */

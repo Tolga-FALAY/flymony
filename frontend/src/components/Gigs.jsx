@@ -65,6 +65,7 @@ export default function Gigs() {
   const [liveSearchResults, setLiveSearchResults] = useState([]);
   const [liveSortField, setLiveSortField] = useState('no'); // 'no', 'sarki', 'sanatci'
   const [liveSortOrder, setLiveSortOrder] = useState('asc'); // 'asc', 'desc'
+  const [liveShowUnplayedOnly, setLiveShowUnplayedOnly] = useState(false);
 
   const liveChordContentRef = useRef(null);
 
@@ -636,6 +637,7 @@ export default function Gigs() {
     setLiveSearchResults([]);
     setLiveSortField('no');
     setLiveSortOrder('asc');
+    setLiveShowUnplayedOnly(false);
     // Always default to chord image ('image') mode on stage opening!
     setLiveViewMode('image');
     setIsLiveMode(true);
@@ -1127,7 +1129,12 @@ export default function Gigs() {
                     {songSearchText.trim() && (
                       <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                         {songs
-                          .filter(s => s.SongTitle.toLocaleLowerCase('tr-TR').includes(songSearchText.toLocaleLowerCase('tr-TR')))
+                          .filter(s => {
+                            const query = songSearchText.toLocaleLowerCase('tr-TR');
+                            const titleMatch = s.SongTitle && s.SongTitle.toLocaleLowerCase('tr-TR').includes(query);
+                            const artistMatch = s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(query);
+                            return titleMatch || artistMatch;
+                          })
                           .map(s => (
                             <div 
                               key={s.SongID} 
@@ -1601,40 +1608,40 @@ export default function Gigs() {
               )}
             </div>
 
-            {/* MINI SORTABLE HEADERS (NO, ŞARKI, SANATÇI) */}
+            {/* MINI SORTABLE & FILTER HEADERS (NO, ŞARKI, SANATÇI, ÇALINMAMIŞ/TÜMÜ) */}
             <div className="live-stage-list-sort-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-                <button 
-                  type="button" 
-                  className={`live-sort-btn ${liveSortField === 'no' ? 'active' : ''}`}
-                  onClick={() => handleLiveSort('no')}
-                  title="Sıra Numarasına Göre Sırala (NO)"
-                  style={{ minWidth: '34px' }}
-                >
-                  NO {liveSortField === 'no' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
-                </button>
-                <button 
-                  type="button" 
-                  className={`live-sort-btn ${liveSortField === 'sarki' ? 'active' : ''}`}
-                  onClick={() => handleLiveSort('sarki')}
-                  title="Şarkı İsmine Göre Sırala"
-                  style={{ flex: 1, justifyContent: 'flex-start' }}
-                >
-                  ŞARKI {liveSortField === 'sarki' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
-                </button>
-                <button 
-                  type="button" 
-                  className={`live-sort-btn ${liveSortField === 'sanatci' ? 'active' : ''}`}
-                  onClick={() => handleLiveSort('sanatci')}
-                  title="Sanatçı İsmine Göre Sırala"
-                  style={{ flex: 1, justifyContent: 'flex-start' }}
-                >
-                  SANATÇI {liveSortField === 'sanatci' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
-                </button>
-              </div>
-              <div style={{ width: '54px', textAlign: 'right', opacity: 0.6, fontSize: '0.68rem', paddingRight: '4px' }}>
-                DURUM
-              </div>
+              <button 
+                type="button" 
+                className={`live-sort-btn ${liveSortField === 'no' ? 'active' : ''}`}
+                onClick={() => handleLiveSort('no')}
+                title="Sıra Numarasına Göre Sırala (NO)"
+              >
+                NO {liveSortField === 'no' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
+              </button>
+              <button 
+                type="button" 
+                className={`live-sort-btn ${liveSortField === 'sarki' ? 'active' : ''}`}
+                onClick={() => handleLiveSort('sarki')}
+                title="Şarkı İsmine Göre Sırala"
+              >
+                ŞARKI {liveSortField === 'sarki' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
+              </button>
+              <button 
+                type="button" 
+                className={`live-sort-btn ${liveSortField === 'sanatci' ? 'active' : ''}`}
+                onClick={() => handleLiveSort('sanatci')}
+                title="Sanatçı İsmine Göre Sırala"
+              >
+                SANATÇI {liveSortField === 'sanatci' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
+              </button>
+              <button 
+                type="button" 
+                className={`live-sort-btn live-filter-btn ${liveShowUnplayedOnly ? 'active' : ''}`}
+                onClick={() => setLiveShowUnplayedOnly(prev => !prev)}
+                title={liveShowUnplayedOnly ? "Tüm Şarkıları Göster" : "Sadece Çalınmamış Şarkıları Göster"}
+              >
+                {liveShowUnplayedOnly ? 'Tümü' : 'Çalınmamış'}
+              </button>
             </div>
 
             {/* PLAYLIST REPERTOIRE LIST */}
@@ -1642,6 +1649,7 @@ export default function Gigs() {
               {(() => {
                 const songsToDisplay = [...(liveGig.Songs || [])]
                   .map((song, originalIdx) => ({ song, originalIdx }))
+                  .filter(({ song }) => !liveShowUnplayedOnly || !song.IsPlayed)
                   .sort((a, b) => {
                     if (liveSortField === 'no') {
                       const valA = Number(a.song.SortOrder || 0);
