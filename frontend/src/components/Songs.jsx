@@ -11,6 +11,7 @@ export default function Songs() {
   const [languages, setLanguages] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
+  const [noteModalSong, setNoteModalSong] = useState(null);
 
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
@@ -60,7 +61,8 @@ export default function Songs() {
     ChordImagePath: '',
     ChordImageData: '',
     ArtistIDs: [],
-    LanguageID: ''
+    LanguageID: '',
+    Notes: ''
   });
 
   const [artistSearch, setArtistSearch] = useState('');
@@ -189,7 +191,7 @@ export default function Songs() {
       setEditingSong(song);
       setFormData({
         SongTitle: song.SongTitle,
-        Duration: song.Duration || '',
+        Duration: '',
         SongYear: song.SongYear || '',
         Lyrics: song.Lyrics || '',
         AudioPath: song.AudioPath || '',
@@ -198,7 +200,8 @@ export default function Songs() {
         ChordImagePath: song.ChordImagePath || '',
         ChordImageData: '',
         ArtistIDs: (song.ArtistIDs || []).map(String),
-        LanguageID: song.LanguageID ? String(song.LanguageID) : ''
+        LanguageID: song.LanguageID ? String(song.LanguageID) : '',
+        Notes: song.Notes || ''
       });
       if (song.AudioPath) {
         setAudioPreviewUrl(getUploadsUrl(song.AudioPath));
@@ -222,7 +225,7 @@ export default function Songs() {
       setEditingSong(null);
       const turkishLang = store.languages.find(l => l.LanguageName === 'Türkçe');
       const defaultLangId = turkishLang ? String(turkishLang.LanguageID) : '';
-      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId });
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId, Notes: '' });
       setAudioPreviewUrl('');
       setChordImagesList([]);
       setTimeout(() => {
@@ -586,7 +589,8 @@ export default function Songs() {
       ChordImagePath: chordImagesToSend[0] || '',
       ChordImageData: '',
       ArtistIDs: formData.ArtistIDs.map(Number),
-      LanguageID: formData.LanguageID ? Number(formData.LanguageID) : null
+      LanguageID: formData.LanguageID ? Number(formData.LanguageID) : null,
+      Notes: formData.Notes || ''
     };
 
     try {
@@ -701,9 +705,10 @@ export default function Songs() {
         </button>
       </div>
 
-      <div className="filters-panel">
-        <div className="filter-group-row">
-          <div className="filter-item">
+      <div className="filters-panel" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {/* Row 1: Şarkı Adı, Sanatçı, Serbest Arama (Şarkı Sözü) */}
+        <div className="filter-group-row" style={{ display: 'flex', gap: '0.75rem', width: '100%', flexWrap: 'wrap' }}>
+          <div className="filter-item" style={{ flex: '1 1 200px', minWidth: '160px' }}>
             <label htmlFor="filterSongTitleReact">Şarkı Adı</label>
             <input 
               type="text" 
@@ -711,9 +716,10 @@ export default function Songs() {
               placeholder="Şarkı adı ara..." 
               value={filterSong}
               onChange={(e) => setFilterSong(e.target.value)}
+              style={{ width: '100%' }}
             />
           </div>
-          <div className="filter-item">
+          <div className="filter-item" style={{ flex: '1 1 200px', minWidth: '160px' }}>
             <label htmlFor="filterSongArtistReact">Sanatçı</label>
             <input 
               type="text" 
@@ -721,9 +727,10 @@ export default function Songs() {
               placeholder="Sanatçı adı ara..." 
               value={filterArtist}
               onChange={(e) => setFilterArtist(e.target.value)}
+              style={{ width: '100%' }}
             />
           </div>
-          <div className="filter-item">
+          <div className="filter-item" style={{ flex: '1 1 200px', minWidth: '160px' }}>
             <label htmlFor="filterSongLyricsReact">Serbest Arama (Şarkı Sözü)</label>
             <input 
               type="text" 
@@ -731,9 +738,14 @@ export default function Songs() {
               placeholder="Şarkı sözlerinde ara..." 
               value={filterLyricsSearch}
               onChange={(e) => setFilterLyricsSearch(e.target.value)}
+              style={{ width: '100%' }}
             />
           </div>
-          <div className="filter-item" style={{ flex: '0 1 150px' }}>
+        </div>
+
+        {/* Row 2: Dil, Min Yıl, Max Yıl, Temizle */}
+        <div className="filter-group-row" style={{ display: 'flex', gap: '0.75rem', width: '100%', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div className="filter-item" style={{ flex: '1 1 180px', minWidth: '140px' }}>
             <label htmlFor="filterSongLanguageReact">Dil</label>
             <select
               id="filterSongLanguageReact"
@@ -745,7 +757,8 @@ export default function Songs() {
                 border: '1px solid var(--border-strong)',
                 borderRadius: '8px',
                 backgroundColor: 'var(--surface)',
-                color: 'var(--text)'
+                color: 'var(--text)',
+                height: '42px'
               }}
             >
               <option value="">Tüm Diller</option>
@@ -754,7 +767,7 @@ export default function Songs() {
               ))}
             </select>
           </div>
-          <div className="filter-item" style={{ flex: '0 1 120px' }}>
+          <div className="filter-item" style={{ flex: '0 1 120px', minWidth: '100px' }}>
             <label htmlFor="filterSongMinYearReact">Min Yıl</label>
             <input 
               type="number" 
@@ -762,10 +775,10 @@ export default function Songs() {
               placeholder="Min" 
               value={filterMinYear}
               onChange={(e) => setFilterMinYear(e.target.value)}
-              style={{ padding: '0.6rem 0.5rem' }}
+              style={{ padding: '0.6rem 0.5rem', width: '100%', height: '42px' }}
             />
           </div>
-          <div className="filter-item" style={{ flex: '0 1 120px' }}>
+          <div className="filter-item" style={{ flex: '0 1 120px', minWidth: '100px' }}>
             <label htmlFor="filterSongMaxYearReact">Max Yıl</label>
             <input 
               type="number" 
@@ -773,11 +786,18 @@ export default function Songs() {
               placeholder="Max" 
               value={filterMaxYear}
               onChange={(e) => setFilterMaxYear(e.target.value)}
-              style={{ padding: '0.6rem 0.5rem' }}
+              style={{ padding: '0.6rem 0.5rem', width: '100%', height: '42px' }}
             />
           </div>
-          <div className="filter-item filter-actions">
-            <button className="btn btn-outline btn-sm" onClick={clearAllFilters}>Temizle</button>
+          <div className="filter-item filter-actions" style={{ flex: '0 0 auto', marginLeft: 'auto' }}>
+            <button 
+              type="button" 
+              className="btn btn-outline" 
+              onClick={clearAllFilters}
+              style={{ height: '42px', padding: '0 1.25rem', display: 'inline-flex', alignItems: 'center' }}
+            >
+              Temizle
+            </button>
           </div>
         </div>
       </div>
@@ -831,6 +851,17 @@ export default function Songs() {
                 <td data-label="Yıl">{song.SongYear || '-'}</td>
                 <td data-label="Dil">{song.LanguageName || '-'}</td>
                 <td data-label="İşlemler" className="action-btns">
+                  {String(song.Notes || '').trim().length > 0 && (
+                    <button 
+                      type="button"
+                      className="btn btn-sm" 
+                      style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
+                      onClick={() => setNoteModalSong(song)}
+                      title={song.Notes}
+                    >
+                      📝
+                    </button>
+                  )}
                   {(() => {
                     const hasChord = !!song.ChordImagePath;
                     const hasTranspose = hasLyricsContent(song.Lyrics);
@@ -1245,8 +1276,25 @@ export default function Songs() {
                 </div>
               </div>
               <div className="form-group">
-                <label>Süre (örn: 3:45)</label>
-                <input type="text" name="Duration" value={formData.Duration} onChange={handleChange} />
+                <label>Notlar</label>
+                <textarea 
+                  name="Notes" 
+                  rows={3}
+                  value={formData.Notes || ''} 
+                  onChange={handleChange} 
+                  placeholder="Şarkı hakkında notlar yazabilirsiniz (Enter ile alt satıra inebilirsiniz)..."
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    backgroundColor: 'white',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
@@ -1280,6 +1328,27 @@ export default function Songs() {
                 <button type="submit" className="btn btn-primary">Kaydet</button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* SONG NOTES POPUP MODAL */}
+      {noteModalSong && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setNoteModalSong(null)}>
+          <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>
+                📝 {noteModalSong.SongTitle} {noteModalSong.ArtistNames && noteModalSong.ArtistNames !== '-' ? `(${noteModalSong.ArtistNames})` : ''} - Notlar
+              </h2>
+              <button className="close-btn" onClick={() => setNoteModalSong(null)}>&times;</button>
+            </div>
+            <div style={{ padding: '1rem', background: 'var(--canvas)', borderRadius: '8px', fontSize: '0.95rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: '1.5', maxHeight: '60vh', overflowY: 'auto' }}>
+              {noteModalSong.Notes || 'Herhangi bir not bulunmamaktadır.'}
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setNoteModalSong(null)}>Kapat</button>
+            </div>
           </div>
         </div>,
         document.body
@@ -1328,7 +1397,6 @@ export default function Songs() {
           </button>
         </div>
       )}
-
 
     </div>
   );

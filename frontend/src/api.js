@@ -64,7 +64,8 @@ export const api = {
       ArtistIDs: (s.ArtistIDs || []).map(Number),
       ArtistNames: s.ArtistNames || '-',
       LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
-      LanguageName: s.LanguageName || ''
+      LanguageName: s.LanguageName || '',
+      Notes: s.Notes || ''
     }));
   },
 

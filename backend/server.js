@@ -114,7 +114,7 @@ app.get('/api/songs', (req, res) => {
     try {
         // Fetch songs with their associated artists
         const songs = db.prepare(`
-            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath, s.LanguageID, l.LanguageName,
+            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath, s.LanguageID, s.Notes, l.LanguageName,
                    GROUP_CONCAT(a.ArtistID) as ArtistIDs,
                    GROUP_CONCAT(a.ArtistName, ', ') as ArtistNames
             FROM Songs s
@@ -137,7 +137,8 @@ app.get('/api/songs', (req, res) => {
                 ChordImagePath: chordImages[0] || '',
                 ChordImages: chordImages,
                 LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
-                LanguageName: s.LanguageName || ''
+                LanguageName: s.LanguageName || '',
+                Notes: s.Notes || ''
             };
         });
 
@@ -213,7 +214,7 @@ function saveChordImageFile(imageData) {
 }
 
 app.post('/api/songs', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes } = req.body;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
     }
@@ -267,11 +268,11 @@ app.post('/api/songs', (req, res) => {
 
         const chordImagePathToSave = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
 
-        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID, Notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
-        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, artistIds) => {
-            const info = insertSong.run(songTitle, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null);
+        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds) => {
+            const info = insertSong.run(songTitle, duration || null, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null, notes || null);
             const songId = info.lastInsertRowid;
             if (artistIds && artistIds.length > 0) {
                 for (const artistId of artistIds) {
@@ -281,7 +282,7 @@ app.post('/api/songs', (req, res) => {
             return songId;
         });
 
-        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, chordImagePathToSave, LanguageID ? Number(LanguageID) : null, ArtistIDs || []);
+        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, chordImagePathToSave, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || []);
         res.status(201).json({ id: songId, message: 'Song created successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -289,7 +290,7 @@ app.post('/api/songs', (req, res) => {
 });
 
 app.put('/api/songs/:id', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes } = req.body;
     const songId = req.params.id;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
@@ -386,12 +387,12 @@ app.put('/api/songs/:id', (req, res) => {
 
         const finalChordImagePath = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
 
-        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ?, LanguageID = ? WHERE SongID = ?');
+        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ?, LanguageID = ?, Notes = ? WHERE SongID = ?');
         const deleteSongArtists = db.prepare('DELETE FROM Song_Artists WHERE SongID = ?');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
-        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, artistIds) => {
-            updateSong.run(title, duration, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null, id);
+        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds) => {
+            updateSong.run(title, duration || null, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null, notes || null, id);
             deleteSongArtists.run(id);
             if (artistIds && artistIds.length > 0) {
                 for (const artistId of artistIds) {
@@ -400,7 +401,7 @@ app.put('/api/songs/:id', (req, res) => {
             }
         });
 
-        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, finalChordImagePath, LanguageID ? Number(LanguageID) : null, ArtistIDs || []);
+        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, finalChordImagePath, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || []);
         res.json({ message: 'Song updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });

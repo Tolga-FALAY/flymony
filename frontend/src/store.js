@@ -171,7 +171,8 @@ const store = {
         ArtistIDs: artistIds,
         ArtistNames: artistNames,
         LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
-        LanguageName: s.LanguageName || ''
+        LanguageName: s.LanguageName || '',
+        Notes: s.Notes || ''
       };
     });
 

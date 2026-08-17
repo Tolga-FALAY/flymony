@@ -467,7 +467,7 @@ export const initializeDB = () => {
     }
 
     // ----------------------------------------------------
-    // SONGS TABLE MIGRATION (Add LanguageID)
+    // SONGS TABLE MIGRATION (Add LanguageID & Notes)
     // ----------------------------------------------------
     try {
         const songTableInfo = db.prepare("PRAGMA table_info(Songs)").all();
@@ -485,10 +485,17 @@ export const initializeDB = () => {
                 // Update existing records to have the default language
                 db.prepare("UPDATE Songs SET LanguageID = ?").run(defaultLangID);
             })();
-            console.log("Songs table migration complete.");
+            console.log("Songs table migration complete: LanguageID added.");
+        }
+
+        const hasNotes = songTableInfo.some(col => col.name === 'Notes');
+        if (!hasNotes) {
+            console.log("Migrating Songs table: Adding Notes column...");
+            db.exec("ALTER TABLE Songs ADD COLUMN Notes TEXT;");
+            console.log("Songs table migration complete: Notes added.");
         }
     } catch (e) {
-        console.error("Migration error while updating Songs table with LanguageID:", e);
+        console.error("Migration error while updating Songs table:", e);
     }
 
     // ----------------------------------------------------
