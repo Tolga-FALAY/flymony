@@ -4120,6 +4120,14 @@ function closeVanillaFullscreenImage() {
 window.openVanillaFullscreenImage = openVanillaFullscreenImage;
 window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
 
+function toggleEditorGigSongPlayed(idx) {
+  if (editorGigSongs[idx]) {
+    editorGigSongs[idx].isPlayed = editorGigSongs[idx].isPlayed ? 0 : 1;
+    renderEditorGigSongs();
+  }
+}
+window.toggleEditorGigSongPlayed = toggleEditorGigSongPlayed;
+
 function renderEditorGigSongs() {
   const container = document.getElementById('gigSongsList');
   document.getElementById('gigSongsCount').innerText = editorGigSongs.length;
@@ -4128,17 +4136,25 @@ function renderEditorGigSongs() {
   editorGigSongs.sort((a, b) => a.sortOrder - b.sortOrder);
 
   editorGigSongs.forEach((song, idx) => {
+    const isPlayed = Boolean(song.isPlayed);
     const div = document.createElement('div');
-    div.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem;';
+    div.style.cssText = `display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; background: ${isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent'};`;
     
     div.innerHTML = `
       <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0;">
         <span style="font-weight: bold; color: var(--text-muted); width: 20px;">${song.sortOrder}.</span>
-        <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${song.title}">
+        <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; ${isPlayed ? 'text-decoration: line-through; color: var(--text-muted);' : ''}" title="${song.title}">
           ${song.title}
         </span>
+        ${Number(song.isRequest) === 1 ? '<span style="font-size: 0.68rem; padding: 1px 5px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #0284c7; font-weight: 700;">İstek</span>' : ''}
       </div>
-      <div style="display: flex; align-items: center; gap: 0.25rem;">
+      <div style="display: flex; align-items: center; gap: 0.35rem;">
+        <button type="button" 
+                onclick="toggleEditorGigSongPlayed(${idx})"
+                style="padding: 2px 8px; font-size: 0.72rem; font-weight: 700; height: 24px; border-radius: 4px; border: 1px solid ${isPlayed ? '#10b981' : 'var(--border)'}; background: ${isPlayed ? '#ecfdf5' : 'transparent'}; color: ${isPlayed ? '#059669' : 'var(--text-muted)'}; cursor: pointer; white-space: nowrap;"
+                title="${isPlayed ? 'Çalınmadı olarak işaretle' : 'Çalındı olarak işaretle'}">
+          ${isPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+        </button>
         <input type="number" min="1" max="${editorGigSongs.length}" value="${song.sortOrder}" 
                onchange="changeSongSortOrder(${idx}, this.value)" 
                style="width: 45px; padding: 2px 4px; text-align: center; font-size: 0.8rem; height: 24px; margin: 0;">

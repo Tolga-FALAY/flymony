@@ -346,6 +346,13 @@ export default function Gigs() {
     }));
   };
 
+  const toggleGigModalSongPlayed = (songId) => {
+    setFormData(prev => ({
+      ...prev,
+      Songs: prev.Songs.map(s => s.SongID === songId ? { ...s, IsPlayed: s.IsPlayed ? 0 : 1 } : s)
+    }));
+  };
+
   // --- Guest & Table management inside Gig Editor ---
   const addGuestToGig = (guest) => {
     if (formData.Guests.some(g => g.GuestID === guest.GuestID)) {
@@ -1155,16 +1162,46 @@ export default function Gigs() {
                     {formData.Songs.map((gSong, idx) => {
                       const songObj = songs.find(s => s.SongID === gSong.SongID);
                       if (!songObj) return null;
+                      const isPlayed = Boolean(gSong.IsPlayed);
                       return (
-                        <div key={gSong.SongID} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                        <div key={gSong.SongID} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', background: isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
                             <span style={{ fontWeight: 'bold', color: 'var(--text-muted)', width: '20px' }}>{gSong.SortOrder}.</span>
-                            <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={songObj.SongTitle}>
+                            <span style={{ 
+                              textOverflow: 'ellipsis', 
+                              overflow: 'hidden', 
+                              whiteSpace: 'nowrap',
+                              textDecoration: isPlayed ? 'line-through' : 'none',
+                              color: isPlayed ? 'var(--text-muted)' : 'inherit'
+                            }} title={songObj.SongTitle}>
                               {songObj.SongTitle}
                             </span>
+                            {Number(gSong.IsRequest) === 1 && (
+                              <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', fontWeight: 700 }}>İstek</span>
+                            )}
                           </div>
                           
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <button 
+                              type="button" 
+                              onClick={() => toggleGigModalSongPlayed(gSong.SongID)}
+                              style={{
+                                padding: '2px 8px',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                height: '24px',
+                                borderRadius: '4px',
+                                border: '1px solid',
+                                borderColor: isPlayed ? '#10b981' : 'var(--border)',
+                                background: isPlayed ? '#ecfdf5' : 'transparent',
+                                color: isPlayed ? '#059669' : 'var(--text-muted)',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title={isPlayed ? "Çalınmadı olarak işaretle" : "Çalındı olarak işaretle"}
+                            >
+                              {isPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+                            </button>
                             {/* Sequence shift input */}
                             <input 
                               type="number" 
@@ -1572,13 +1609,13 @@ export default function Gigs() {
                         </div>
                       )}
                       <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px', color: '#ffffff' }}>
-                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 400 }}>
                           Repertuvar ({repPlayed}/{repTotal}) - kalan {repRemaining}
                         </div>
-                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 400 }}>
                           İstekler ({reqPlayed}/{reqTotal}) - kalan {reqRemaining}
                         </div>
-                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.74rem', opacity: 0.9, fontWeight: 400 }}>
                           Toplam ({grandPlayed}/{grandTotal}) - kalan {grandRemaining}
                         </div>
                       </div>
