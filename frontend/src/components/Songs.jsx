@@ -37,8 +37,8 @@ export default function Songs() {
 
   const globalAudioRef = useRef(null);
   const editorRef = useRef(null);
-  // Static Chord Image Preview State (For Editing/Adding)
-  const [chordImagePreviewUrl, setChordImagePreviewUrl] = useState('');
+  // Chord Images List State (For Editing/Adding Multiple Chord Pages)
+  const [chordImagesList, setChordImagesList] = useState([]); // [{ id, path?, data?, url }]
 
   const clearAllFilters = () => {
     setFilterSong('');
@@ -167,13 +167,13 @@ export default function Songs() {
       if (imageFile) {
         e.preventDefault();
         try {
-          const compressedBase64 = await compressImage(imageFile, 1200, 1200, 0.8);
-          setFormData(prev => ({
-            ...prev,
-            ChordImageData: compressedBase64,
-            ChordImagePath: ''
-          }));
-          setChordImagePreviewUrl(URL.createObjectURL(imageFile));
+          const compressedBase64 = await compressImage(imageFile, 1600, 1600, 0.85);
+          const newItem = {
+            id: `paste_${Date.now()}_${Math.random()}`,
+            data: compressedBase64,
+            url: compressedBase64
+          };
+          setChordImagesList(prev => [...prev, newItem]);
         } catch (err) {
           console.error("Paste error:", err);
         }
@@ -205,11 +205,14 @@ export default function Songs() {
       } else {
         setAudioPreviewUrl('');
       }
-      if (song.ChordImagePath) {
-        setChordImagePreviewUrl(getUploadsUrl(song.ChordImagePath));
-      } else {
-        setChordImagePreviewUrl('');
-      }
+      const existingImages = Array.isArray(song.ChordImages) && song.ChordImages.length > 0
+        ? song.ChordImages
+        : (song.ChordImagePath ? [song.ChordImagePath] : []);
+      setChordImagesList(existingImages.map((path, idx) => ({
+        id: `existing_${idx}_${Date.now()}`,
+        path: path,
+        url: getUploadsUrl(path)
+      })));
       setTimeout(() => {
         if (editorRef.current) {
           editorRef.current.innerHTML = song.Lyrics || '';
@@ -221,7 +224,7 @@ export default function Songs() {
       const defaultLangId = turkishLang ? String(turkishLang.LanguageID) : '';
       setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId });
       setAudioPreviewUrl('');
-      setChordImagePreviewUrl('');
+      setChordImagesList([]);
       setTimeout(() => {
         if (editorRef.current) {
           editorRef.current.innerHTML = '';
@@ -240,7 +243,7 @@ export default function Songs() {
       editorRef.current.innerHTML = '';
     }
     setAudioPreviewUrl('');
-    setChordImagePreviewUrl('');
+    setChordImagesList([]);
     if (mediaRecorderInstance && mediaRecorderInstance.state !== 'inactive') {
       mediaRecorderInstance.stop();
     }
@@ -251,20 +254,22 @@ export default function Songs() {
   };
 
   const handleChordImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
     try {
-      const compressedBase64 = await compressImage(file, 1200, 1200, 0.8);
-      setFormData(prev => ({
-        ...prev,
-        ChordImageData: compressedBase64,
-        ChordImagePath: '' // clear existing path
+      const promises = files.map(file => compressImage(file, 1600, 1600, 0.85));
+      const compressedList = await Promise.all(promises);
+      const newItems = compressedList.map((base64, idx) => ({
+        id: `new_${Date.now()}_${idx}_${Math.random()}`,
+        data: base64,
+        url: base64
       }));
-      setChordImagePreviewUrl(URL.createObjectURL(file));
+      setChordImagesList(prev => [...prev, ...newItems]);
     } catch (err) {
       alert("Görsel yükleme hatası: " + err.message);
     }
+    e.target.value = '';
   };
 
   const pasteChordImage = async () => {
@@ -278,13 +283,13 @@ export default function Songs() {
         for (const type of item.types) {
           if (type.startsWith('image/')) {
             const blob = await item.getType(type);
-            const compressedBase64 = await compressImage(blob, 1200, 1200, 0.8);
-            setFormData(prev => ({
-              ...prev,
-              ChordImageData: compressedBase64,
-              ChordImagePath: '' // clear existing path
-            }));
-            setChordImagePreviewUrl(URL.createObjectURL(blob));
+            const compressedBase64 = await compressImage(blob, 1600, 1600, 0.85);
+            const newItem = {
+              id: `paste_${Date.now()}_${Math.random()}`,
+              data: compressedBase64,
+              url: compressedBase64
+            };
+            setChordImagesList(prev => [...prev, newItem]);
             found = true;
             break;
           }
@@ -299,13 +304,30 @@ export default function Songs() {
     }
   };
 
-  const clearChordImage = () => {
-    setFormData(prev => ({
-      ...prev,
-      ChordImageData: '',
-      ChordImagePath: ''
-    }));
-    setChordImagePreviewUrl('');
+  const moveChordImageUp = (index) => {
+    if (index <= 0) return;
+    setChordImagesList(prev => {
+      const updated = [...prev];
+      const temp = updated[index - 1];
+      updated[index - 1] = updated[index];
+      updated[index] = temp;
+      return updated;
+    });
+  };
+
+  const moveChordImageDown = (index) => {
+    setChordImagesList(prev => {
+      if (index >= prev.length - 1) return prev;
+      const updated = [...prev];
+      const temp = updated[index + 1];
+      updated[index + 1] = updated[index];
+      updated[index] = temp;
+      return updated;
+    });
+  };
+
+  const removeChordImage = (index) => {
+    setChordImagesList(prev => prev.filter((_, idx) => idx !== index));
   };
 
   const openChordImageViewer = (song) => {
@@ -552,6 +574,7 @@ export default function Songs() {
       return;
     }
 
+    const chordImagesToSend = chordImagesList.map(item => item.data || item.path).filter(Boolean);
     const dataToSend = {
       ...formData,
       SongYear: formData.SongYear ? Number(formData.SongYear) : null,
@@ -559,8 +582,9 @@ export default function Songs() {
       AudioPath: formData.AudioPath || '',
       AudioData: formData.AudioData || '',
       OriginalKey: formData.OriginalKey || '',
-      ChordImagePath: formData.ChordImagePath || '',
-      ChordImageData: formData.ChordImageData || '',
+      ChordImages: chordImagesToSend,
+      ChordImagePath: chordImagesToSend[0] || '',
+      ChordImageData: '',
       ArtistIDs: formData.ArtistIDs.map(Number),
       LanguageID: formData.LanguageID ? Number(formData.LanguageID) : null
     };
@@ -1086,23 +1110,137 @@ export default function Songs() {
                 </div>
               </div>
               <div className="form-group">
-                <label>Akor Görseli (JPG, PNG vb.)</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {chordImagePreviewUrl && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
-                      <img src={chordImagePreviewUrl} alt="Akor Görseli Önizleme" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '6px', objectFit: 'contain' }} />
-                      <button type="button" className="btn btn-sm btn-danger" onClick={clearChordImage} style={{ padding: '0.25rem 0.5rem', minHeight: 'auto', fontSize: '0.9rem', lineHeight: 1, borderRadius: '6px' }} title="Akor Görselini Sil">&times; Kaldır</button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <label style={{ margin: 0, fontWeight: 700 }}>
+                    Akor Görselleri ({chordImagesList.length})
+                  </label>
+                  {chordImagesList.length > 1 && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      ⬆️ / ⬇️ ile sayfa sırasını belirleyebilirsiniz
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {chordImagesList.length > 0 && (
+                    <div className="chord-images-gallery-list" style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                      gap: '0.65rem',
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      padding: '0.5rem',
+                      background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: '8px'
+                    }}>
+                      {chordImagesList.map((item, idx) => (
+                        <div 
+                          key={item.id || idx} 
+                          style={{
+                            position: 'relative',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: '6px',
+                            padding: '0.35rem',
+                            gap: '0.35rem',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            width: '100%',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            color: '#38bdf8'
+                          }}>
+                            <span>{idx + 1}. Sayfa</span>
+                            <span style={{ fontSize: '0.68rem', opacity: 0.7 }}>{idx + 1}/{chordImagesList.length}</span>
+                          </div>
+
+                          <div 
+                            style={{
+                              width: '100%',
+                              height: '110px',
+                              background: '#0f172a',
+                              borderRadius: '4px',
+                              overflow: 'hidden',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => window.open(item.url, '_blank')}
+                            title="Büyütmek için tıkla"
+                          >
+                            <img 
+                              src={item.url} 
+                              alt={`Sayfa ${idx + 1}`} 
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            />
+                          </div>
+
+                          {/* Reordering and Delete Action Buttons */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', width: '100%' }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => moveChordImageUp(idx)}
+                              disabled={idx === 0}
+                              style={{ padding: '2px 6px', fontSize: '0.75rem', opacity: idx === 0 ? 0.3 : 1 }}
+                              title="Yukarı/Öne Taşı"
+                            >
+                              ⬆️
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              onClick={() => moveChordImageDown(idx)}
+                              disabled={idx === chordImagesList.length - 1}
+                              style={{ padding: '2px 6px', fontSize: '0.75rem', opacity: idx === chordImagesList.length - 1 ? 0.3 : 1 }}
+                              title="Aşağı/Arkaya Taşı"
+                            >
+                              ⬇️
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger"
+                              onClick={() => removeChordImage(idx)}
+                              style={{ padding: '2px 6px', fontSize: '0.85rem', lineHeight: 1 }}
+                              title="Bu Sayfayı Sil"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <label className="btn btn-outline" style={{ flex: 1, textAlign: 'center', cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
-                      📂 Görsel Seç
-                      <input type="file" accept="image/*" onChange={handleChordImageUpload} style={{ display: 'none' }} />
+                      📂 {chordImagesList.length > 0 ? '+ Akor Görseli Ekle' : '📂 Görsel Seç'}
+                      <input type="file" accept="image/*" multiple onChange={handleChordImageUpload} style={{ display: 'none' }} />
                     </label>
                     <button type="button" className="btn btn-outline" onClick={pasteChordImage} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontSize: '0.9rem', borderRadius: '8px' }}>
-                      📋 Yapıştır
+                      📋 Panodan Yapıştır
                     </button>
+                    {chordImagesList.length > 0 && (
+                      <button 
+                        type="button" 
+                        className="btn btn-outline btn-danger-soft" 
+                        onClick={() => setChordImagesList([])}
+                        style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
+                        title="Tüm Akor Görsellerini Temizle"
+                      >
+                        Tümünü Temizle
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

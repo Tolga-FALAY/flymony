@@ -180,7 +180,8 @@ const DB = {
           lyrics: s.Lyrics || "",
           audioPath: s.AudioPath || "",
           originalKey: s.OriginalKey || "",
-          chordImagePath: s.ChordImagePath || ""
+          chordImagePath: s.ChordImagePath || (s.ChordImages && s.ChordImages[0]) || "",
+          chordImages: s.ChordImages || (s.ChordImagePath ? [s.ChordImagePath] : [])
         });
         const artistIds = s.ArtistIDs || [];
         artistIds.forEach(aid => {

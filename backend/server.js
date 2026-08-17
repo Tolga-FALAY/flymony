@@ -87,6 +87,27 @@ app.delete('/api/artists/:id', (req, res) => {
 });
 
 // ========================
+// Helper to parse single or multiple chord images
+function parseChordImages(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (!trimmed) return [];
+        if (trimmed.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            } catch (e) {
+                // fallback below
+            }
+        }
+        return [trimmed];
+    }
+    return [];
+}
+
+// ========================
 // SONGS API
 // ========================
 app.get('/api/songs', (req, res) => {
@@ -103,18 +124,22 @@ app.get('/api/songs', (req, res) => {
             GROUP BY s.SongID
         `).all();
 
-        // Parse ArtistIDs to an array of numbers for the frontend
-        const formattedSongs = songs.map(s => ({
-            ...s,
-            ArtistIDs: s.ArtistIDs ? s.ArtistIDs.split(',').map(Number) : [],
-            SongYear: s.SongYear || '',
-            Lyrics: s.Lyrics || '',
-            AudioPath: s.AudioPath || '',
-            OriginalKey: s.OriginalKey || '',
-            ChordImagePath: s.ChordImagePath || '',
-            LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
-            LanguageName: s.LanguageName || ''
-        }));
+        // Parse ArtistIDs to an array of numbers and parse ChordImages
+        const formattedSongs = songs.map(s => {
+            const chordImages = parseChordImages(s.ChordImagePath);
+            return {
+                ...s,
+                ArtistIDs: s.ArtistIDs ? s.ArtistIDs.split(',').map(Number) : [],
+                SongYear: s.SongYear || '',
+                Lyrics: s.Lyrics || '',
+                AudioPath: s.AudioPath || '',
+                OriginalKey: s.OriginalKey || '',
+                ChordImagePath: chordImages[0] || '',
+                ChordImages: chordImages,
+                LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
+                LanguageName: s.LanguageName || ''
+            };
+        });
 
         // Sort songs alphabetically ascending by title (Turkish locale aware)
         formattedSongs.sort((a, b) => {
@@ -188,7 +213,7 @@ function saveChordImageFile(imageData) {
 }
 
 app.post('/api/songs', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, LanguageID } = req.body; // ArtistIDs should be an array of IDs
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID } = req.body;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
     }
@@ -221,12 +246,26 @@ app.post('/api/songs', (req, res) => {
             audioPathToSave = AudioPath;
         }
 
-        let chordImagePathToSave = null;
-        if (ChordImageData) {
-            chordImagePathToSave = saveChordImageFile(ChordImageData);
+        // Process multiple or single chord images
+        let finalChordImages = [];
+        if (Array.isArray(ChordImages)) {
+            for (const item of ChordImages) {
+                if (!item) continue;
+                if (typeof item === 'string' && item.startsWith('data:')) {
+                    const saved = saveChordImageFile(item);
+                    if (saved) finalChordImages.push(saved);
+                } else if (typeof item === 'string' && item.startsWith('/uploads/')) {
+                    finalChordImages.push(item);
+                }
+            }
+        } else if (ChordImageData) {
+            const saved = saveChordImageFile(ChordImageData);
+            if (saved) finalChordImages.push(saved);
         } else if (ChordImagePath) {
-            chordImagePathToSave = ChordImagePath;
+            finalChordImages = parseChordImages(ChordImagePath);
         }
+
+        const chordImagePathToSave = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
 
         const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
@@ -250,7 +289,7 @@ app.post('/api/songs', (req, res) => {
 });
 
 app.put('/api/songs/:id', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, LanguageID } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID } = req.body;
     const songId = req.params.id;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
@@ -279,7 +318,7 @@ app.put('/api/songs/:id', (req, res) => {
 
         const existingSong = db.prepare('SELECT AudioPath, ChordImagePath FROM Songs WHERE SongID = ?').get(songId);
         let finalAudioPath = existingSong ? existingSong.AudioPath : null;
-        let finalChordImagePath = existingSong ? existingSong.ChordImagePath : null;
+        const oldChordImages = parseChordImages(existingSong ? existingSong.ChordImagePath : null);
 
         if (AudioData) {
             // Delete old file if exists
@@ -301,25 +340,51 @@ app.put('/api/songs/:id', (req, res) => {
             finalAudioPath = null;
         }
 
-        if (ChordImageData) {
-            // Delete old file if exists
-            if (finalChordImagePath) {
-                const oldFilePath = path.join(__dirname, '..', finalChordImagePath);
+        // Process multiple or single chord images
+        let finalChordImages = [];
+        if (Array.isArray(ChordImages)) {
+            for (const item of ChordImages) {
+                if (!item) continue;
+                if (typeof item === 'string' && item.startsWith('data:')) {
+                    const saved = saveChordImageFile(item);
+                    if (saved) finalChordImages.push(saved);
+                } else if (typeof item === 'string' && item.startsWith('/uploads/')) {
+                    finalChordImages.push(item);
+                }
+            }
+            // Delete removed old files from disk
+            for (const oldPath of oldChordImages) {
+                if (!finalChordImages.includes(oldPath)) {
+                    const oldFilePath = path.join(__dirname, '..', oldPath);
+                    if (fs.existsSync(oldFilePath)) {
+                        try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old chord image:", e); }
+                    }
+                }
+            }
+        } else if (ChordImageData) {
+            // Delete all old chord images
+            for (const oldPath of oldChordImages) {
+                const oldFilePath = path.join(__dirname, '..', oldPath);
                 if (fs.existsSync(oldFilePath)) {
                     try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old chord image:", e); }
                 }
             }
-            finalChordImagePath = saveChordImageFile(ChordImageData);
+            const saved = saveChordImageFile(ChordImageData);
+            if (saved) finalChordImages.push(saved);
         } else if (ChordImagePath === '' || ChordImagePath === null) {
-            // User explicitly cleared the chord image
-            if (finalChordImagePath) {
-                const oldFilePath = path.join(__dirname, '..', finalChordImagePath);
+            // User explicitly cleared chord images
+            for (const oldPath of oldChordImages) {
+                const oldFilePath = path.join(__dirname, '..', oldPath);
                 if (fs.existsSync(oldFilePath)) {
                     try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old chord image:", e); }
                 }
             }
-            finalChordImagePath = null;
+            finalChordImages = [];
+        } else {
+            finalChordImages = oldChordImages;
         }
+
+        const finalChordImagePath = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
 
         const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ?, LanguageID = ? WHERE SongID = ?');
         const deleteSongArtists = db.prepare('DELETE FROM Song_Artists WHERE SongID = ?');
@@ -977,16 +1042,20 @@ app.get('/api/gigs', (req, res) => {
                 JOIN Songs s ON gs.SongID = s.SongID
                 WHERE gs.GigID = ?
                 ORDER BY gs.SortOrder ASC
-            `).all(gig.GigID).map(s => ({
-                GigSongID: Number(s.GigSongID),
-                SongID: Number(s.SongID),
-                SortOrder: Number(s.SortOrder),
-                IsPlayed: Number(s.IsPlayed),
-                IsRequest: Number(s.IsRequest),
-                SongTitle: s.SongTitle,
-                ArtistNames: s.ArtistNames || '-',
-                ChordImagePath: s.ChordImagePath || ''
-            }));
+            `).all(gig.GigID).map(s => {
+                const chordImages = parseChordImages(s.ChordImagePath);
+                return {
+                    GigSongID: Number(s.GigSongID),
+                    SongID: Number(s.SongID),
+                    SortOrder: Number(s.SortOrder),
+                    IsPlayed: Number(s.IsPlayed),
+                    IsRequest: Number(s.IsRequest),
+                    SongTitle: s.SongTitle,
+                    ArtistNames: s.ArtistNames || '-',
+                    ChordImagePath: chordImages[0] || '',
+                    ChordImages: chordImages
+                };
+            });
 
             const guests = db.prepare(`
                 SELECT gg.GigGuestID, gg.GuestID, gg.TableName, gg.Description, gg.GuestCount, gg.IsAnonymous, g.FirstName, g.LastName

@@ -78,6 +78,8 @@ export default function Gigs() {
   const [liveSortOrder, setLiveSortOrder] = useState('asc'); // 'asc', 'desc'
   const [liveShowUnplayedOnly, setLiveShowUnplayedOnly] = useState(false);
 
+  const [liveChordPageIndex, setLiveChordPageIndex] = useState(0);
+
   const liveChordContentRef = useRef(null);
 
   // Touch Swipe for Chord Slider
@@ -639,13 +641,14 @@ export default function Gigs() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode]);
+  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode, liveChordPageIndex]);
 
   const startLiveMode = (gig) => {
     if (!gig) return;
     setLiveGig(gig);
     const initialIndex = gig.Songs && gig.Songs.length > 0 ? 0 : -1;
     setLiveSongIndex(initialIndex);
+    setLiveChordPageIndex(0);
     setIsLiveDrawerOpen(false);
     setLiveFontSize(16);
     setLiveTheme('dark');
@@ -675,6 +678,7 @@ export default function Gigs() {
     setIsLiveDrawerOpen(false);
     setLiveGig(null);
     setLiveSongIndex(-1);
+    setLiveChordPageIndex(0);
     setLiveTransposeShift(0);
     // Force store reload to keep database status synced
     await store.load(true);
@@ -682,8 +686,24 @@ export default function Gigs() {
 
   const goToNextSong = () => {
     if (!liveGig || !liveGig.Songs || liveGig.Songs.length === 0) return;
+    
+    // In chord image mode, check if current song has multiple chord pages
+    if (liveViewMode === 'image' && liveSongIndex >= 0 && liveGig.Songs[liveSongIndex]) {
+      const currentGigSong = liveGig.Songs[liveSongIndex];
+      const fullSong = (store.songs || []).find(s => Number(s.SongID) === Number(currentGigSong.SongID)) || currentGigSong;
+      const images = (Array.isArray(fullSong.ChordImages) && fullSong.ChordImages.length > 0)
+        ? fullSong.ChordImages
+        : (fullSong.ChordImagePath ? [fullSong.ChordImagePath] : []);
+      
+      if (images.length > 1 && liveChordPageIndex < images.length - 1) {
+        setLiveChordPageIndex(prev => prev + 1);
+        return;
+      }
+    }
+
     const nextIdx = (liveSongIndex + 1) % liveGig.Songs.length;
     setLiveSongIndex(nextIdx);
+    setLiveChordPageIndex(0);
     setLiveTransposeShift(0);
     // Always default/reset to chord image ('image') mode on song switch!
     setLiveViewMode('image');
@@ -691,8 +711,29 @@ export default function Gigs() {
 
   const goToPrevSong = () => {
     if (!liveGig || !liveGig.Songs || liveGig.Songs.length === 0) return;
+
+    // In chord image mode, check if we can go to previous page of current song
+    if (liveViewMode === 'image' && liveChordPageIndex > 0) {
+      setLiveChordPageIndex(prev => prev - 1);
+      return;
+    }
+
     const prevIdx = (liveSongIndex - 1 + liveGig.Songs.length) % liveGig.Songs.length;
+    
+    let prevSongLastPage = 0;
+    if (liveGig.Songs[prevIdx]) {
+      const prevGigSong = liveGig.Songs[prevIdx];
+      const prevFullSong = (store.songs || []).find(s => Number(s.SongID) === Number(prevGigSong.SongID)) || prevGigSong;
+      const prevImages = (Array.isArray(prevFullSong.ChordImages) && prevFullSong.ChordImages.length > 0)
+        ? prevFullSong.ChordImages
+        : (prevFullSong.ChordImagePath ? [prevFullSong.ChordImagePath] : []);
+      if (prevImages.length > 1) {
+        prevSongLastPage = prevImages.length - 1;
+      }
+    }
+
     setLiveSongIndex(prevIdx);
+    setLiveChordPageIndex(prevSongLastPage);
     setLiveTransposeShift(0);
     // Always default/reset to chord image ('image') mode on song switch!
     setLiveViewMode('image');
@@ -783,7 +824,9 @@ export default function Gigs() {
     if (existingIdx !== -1) {
       // Switch to this song index
       setLiveSongIndex(existingIdx);
+      setLiveChordPageIndex(0);
       setLiveTransposeShift(0);
+      setLiveViewMode('image');
     } else {
       // Add as unplayed request at the end of the list
       const newOrder = liveGig.Songs.length + 1;
@@ -794,7 +837,8 @@ export default function Gigs() {
         IsRequest: 1,
         SongTitle: song.SongTitle,
         ArtistNames: song.ArtistNames,
-        ChordImagePath: song.ChordImagePath || ''
+        ChordImagePath: song.ChordImagePath || '',
+        ChordImages: song.ChordImages || (song.ChordImagePath ? [song.ChordImagePath] : [])
       };
       
       const newSongsList = [...liveGig.Songs, newLiveSong];
@@ -819,6 +863,7 @@ export default function Gigs() {
         await api.updateGig(liveGig.GigID, payload);
         setLiveGig(prev => ({ ...prev, Songs: newSongsList }));
         setLiveSongIndex(newSongsList.length - 1);
+        setLiveChordPageIndex(0);
         setLiveTransposeShift(0);
         setLiveViewMode('image');
       } catch (err) {
@@ -1891,6 +1936,7 @@ export default function Gigs() {
                       key={gSong.GigSongID || gSong.SongID || originalIdx}
                       onClick={() => {
                         setLiveSongIndex(originalIdx);
+                        setLiveChordPageIndex(0);
                         setLiveTransposeShift(0);
                         setLiveViewMode('image');
                         setIsLiveDrawerOpen(false);
@@ -1993,58 +2039,98 @@ export default function Gigs() {
                   
                   {liveViewMode === 'image' ? (
                     /* CHORD IMAGE FULLSCREEN VIEW */
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
-                      {/* Image Top Info Bar */}
-                      <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                        <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem' }}>
-                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
-                            {gigSong.SongTitle}
-                          </span>
-                          {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
-                            <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginLeft: '0.5rem' }}>
-                              - {gigSong.ArtistNames}
-                            </span>
-                          )}
-                          {origKey && <span className="orig-key-badge" style={{ marginLeft: '0.5rem' }}>({origKey} Tonu)</span>}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleSongPlayed(liveSongIndex)}
-                          style={{
-                            marginRight: '125px', // Shifted left away from floating controls
-                            padding: '0.4rem 0.85rem',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.25)',
-                            background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                            color: gigSong.IsPlayed ? '#34d399' : '#f8fafc',
-                            fontSize: '0.88rem',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
-                        </button>
-                      </div>
+                    (() => {
+                      const chordImages = (Array.isArray(fullSongObj.ChordImages) && fullSongObj.ChordImages.length > 0)
+                        ? fullSongObj.ChordImages
+                        : (fullSongObj.ChordImagePath ? [fullSongObj.ChordImagePath] : []);
+                      const currentChordImg = chordImages[liveChordPageIndex] || chordImages[0] || '';
+                      const totalPages = chordImages.length;
+                      const hasMultiplePages = totalPages > 1;
 
-                      {/* Image Container */}
-                      <div className="fullscreen-chord-image-wrapper">
-                        {fullSongObj.ChordImagePath ? (
-                          <img 
-                            src={getUploadsUrl(fullSongObj.ChordImagePath)} 
-                            alt="Akor Görseli" 
-                            className="fullscreen-chord-image"
-                          />
-                        ) : (
-                          <div style={{ textAlign: 'center', color: '#f59e0b', fontWeight: 600 }}>
-                            ⚠️ Bu şarkı için akor görseli bulunmuyor.<br />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'inline-block' }}>
-                              Sağ üstteki "T" butonuna basarak transpoze metnine geçebilirsiniz.
-                            </span>
+                      return (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
+                          {/* Image Top Info Bar */}
+                          <div style={{ padding: '0.75rem 1.25rem', background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                            <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
+                                {gigSong.SongTitle}
+                              </span>
+                              {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
+                                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                                  - {gigSong.ArtistNames}
+                                </span>
+                              )}
+                              {origKey && <span className="orig-key-badge">({origKey} Tonu)</span>}
+                            </div>
+
+                            {/* Multi-page Red Indicator (24pt / Montserrat / Red) */}
+                            {hasMultiplePages && (
+                              <div 
+                                className="live-chord-multipage-badge"
+                                style={{
+                                  fontFamily: "'Montserrat', sans-serif",
+                                  fontSize: '24pt',
+                                  fontWeight: 900,
+                                  color: '#ef4444',
+                                  lineHeight: 1,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: '0.2rem 0.85rem',
+                                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                  border: '2px solid #ef4444',
+                                  borderRadius: '10px',
+                                  letterSpacing: '1.5px',
+                                  textShadow: '0 0 12px rgba(239, 68, 68, 0.5)',
+                                  flexShrink: 0,
+                                  marginRight: '1rem'
+                                }}
+                                title={`Toplam ${totalPages} sayfa. İleri/Geri kaydırarak veya yön tuşlarıyla sayfaları gezebilirsiniz.`}
+                              >
+                                {liveChordPageIndex + 1}/{totalPages}
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => toggleSongPlayed(liveSongIndex)}
+                              style={{
+                                marginRight: '125px', // Shifted left away from floating controls
+                                padding: '0.4rem 0.85rem',
+                                borderRadius: '8px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                border: gigSong.IsPlayed ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.25)',
+                                background: gigSong.IsPlayed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                                color: gigSong.IsPlayed ? '#34d399' : '#f8fafc',
+                                fontSize: '0.88rem',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    </div>
+
+                          {/* Image Container */}
+                          <div className="fullscreen-chord-image-wrapper">
+                            {currentChordImg ? (
+                              <img 
+                                src={getUploadsUrl(currentChordImg)} 
+                                alt={`Akor Görseli Sayfa ${liveChordPageIndex + 1}`} 
+                                className="fullscreen-chord-image"
+                              />
+                            ) : (
+                              <div style={{ textAlign: 'center', color: '#f59e0b', fontWeight: 600 }}>
+                                ⚠️ Bu şarkı için akor görseli bulunmuyor.<br />
+                                <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'inline-block' }}>
+                                  Sağ üstteki "T" butonuna basarak transpoze metnine geçebilirsiniz.
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()
                   ) : (
                     /* TRANSPOSE & LYRICS FULLSCREEN VIEW */
                     <div className="fullscreen-transpose-wrapper">

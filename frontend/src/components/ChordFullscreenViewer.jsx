@@ -13,6 +13,7 @@ export default function ChordFullscreenViewer() {
   const [isOpen, setIsOpen] = useState(false);
   const [song, setSong] = useState(null);
   const [mode, setMode] = useState('chord'); // 'chord' or 'transpose'
+  const [chordPageIndex, setChordPageIndex] = useState(0);
 
   // Transpose settings
   const [transposeShift, setTransposeShift] = useState(0);
@@ -45,6 +46,7 @@ export default function ChordFullscreenViewer() {
       
       setSong(targetSong);
       setMode(targetMode || 'chord');
+      setChordPageIndex(0);
       setTransposeShift(0);
       setIsSingleScreen(false);
       setViewerFontSize(16);
@@ -54,6 +56,26 @@ export default function ChordFullscreenViewer() {
     window.addEventListener('open-global-chord-viewer', handleOpen);
     return () => window.removeEventListener('open-global-chord-viewer', handleOpen);
   }, []);
+
+  // Keyboard navigation for multi-page chord viewer
+  useEffect(() => {
+    if (!isOpen || mode !== 'chord' || !song) return;
+    const chordImages = (Array.isArray(song.ChordImages) && song.ChordImages.length > 0)
+      ? song.ChordImages
+      : (song.ChordImagePath ? [song.ChordImagePath] : []);
+    
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        setChordPageIndex(p => Math.min(chordImages.length - 1, p + 1));
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        setChordPageIndex(p => Math.max(0, p - 1));
+      } else if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, mode, song, chordPageIndex]);
 
   // Autofit on layout triggers
   useEffect(() => {
@@ -69,6 +91,7 @@ export default function ChordFullscreenViewer() {
   const handleClose = () => {
     setIsOpen(false);
     setSong(null);
+    setChordPageIndex(0);
   };
 
   const handleToggleToTranspose = () => {
@@ -80,8 +103,9 @@ export default function ChordFullscreenViewer() {
   };
 
   const handleToggleToChord = () => {
-    if (song.ChordImagePath) {
+    if (song.ChordImagePath || (song.ChordImages && song.ChordImages.length > 0)) {
       setMode('chord');
+      setChordPageIndex(0);
     } else {
       alert("Bu şarkının akor görseli yoktur");
     }
@@ -114,9 +138,45 @@ export default function ChordFullscreenViewer() {
   const htmlContent = renderTransposedTextAsHTML(song.Lyrics, transposeShift, targetScale);
   const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+  const chordImages = (Array.isArray(song.ChordImages) && song.ChordImages.length > 0)
+    ? song.ChordImages
+    : (song.ChordImagePath ? [song.ChordImagePath] : []);
+  const currentChordImg = chordImages[chordPageIndex] || chordImages[0] || '';
+  const totalPages = chordImages.length;
+  const hasMultiplePages = totalPages > 1;
+
   return createPortal(
     <div className={`fullscreen-viewer-overlay ${mode === 'transpose' ? `theme-${viewerTheme}` : 'theme-chord'}`}>
       
+      {/* Multi-page Indicator in Chord Mode */}
+      {mode === 'chord' && hasMultiplePages && (
+        <div 
+          className="live-chord-multipage-badge"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            left: '20px',
+            zIndex: 100,
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: '24pt',
+            fontWeight: 900,
+            color: '#ef4444',
+            lineHeight: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0.25rem 0.85rem',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            border: '2px solid #ef4444',
+            borderRadius: '10px',
+            letterSpacing: '1.5px',
+            textShadow: '0 0 12px rgba(239, 68, 68, 0.6)'
+          }}
+        >
+          {chordPageIndex + 1}/{totalPages}
+        </div>
+      )}
+
       {/* Floating Control Buttons */}
       <div className="fullscreen-viewer-floating-controls">
         {mode === 'chord' ? (
@@ -131,7 +191,7 @@ export default function ChordFullscreenViewer() {
         ) : (
           <button 
             type="button" 
-            className={`viewer-btn-float btn-chord-toggle ${song.ChordImagePath ? 'btn-status-success' : 'btn-status-danger'}`} 
+            className={`viewer-btn-float btn-chord-toggle ${(song.ChordImagePath || (song.ChordImages && song.ChordImages.length > 0)) ? 'btn-status-success' : 'btn-status-danger'}`} 
             onClick={handleToggleToChord}
             title="Akor Görseline Geç (A)"
           >
@@ -151,12 +211,58 @@ export default function ChordFullscreenViewer() {
       {/* Screen Content */}
       <div className="fullscreen-viewer-body">
         {mode === 'chord' ? (
-          <div className="fullscreen-chord-image-wrapper">
-            <img 
-              src={getUploadsUrl(song.ChordImagePath)} 
-              alt="Akor Görseli" 
-              className="fullscreen-chord-image"
-            />
+          <div className="fullscreen-chord-image-wrapper" style={{ position: 'relative' }}>
+            {currentChordImg ? (
+              <img 
+                src={getUploadsUrl(currentChordImg)} 
+                alt={`Akor Görseli Sayfa ${chordPageIndex + 1}`} 
+                className="fullscreen-chord-image"
+              />
+            ) : (
+              <div style={{ color: '#f59e0b', textAlign: 'center', fontWeight: 600 }}>
+                Akor görseli bulunamadı.
+              </div>
+            )}
+
+            {/* Bottom Multi-page Nav Controls */}
+            {hasMultiplePages && (
+              <div style={{
+                position: 'absolute',
+                bottom: '25px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 100,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.85rem',
+                background: 'rgba(0,0,0,0.8)',
+                padding: '0.4rem 1rem',
+                borderRadius: '25px',
+                border: '1px solid rgba(255,255,255,0.2)'
+              }}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => setChordPageIndex(p => Math.max(0, p - 1))}
+                  disabled={chordPageIndex === 0}
+                  style={{ padding: '0.25rem 0.65rem', opacity: chordPageIndex === 0 ? 0.3 : 1 }}
+                >
+                  ◀ Önceki Sayfa
+                </button>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#f8fafc' }}>
+                  {chordPageIndex + 1} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  onClick={() => setChordPageIndex(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={chordPageIndex === totalPages - 1}
+                  style={{ padding: '0.25rem 0.65rem', opacity: chordPageIndex === totalPages - 1 ? 0.3 : 1 }}
+                >
+                  Sonraki Sayfa ▶
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="fullscreen-transpose-wrapper">

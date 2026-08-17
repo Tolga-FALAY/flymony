@@ -2638,6 +2638,16 @@ body.dark-mode .rich-editor-content {
   .live-stage-footer-nav {
     padding: 0.5rem 1rem;
   }
+
+  .live-chord-multipage-badge {
+    font-size: 18pt !important;
+    padding: 0.15rem 0.5rem !important;
+  }
+}
+
+.live-chord-multipage-badge {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 
