@@ -82,12 +82,6 @@ export default function Gigs() {
 
   const liveChordContentRef = useRef(null);
 
-  // Touch Swipe for Chord Slider
-  const touchStartX = useRef(null);
-  const touchStartY = useRef(null);
-  const touchEndX = useRef(null);
-  const touchEndY = useRef(null);
-
   useEffect(() => {
     const syncFromStore = () => {
       setGigs([...store.gigs]);
@@ -876,12 +870,19 @@ export default function Gigs() {
     setLiveSearchResults([]);
   };
 
-  // Swiping Gesture implementation (Vertical scroll friendly)
+  // Touch Swipe & Tap for Chord Slider
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
+  const touchEndX = useRef(null);
+  const touchEndY = useRef(null);
+  const swipeOccurredRef = useRef(false);
+
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
     touchStartY.current = e.targetTouches[0].clientY;
     touchEndX.current = null;
     touchEndY.current = null;
+    swipeOccurredRef.current = false;
   };
 
   const handleTouchMove = (e) => {
@@ -898,6 +899,7 @@ export default function Gigs() {
 
     const minSwipe = 45;
     if (Math.abs(diffX) > minSwipe && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+      swipeOccurredRef.current = true;
       if (diffX > 0) {
         goToNextSong();
       } else {
@@ -908,6 +910,28 @@ export default function Gigs() {
     touchStartY.current = null;
     touchEndX.current = null;
     touchEndY.current = null;
+  };
+
+  // 3-Zone Tap Handler (Left 1/3 = Previous, Right 1/3 = Next, Center 1/3 = Safe Zone)
+  const handleChordImageZoneClick = (e) => {
+    if (swipeOccurredRef.current) {
+      swipeOccurredRef.current = false;
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect || !rect.width) return;
+
+    const clickX = e.clientX - rect.left;
+    const ratio = clickX / rect.width;
+
+    if (ratio < 0.3333) {
+      // Left 1/3 -> Previous chord page / song
+      goToPrevSong();
+    } else if (ratio > 0.6666) {
+      // Right 1/3 -> Next chord page / song
+      goToNextSong();
+    }
+    // Center 1/3 (0.3333 - 0.6666) -> Safe zone, no action
   };
 
   // --- Filtering & Sorting Gigs ---
@@ -2134,13 +2158,19 @@ export default function Gigs() {
                             </div>
                           </div>
 
-                          {/* Image Container */}
-                          <div className="fullscreen-chord-image-wrapper">
+                          {/* Image Container with 3-Zone Click/Tap */}
+                          <div 
+                            className="fullscreen-chord-image-wrapper"
+                            onClick={handleChordImageZoneClick}
+                            style={{ position: 'relative', cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none' }}
+                          >
                             {currentChordImg ? (
                               <img 
                                 src={getUploadsUrl(currentChordImg)} 
                                 alt={`Akor Görseli Sayfa ${liveChordPageIndex + 1}`} 
                                 className="fullscreen-chord-image"
+                                style={{ pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+                                draggable="false"
                               />
                             ) : (
                               <div style={{ textAlign: 'center', color: '#f59e0b', fontWeight: 600 }}>
