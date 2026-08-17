@@ -153,18 +153,6 @@ export default function OtherOperations() {
     });
   };
 
-  const selectAllFilteredGuests = () => {
-    const filtered = guests.filter(g => {
-      const fullName = (g.FullName || '').toLocaleLowerCase('tr-TR');
-      return fullName.includes(guestSearch.toLocaleLowerCase('tr-TR'));
-    });
-    setSelectedGuestIds(prev => {
-      const next = new Set(prev);
-      filtered.forEach(g => next.add(g.GuestID));
-      return next;
-    });
-  };
-
   const clearGuestSelection = () => {
     setSelectedGuestIds(new Set());
     setShowOnlySelected(false);
@@ -332,7 +320,6 @@ export default function OtherOperations() {
                 >
                   {showOnlySelected ? 'Tümü' : 'Seçilenler'}
                 </button>
-                <button type="button" className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={selectAllFilteredGuests}>Tümünü Seç</button>
                 <button 
                   type="button" 
                   className="btn btn-sm" 

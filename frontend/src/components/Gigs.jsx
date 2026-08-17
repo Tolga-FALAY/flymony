@@ -1703,21 +1703,6 @@ export default function Gigs() {
       {isLiveMode && liveGig && createPortal(
         <div className={`fullscreen-viewer-overlay live-stage-overlay ${liveViewMode === 'image' ? 'theme-chord' : `theme-${liveTheme}`}`}>
           
-          {/* FLOATING TOP-LEFT: HAMBURGER REPERTOIRE DRAWER BUTTON */}
-          <div className="live-stage-floating-left">
-            <button 
-              type="button" 
-              className="viewer-btn-float live-stage-drawer-btn" 
-              onClick={() => setIsLiveDrawerOpen(prev => !prev)}
-              title="Repertuvar Sırası (Şarkı Listesi)"
-            >
-              <span style={{ fontSize: '1.25rem' }}>☰</span>
-              <span className="live-stage-counter-badge">
-                {liveSongIndex !== -1 ? `${liveSongIndex + 1}/${liveGig.Songs?.length || 0}` : '0/0'}
-              </span>
-            </button>
-          </div>
-
           {/* LEFT SLIDE-IN REPERTOIRE DRAWER */}
           {isLiveDrawerOpen && (
             <div className="live-stage-backdrop" onClick={() => setIsLiveDrawerOpen(false)} />
@@ -2034,17 +2019,52 @@ export default function Gigs() {
                             flexShrink: 0,
                             boxSizing: 'border-box'
                           }}>
-                            {/* Left: Song Info */}
-                            <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem', display: 'flex', alignItems: 'center', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                            {/* Left: Hamburger & Counter + Song Info */}
+                            <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem', display: 'flex', alignItems: 'center', overflow: 'hidden', whiteSpace: 'nowrap', gap: '0.65rem' }}>
+                              <button 
+                                type="button" 
+                                onClick={() => setIsLiveDrawerOpen(prev => !prev)}
+                                style={{
+                                  height: '38px',
+                                  padding: '0 0.75rem',
+                                  borderRadius: '8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  cursor: 'pointer',
+                                  background: 'rgba(255, 255, 255, 0.12)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: '#ffffff',
+                                  fontWeight: 700,
+                                  fontSize: '0.88rem',
+                                  flexShrink: 0,
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title="Repertuvar Sırası (Şarkı Listesi - ☰)"
+                              >
+                                <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>☰</span>
+                                <span style={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  background: 'var(--primary)',
+                                  color: '#ffffff',
+                                  lineHeight: 1
+                                }}>
+                                  {liveSongIndex !== -1 ? `${liveSongIndex + 1}/${liveGig.Songs?.length || 0}` : '0/0'}
+                                </span>
+                              </button>
+
                               <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {gigSong.SongTitle}
                               </span>
                               {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
-                                <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginLeft: '0.5rem', flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginLeft: '0.25rem', flexShrink: 0 }}>
                                   - {gigSong.ArtistNames}
                                 </span>
                               )}
-                              {origKey && <span className="orig-key-badge" style={{ marginLeft: '0.5rem', flexShrink: 0 }}>({origKey} Tonu)</span>}
+                              {origKey && <span className="orig-key-badge" style={{ marginLeft: '0.25rem', flexShrink: 0 }}>({origKey} Tonu)</span>}
                             </div>
 
                             {/* Right: Controls Aligned in Top Bar */}
@@ -2190,7 +2210,42 @@ export default function Gigs() {
                       
                       {/* Transpose Toolbar */}
                       <div className="fullscreen-transpose-toolbar" style={{ paddingLeft: '1.25rem' }}>
-                        <div className="toolbar-section" style={{ paddingRight: '10px' }}>
+                        <div className="toolbar-section" style={{ paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <button 
+                            type="button" 
+                            onClick={() => setIsLiveDrawerOpen(prev => !prev)}
+                            style={{
+                              height: '38px',
+                              padding: '0 0.75rem',
+                              borderRadius: '8px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                              background: 'var(--surface)',
+                              border: '1px solid var(--border-strong)',
+                              color: 'var(--text-main)',
+                              fontWeight: 700,
+                              fontSize: '0.88rem',
+                              flexShrink: 0,
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Repertuvar Sırası (Şarkı Listesi - ☰)"
+                          >
+                            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>☰</span>
+                            <span style={{
+                              fontSize: '0.8rem',
+                              fontWeight: 800,
+                              padding: '2px 6px',
+                              borderRadius: '6px',
+                              background: 'var(--primary)',
+                              color: '#ffffff',
+                              lineHeight: 1
+                            }}>
+                              {liveSongIndex !== -1 ? `${liveSongIndex + 1}/${liveGig.Songs?.length || 0}` : '0/0'}
+                            </span>
+                          </button>
+
                           <span className="song-title-label">
                             {gigSong.SongTitle} {gigSong.ArtistNames && gigSong.ArtistNames !== '-' ? ` - ${gigSong.ArtistNames}` : ''}
                           </span>
@@ -2365,15 +2420,6 @@ export default function Gigs() {
 
                     </div>
                   )}
-
-                  {/* BOTTOM FOOTER NAVIGATION */}
-                  <div className="live-stage-footer-nav">
-                    <button type="button" className="btn btn-outline" onClick={goToPrevSong}>◀ Önceki</button>
-                    <span style={{ fontSize: '0.92rem', fontWeight: 800, opacity: 0.85 }}>
-                      {liveSongIndex + 1} / {liveGig.Songs.length}
-                    </span>
-                    <button type="button" className="btn btn-outline" onClick={goToNextSong}>Sonraki ▶</button>
-                  </div>
 
                 </div>
               );
