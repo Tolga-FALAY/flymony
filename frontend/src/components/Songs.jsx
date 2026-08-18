@@ -878,38 +878,40 @@ export default function Songs() {
                 <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
                 <td data-label="Yıl">{song.SongYear || '-'}</td>
                 <td data-label="Dil">{song.LanguageName || '-'}</td>
-                <td data-label="İşlemler" className="action-btns">
-                  {String(song.Notes || '').trim().length > 0 && (
-                    <button 
-                      type="button"
-                      className="btn btn-sm" 
-                      style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
-                      onClick={() => setNoteModalSong(song)}
-                      title={song.Notes}
-                    >
-                      📝
-                    </button>
-                  )}
-                  {(() => {
-                    const hasChord = !!song.ChordImagePath;
-                    const hasTranspose = hasLyricsContent(song.Lyrics);
-                    if (hasChord && hasTranspose) {
-                      return (
-                        <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>A/T</button>
-                      );
-                    } else if (hasChord) {
-                      return (
-                        <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>Akor</button>
-                      );
-                    } else if (hasTranspose) {
-                      return (
-                        <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Trans.</button>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
+                <td data-label="İşlemler" style={{ width: '300px', textAlign: 'right' }}>
+                  <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', alignItems: 'center' }}>
+                    {String(song.Notes || '').trim().length > 0 && (
+                      <button 
+                        type="button"
+                        className="btn btn-sm" 
+                        style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
+                        onClick={() => setNoteModalSong(song)}
+                        title={song.Notes}
+                      >
+                        📝
+                      </button>
+                    )}
+                    {(() => {
+                      const hasChord = !!song.ChordImagePath;
+                      const hasTranspose = hasLyricsContent(song.Lyrics);
+                      if (hasChord && hasTranspose) {
+                        return (
+                          <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>A/T</button>
+                        );
+                      } else if (hasChord) {
+                        return (
+                          <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>Akor</button>
+                        );
+                      } else if (hasTranspose) {
+                        return (
+                          <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Trans.</button>
+                        );
+                      }
+                      return null;
+                    })()}
+                    <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
+                  </div>
                 </td>
               </tr>
             ))}
