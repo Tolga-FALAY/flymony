@@ -1141,82 +1141,87 @@ export default function Gigs() {
               <button className="close-btn" onClick={() => setIsModalOpen(false)}>&times;</button>
             </div>
             <form onSubmit={handleSave}>
-              <div className="filter-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Sahne Alınan Mekân (Mekân)</label>
-                  <select
-                    value={formData.VenueID}
-                    onChange={e => setFormData({ ...formData, VenueID: e.target.value })}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: '10px',
-                      backgroundColor: 'var(--surface)',
-                      color: 'var(--text)'
-                    }}
-                  >
-                    <option value="">Mekân Seçin...</option>
-                    {store.venues.map(v => (
-                      <option key={v.VenueID} value={v.VenueID}>
-                        {v.VenueName} ({v.CityName})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Sahne Tarihi</label>
-                  <div style={{ position: 'relative', width: '100%' }}>
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={formatGigDateWithDay(formData.GigDate)} 
-                      onClick={() => gigDateInputRef.current?.showPicker ? gigDateInputRef.current.showPicker() : gigDateInputRef.current?.focus()} 
+              <div className="filter-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem', alignItems: 'start' }}>
+                {/* SOL TARAF: Sahne Alınan Mekân ve Sahne Tarihi (%70 genişlik) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                  <div className="form-group" style={{ margin: 0, width: '70%' }}>
+                    <label>Sahne Alınan Mekân</label>
+                    <select
+                      value={formData.VenueID}
+                      onChange={e => setFormData({ ...formData, VenueID: e.target.value })}
+                      required
                       style={{
                         width: '100%',
-                        padding: '0.75rem 2.5rem 0.75rem 1rem',
+                        padding: '0.75rem',
                         border: '1px solid var(--border-strong)',
                         borderRadius: '10px',
                         backgroundColor: 'var(--surface)',
-                        color: 'var(--text)',
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        fontSize: '0.95rem'
+                        color: 'var(--text)'
                       }}
-                    />
-                    <input 
-                      type="date" 
-                      ref={gigDateInputRef}
-                      value={formData.GigDate} 
-                      onChange={e => setFormData({ ...formData, GigDate: e.target.value })} 
-                      style={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: '100%', 
-                        height: '100%', 
-                        opacity: 0, 
-                        cursor: 'pointer',
-                        zIndex: 1
-                      }}
-                      required 
-                    />
-                    <span style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: '1.1rem', color: 'var(--text-muted)' }}>
-                      📅
-                    </span>
+                    >
+                      <option value="">Mekân Seçin...</option>
+                      {store.venues.map(v => (
+                        <option key={v.VenueID} value={v.VenueID}>
+                          {v.VenueName} ({v.CityName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0, width: '70%' }}>
+                    <label>Sahne Tarihi</label>
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={formatGigDateWithDay(formData.GigDate)} 
+                        onClick={() => gigDateInputRef.current?.showPicker ? gigDateInputRef.current.showPicker() : gigDateInputRef.current?.focus()} 
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 2.5rem 0.75rem 1rem',
+                          border: '1px solid var(--border-strong)',
+                          borderRadius: '10px',
+                          backgroundColor: 'var(--surface)',
+                          color: 'var(--text)',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          fontSize: '0.95rem'
+                        }}
+                      />
+                      <input 
+                        type="date" 
+                        ref={gigDateInputRef}
+                        value={formData.GigDate} 
+                        onChange={e => setFormData({ ...formData, GigDate: e.target.value })} 
+                        style={{ 
+                          position: 'absolute', 
+                          top: 0, 
+                          left: 0, 
+                          width: '100%', 
+                          height: '100%', 
+                          opacity: 0, 
+                          cursor: 'pointer', 
+                          zIndex: 1 
+                        }}
+                        required 
+                      />
+                      <span style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: '1.1rem', color: 'var(--text-muted)' }}>
+                        📅
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label>Geceye Dair Notlar</label>
-                <textarea 
-                  value={formData.Notes} 
-                  onChange={e => setFormData({ ...formData, Notes: e.target.value })} 
-                  placeholder="Geceden kalan notlar, gözlemler, sahne atmosferi..."
-                  style={{ fontSize: '0.85rem', height: '80px', resize: 'vertical' }}
-                />
+                {/* SAĞ TARAF: Sahneye Dair Notlar */}
+                <div className="form-group" style={{ margin: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <label>Sahneye Dair Notlar</label>
+                  <textarea 
+                    value={formData.Notes} 
+                    onChange={e => setFormData({ ...formData, Notes: e.target.value })} 
+                    placeholder="Sahneye dair notlar, gözlemler, atmosfer..."
+                    style={{ fontSize: '0.85rem', flex: 1, minHeight: '125px', resize: 'vertical' }}
+                  />
+                </div>
               </div>
 
               {/* TABS CONTAINER FOR SONGS AND GUESTS IN MODAL */}
@@ -1255,7 +1260,7 @@ export default function Gigs() {
                             <input 
                               type="text" 
                               placeholder="Şarkı ara ve listeye ekle..." 
-                              value={songSearchText}
+                              value={songSearchText} 
                               onChange={e => setSongSearchText(e.target.value)} 
                               style={{ width: '100%', margin: 0, padding: '0.45rem 0.65rem', fontSize: '0.82rem' }}
                             />
@@ -1324,7 +1329,7 @@ export default function Gigs() {
                       </div>
 
                       {/* List of gig songs */}
-                      <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
+                      <div style={{ height: '410px', maxHeight: '410px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
                         {formData.Songs.map((gSong, idx) => {
                           const songObj = songs.find(s => s.SongID === gSong.SongID);
                           if (!songObj) return null;
@@ -1493,7 +1498,7 @@ export default function Gigs() {
                   </div>
 
                   {/* List of gig guests grouped by Table */}
-                  <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
+                  <div style={{ height: '410px', maxHeight: '410px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
                     {Object.keys(guestsByTable).map(tName => {
                       const totalInGroup = guestsByTable[tName].reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0);
                       return (
@@ -1607,76 +1612,86 @@ export default function Gigs() {
 
               </div>
 
-              {/* MEDIA GALLERY SECTION */}
-              <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+              {/* MEDIA GALLERY SECTION: 2/3 Fotolar & 1/3 Video Linki */}
+              <div style={{ 
+                marginTop: '1.5rem', 
+                borderTop: '1px solid var(--border)', 
+                paddingTop: '1.5rem',
+                display: 'grid',
+                gridTemplateColumns: '2fr 1fr',
+                gap: '1.5rem',
+                alignItems: 'start'
+              }}>
                 
-                {/* FOTOLAR SECTION */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <label style={{ margin: 0, fontWeight: 600 }}>Sahne Görselleri (Fotolar)</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => gigCameraInputRef.current?.click()}>
-                      📷 Fotoğraf Çek
-                    </button>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => gigBrowseInputRef.current?.click()}>
-                      📂 Görsel Ekle
-                    </button>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={pastePhotoFromClipboard}>
-                      📋 Yapıştır
-                    </button>
+                {/* FOTOLAR SECTION (2/3 Sol Taraf) */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <label style={{ margin: 0, fontWeight: 600 }}>Sahne Görselleri (Fotolar)</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={() => gigCameraInputRef.current?.click()}>
+                        📷 Fotoğraf Çek
+                      </button>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={() => gigBrowseInputRef.current?.click()}>
+                        📂 Görsel Ekle
+                      </button>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={pastePhotoFromClipboard}>
+                        📋 Yapıştır
+                      </button>
+                    </div>
+                  </div>
+
+                  <input 
+                    type="file" 
+                    ref={gigCameraInputRef} 
+                    accept="image/*" 
+                    capture="environment" 
+                    multiple 
+                    style={{ display: 'none' }} 
+                    onChange={handlePhotoUpload} 
+                  />
+                  <input 
+                    type="file" 
+                    ref={gigBrowseInputRef} 
+                    accept="image/*" 
+                    multiple 
+                    style={{ display: 'none' }} 
+                    onChange={handlePhotoUpload} 
+                  />
+
+                  <div className="gallery-previews-grid" style={{ marginBottom: 0 }}>
+                    {formData.Photos && formData.Photos.map((photo, index) => (
+                      <div key={index} className="gallery-preview-item">
+                        <img 
+                          src={photo} 
+                          alt={`Sahne Fotoğrafı ${index + 1}`} 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setFullscreenImage(photo)}
+                        />
+                        <button type="button" className="gallery-preview-delete-badge" onClick={() => removePhoto(index)} title="Fotoğrafı Sil">&times;</button>
+                      </div>
+                    ))}
+                    {(!formData.Photos || formData.Photos.length === 0) && (
+                      <div className="gallery-empty-placeholder">
+                        <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <input 
-                  type="file" 
-                  ref={gigCameraInputRef} 
-                  accept="image/*" 
-                  capture="environment" 
-                  multiple 
-                  style={{ display: 'none' }} 
-                  onChange={handlePhotoUpload} 
-                />
-                <input 
-                  type="file" 
-                  ref={gigBrowseInputRef} 
-                  accept="image/*" 
-                  multiple 
-                  style={{ display: 'none' }} 
-                  onChange={handlePhotoUpload} 
-                />
-
-                <div className="gallery-previews-grid" style={{ marginBottom: '1.25rem' }}>
-                  {formData.Photos && formData.Photos.map((photo, index) => (
-                    <div key={index} className="gallery-preview-item">
-                      <img 
-                        src={photo} 
-                        alt={`Sahne Fotoğrafı ${index + 1}`} 
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => setFullscreenImage(photo)}
-                      />
-                      <button type="button" className="gallery-preview-delete-badge" onClick={() => removePhoto(index)} title="Fotoğrafı Sil">&times;</button>
-                    </div>
-                  ))}
-                  {(!formData.Photos || formData.Photos.length === 0) && (
-                    <div className="gallery-empty-placeholder">
-                      <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* VIDEO LINKS SECTION */}
-                <div style={{ marginTop: '1.25rem', borderTop: '1px dashed var(--border)', paddingTop: '1rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', display: 'block' }}>Video Linki URL (YouTube, Drive...)</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                {/* VIDEO LINKS SECTION (1/3 Sağ Taraf) */}
+                <div style={{ minWidth: 0 }}>
+                  <label style={{ fontSize: '0.88rem', fontWeight: 600, marginBottom: '0.75rem', display: 'block' }}>Video Linki</label>
+                  <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
                     <input 
                       type="text" 
-                      placeholder="Video URL'si ekle veya yapıştır..." 
+                      placeholder="Video URL'si ekle (YouTube, Drive...)..." 
                       value={newVideoUrl} 
                       onChange={e => setNewVideoUrl(e.target.value)} 
                       style={{ margin: 0, flex: 1, fontSize: '0.85rem' }}
                     />
                     <button type="button" className="btn btn-outline" onClick={addVideoLink}>Ekle</button>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: '180px', overflowY: 'auto' }}>
                     {formData.Videos.map((url, index) => (
                       <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '0.35rem 0.65rem', borderRadius: '6px', fontSize: '0.82rem', border: '1px solid #e2e8f0' }}>
                         <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'underline' }}>
@@ -1685,8 +1700,14 @@ export default function Gigs() {
                         <button type="button" className="btn btn-sm btn-danger" style={{ padding: '0.1rem 0.4rem', fontSize: '0.75rem' }} onClick={() => removeVideo(index)}>&times;</button>
                       </div>
                     ))}
+                    {formData.Videos.length === 0 && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.25rem 0' }}>
+                        Henüz video linki eklenmedi.
+                      </div>
+                    )}
                   </div>
                 </div>
+
               </div>
 
               <div className="modal-actions" style={{ marginTop: '2rem' }}>
