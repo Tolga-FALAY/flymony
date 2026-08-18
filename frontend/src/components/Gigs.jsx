@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import JSZip from 'jszip';
 import { api } from '../api';
 import store from '../store';
 import { 
@@ -593,7 +594,7 @@ export default function Gigs() {
     }
   };
 
-  // --- Akor Export Function (Export to C:\FLY_rep) ---
+  // --- Akor Export Function (Export to C:\FLY_rep via File System API or ZIP) ---
   const handleExportChords = async () => {
     if (!formData.Songs || formData.Songs.length === 0) {
       alert('Şarkı listesinde export edilecek şarkı bulunmuyor.');
@@ -602,15 +603,120 @@ export default function Gigs() {
 
     setIsExportingChords(true);
     try {
-      const res = await api.exportGigChords({ songs: formData.Songs });
-      if (res.success) {
-        let msg = `✅ ${res.exportedCount} adet akor görseli başarıyla "${res.targetDir}" klasörüne aktarıldı.`;
-        if (res.skippedCount > 0) {
-          msg += `\n(Akor görseli bulunmayan ${res.skippedCount} şarkı atlandı)`;
+      // 1. Sıra numarasına göre sırala
+      const sortedSongs = [...formData.Songs].sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
+
+      const filesToExport = [];
+      let skippedNoChord = 0;
+
+      for (let idx = 0; idx < sortedSongs.length; idx++) {
+        const gSong = sortedSongs[idx];
+        const songObj = songs.find(s => s.SongID === gSong.SongID) || gSong;
+        
+        const rawImages = (Array.isArray(songObj.ChordImages) && songObj.ChordImages.length > 0)
+          ? songObj.ChordImages
+          : (songObj.ChordImagePath ? [songObj.ChordImagePath] : []);
+
+        if (!rawImages || rawImages.length === 0) {
+          skippedNoChord++;
+          continue;
+        }
+
+        const orderNum = Number(gSong.SortOrder) || (idx + 1);
+        const twoDigitOrder = String(orderNum).padStart(2, '0');
+
+        const rawArtist = (songObj.ArtistNames && songObj.ArtistNames !== '-') ? songObj.ArtistNames.trim() : 'Bilinmeyen Sanatçı';
+        const rawTitle = (songObj.SongTitle || 'İsimsiz Şarkı').trim();
+        const safeArtist = rawArtist.replace(/[\\/:*?"<>|]/g, '_').trim();
+        const safeTitle = rawTitle.replace(/[\\/:*?"<>|]/g, '_').trim();
+
+        for (let imgIdx = 0; imgIdx < rawImages.length; imgIdx++) {
+          const chordImg = rawImages[imgIdx];
+          const prefix = rawImages.length > 1 
+            ? `${twoDigitOrder}${String.fromCharCode(97 + imgIdx)}` // 01a, 01b...
+            : twoDigitOrder; // 01, 02...
+
+          const fileName = `${prefix} ${safeArtist} - ${safeTitle}.JPG`;
+
+          try {
+            let blob;
+            if (typeof chordImg === 'string' && chordImg.startsWith('data:image/')) {
+              const res = await fetch(chordImg);
+              blob = await res.blob();
+            } else if (typeof chordImg === 'string') {
+              const fullUrl = getUploadsUrl(chordImg);
+              const res = await fetch(fullUrl);
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              blob = await res.blob();
+            }
+            if (blob) {
+              filesToExport.push({ fileName, blob });
+            }
+          } catch (fetchErr) {
+            console.error(`Görsel indirilemedi: ${fileName}`, fetchErr);
+          }
+        }
+      }
+
+      if (filesToExport.length === 0) {
+        alert('Seçilen şarkılarda aktarılacak akor görseli bulunamadı.');
+        return;
+      }
+
+      // 2. PC üzerinde klasöre doğrudan yazma (File System Access API)
+      let savedDirectly = false;
+      if (typeof window.showDirectoryPicker === 'function') {
+        try {
+          // Kullanıcıya C:\FLY_rep klasörünü seçmesi için Windows klasör seçici penceresi açılır
+          const dirHandle = await window.showDirectoryPicker({
+            id: 'fly_rep_export',
+            mode: 'readwrite'
+          });
+
+          for (const item of filesToExport) {
+            const fileHandle = await dirHandle.getFileHandle(item.fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(item.blob);
+            await writable.close();
+          }
+          savedDirectly = true;
+
+          let msg = `✅ ${filesToExport.length} adet akor görseli başarıyla "${dirHandle.name || 'C:\\FLY_rep'}" klasörüne aktarıldı!`;
+          if (skippedNoChord > 0) {
+            msg += `\n(Akoru bulunmayan ${skippedNoChord} şarkı atlandı)`;
+          }
+          alert(msg);
+        } catch (pickerErr) {
+          // Kullanıcı pencereyi iptal ettiyse veya izin verilmediyse
+          if (pickerErr.name === 'AbortError') {
+            console.log('Kullanıcı klasör seçimini iptal etti.');
+            return;
+          }
+          console.warn('Directory picker desteklenmedi, ZIP olarak indiriliyor:', pickerErr);
+        }
+      }
+
+      // 3. Fallback: Eğer klasör seçici tarayıcıda desteklenmiyorsa ZIP paketi olarak indir
+      if (!savedDirectly) {
+        const zip = new JSZip();
+        for (const item of filesToExport) {
+          zip.file(item.fileName, item.blob);
+        }
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const downloadUrl = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `FLY_rep_Akorlar_${new Date().toISOString().slice(0, 10)}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+
+        let msg = `✅ ${filesToExport.length} adet akor görseli ZIP arşivi olarak bilgisayarınıza indirildi.\n(ZIP içerisindeki JPG dosyalarını C:\\FLY_rep klasörüne aktarabilirsiniz).`;
+        if (skippedNoChord > 0) {
+          msg += `\n(Akoru bulunmayan ${skippedNoChord} şarkı atlandı)`;
         }
         alert(msg);
-      } else {
-        alert('Export işlemi tamamlanamadı.');
       }
     } catch (err) {
       console.error('Export chords error:', err);
