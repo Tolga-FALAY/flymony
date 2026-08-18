@@ -95,8 +95,26 @@ const NAV_ITEMS = [
   }
 ];
 
+const VALID_TABS = ['requests', 'gigs', 'songs', 'artists', 'guests', 'otherOperations', 'parameters', 'notes'];
+
+function getInitialTab() {
+  try {
+    const hash = window.location.hash.replace('#', '');
+    if (VALID_TABS.includes(hash)) {
+      return hash;
+    }
+    const saved = localStorage.getItem('flymony_active_tab');
+    if (saved && VALID_TABS.includes(saved)) {
+      return saved;
+    }
+  } catch (e) {
+    console.warn("Aktif tab okunamadı:", e);
+  }
+  return 'requests';
+}
+
 function App() {
-  const [activeTab, setActiveTab] = useState('requests');
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -107,6 +125,17 @@ function App() {
   });
 
   const [notesCount, setNotesCount] = useState(0);
+
+  const switchTab = (tabKey) => {
+    if (!VALID_TABS.includes(tabKey)) return;
+    setActiveTab(tabKey);
+    try {
+      localStorage.setItem('flymony_active_tab', tabKey);
+      window.location.hash = tabKey;
+    } catch (e) {
+      console.warn("Aktif tab kaydedilemedi:", e);
+    }
+  };
 
   const toggleSidebar = () => {
     setSidebarCollapsed(prev => {
@@ -146,14 +175,30 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (VALID_TABS.includes(hash)) {
+        setActiveTab(hash);
+        try {
+          localStorage.setItem('flymony_active_tab', hash);
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
     const handleOpenSongModalExternal = (e) => {
       if (e.detail && e.detail.song) {
-        setActiveTab('songs');
+        switchTab('songs');
       }
     };
     const handleOpenGigFromGuest = (e) => {
       if (e.detail && e.detail.gigId) {
-        setActiveTab('gigs');
+        switchTab('gigs');
       }
     };
     window.addEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
@@ -167,7 +212,7 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   function handleNavClick(key) {
-    setActiveTab(key);
+    switchTab(key);
     setMenuOpen(false);
   }
 
@@ -175,6 +220,12 @@ function App() {
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
+      try {
+        localStorage.setItem('flymony_active_tab', activeTab);
+        window.location.hash = activeTab;
+      } catch (e) {
+        // ignore
+      }
       localStorage.removeItem('flymony_db_cache_react');
       localStorage.removeItem('flymony_db_cache_react_time');
       if (typeof DB !== 'undefined' && DB.loadFromFirestore) {

@@ -176,41 +176,41 @@ export default function Artists() {
       </div>
 
       <div className="table-wrapper">
-        <table>
+        <table style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr>
-              <th onClick={() => handleSort('ArtistID')} style={{ cursor: 'pointer', userSelect: 'none', width: '120px' }}>
+              <th onClick={() => handleSort('ArtistID')} style={{ cursor: 'pointer', userSelect: 'none', width: '22%' }}>
                 ID
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistID' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('ArtistID')}
                 </span>
               </th>
-              <th onClick={() => handleSort('ArtistName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('ArtistName')} style={{ cursor: 'pointer', userSelect: 'none', width: '40%' }}>
                 SANATÇI ADI
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistName' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('ArtistName')}
                 </span>
               </th>
-              <th onClick={() => handleSort('SongCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '160px' }}>
+              <th onClick={() => handleSort('SongCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '20%' }}>
                 KAYITLI ŞARKI
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongCount' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('SongCount')}
                 </span>
               </th>
-              <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
+              <th style={{ width: '18%', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {filteredArtists.map(artist => (
               <tr key={artist.ArtistID}>
-                <td data-label="ID">{artist.ArtistID}</td>
-                <td data-label="Sanatçı Adı" style={{ fontWeight: '500' }}>{artist.ArtistName}</td>
-                <td data-label="Kayıtlı Şarkı" style={{ textAlign: 'center' }}>
+                <td data-label="ID" style={{ width: '22%' }}>{artist.ArtistID}</td>
+                <td data-label="Sanatçı Adı" style={{ width: '40%', fontWeight: '500' }}>{artist.ArtistName}</td>
+                <td data-label="Kayıtlı Şarkı" style={{ width: '20%', textAlign: 'center' }}>
                   <span className="badge badge-neutral" style={{ fontWeight: '600', fontSize: '0.88rem', minWidth: '28px', display: 'inline-block' }}>
                     {artist.SongCount}
                   </span>
                 </td>
-                <td data-label="İşlemler" className="action-btns">
+                <td data-label="İşlemler" className="action-btns" style={{ width: '18%', textAlign: 'right' }}>
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(artist)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(artist.ArtistID)}>Sil</button>
                 </td>
