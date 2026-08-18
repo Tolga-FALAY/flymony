@@ -1141,10 +1141,10 @@ export default function Gigs() {
               <button className="close-btn" onClick={() => setIsModalOpen(false)}>&times;</button>
             </div>
             <form onSubmit={handleSave}>
-              <div className="filter-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem', alignItems: 'start' }}>
-                {/* SOL TARAF: Sahne Alınan Mekân ve Sahne Tarihi (%70 genişlik) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-                  <div className="form-group" style={{ margin: 0, width: '70%' }}>
+              <div className="filter-group-row" style={{ display: 'grid', gridTemplateColumns: '270px 1fr 150px', gap: '1.25rem', marginBottom: '1.25rem', alignItems: 'stretch' }}>
+                {/* SOL TARAF: Sahne Alınan Mekân ve Sahne Tarihi */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label>Sahne Alınan Mekân</label>
                     <select
                       value={formData.VenueID}
@@ -1168,7 +1168,7 @@ export default function Gigs() {
                     </select>
                   </div>
 
-                  <div className="form-group" style={{ margin: 0, width: '70%' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label>Sahne Tarihi</label>
                     <div style={{ position: 'relative', width: '100%' }}>
                       <input 
@@ -1212,7 +1212,7 @@ export default function Gigs() {
                   </div>
                 </div>
 
-                {/* SAĞ TARAF: Sahneye Dair Notlar */}
+                {/* ORTA: Sahneye Dair Notlar (Sola yaklaştırıldı) */}
                 <div className="form-group" style={{ margin: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <label>Sahneye Dair Notlar</label>
                   <textarea 
@@ -1221,6 +1221,48 @@ export default function Gigs() {
                     placeholder="Sahneye dair notlar, gözlemler, atmosfer..."
                     style={{ fontSize: '0.85rem', flex: 1, minHeight: '125px', resize: 'vertical' }}
                   />
+                </div>
+
+                {/* SAĞ TARAF: Akor Export ve Next Week Butonları */}
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.65rem', paddingTop: '1.25rem' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline" 
+                    onClick={() => {}}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: '0.4rem', 
+                      height: '42px', 
+                      fontWeight: 700, 
+                      fontSize: '0.85rem',
+                      borderRadius: '8px',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="Akor Export"
+                  >
+                    📤 Akor Export
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline" 
+                    onClick={() => {}}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: '0.4rem', 
+                      height: '42px', 
+                      fontWeight: 700, 
+                      fontSize: '0.85rem',
+                      borderRadius: '8px',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="Next Week"
+                  >
+                    ⏭️ Next Week
+                  </button>
                 </div>
               </div>
 
@@ -1328,8 +1370,8 @@ export default function Gigs() {
                         </div>
                       </div>
 
-                      {/* List of gig songs */}
-                      <div style={{ height: '410px', maxHeight: '410px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
+                      {/* List of gig songs: Misafirler listesinin sonuna kadar uzatıldı */}
+                      <div style={{ height: '465px', maxHeight: '465px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
                         {formData.Songs.map((gSong, idx) => {
                           const songObj = songs.find(s => s.SongID === gSong.SongID);
                           if (!songObj) return null;
@@ -1625,16 +1667,16 @@ export default function Gigs() {
                 
                 {/* FOTOLAR SECTION (2/3 Sol Taraf) */}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <label style={{ margin: 0, fontWeight: 600 }}>Sahne Görselleri (Fotolar)</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => gigCameraInputRef.current?.click()}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.4rem', flexWrap: 'nowrap' }}>
+                    <label style={{ margin: 0, fontWeight: 700, fontSize: '0.92rem', whiteSpace: 'nowrap' }}>Sahne Görselleri</label>
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'nowrap' }}>
+                      <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem', whiteSpace: 'nowrap' }} onClick={() => gigCameraInputRef.current?.click()}>
                         📷 Fotoğraf Çek
                       </button>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => gigBrowseInputRef.current?.click()}>
+                      <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem', whiteSpace: 'nowrap' }} onClick={() => gigBrowseInputRef.current?.click()}>
                         📂 Görsel Ekle
                       </button>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={pastePhotoFromClipboard}>
+                      <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem', whiteSpace: 'nowrap' }} onClick={pastePhotoFromClipboard}>
                         📋 Yapıştır
                       </button>
                     </div>
