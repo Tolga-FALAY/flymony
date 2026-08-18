@@ -816,7 +816,17 @@ export const initializeDB = () => {
         if (readDir) {
             const fileList = fs.readdirSync(readDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
             
+            const ARTIST_NORM_MAP = {
+                'alifiru': 'Ali Firu',
+                'anonimcyp': 'Anonim CYP',
+                'anonimtr': 'Anonim',
+                'aşık mahsuni': 'Aşık Mahsuni Şerif',
+                'asik mahsuni': 'Aşık Mahsuni Şerif',
+                'ahmet kaya': 'Ahmet Kaya'
+            };
+
             const SONG_YEARS = {
+                // Batch 1
                 'ervahı ezelde': 2013,
                 'bebek': 1996,
                 'koca yaşlı şişko dünya': 2014,
@@ -834,7 +844,65 @@ export const initializeDB = () => {
                 'penceresiz kaldım anne': 1985,
                 'yakamoz': 1996,
                 'içimde ölen biri var': 1992,
-                'şiire gazele - azeri': 1993
+                'şiire gazele - azeri': 1993,
+
+                // Batch 2
+                'bambaşka biri': 1979,
+                'bir garip yolcuyum (yalan dünya)': 1972,
+                'düşünme hiç': 1983,
+                'haykıracak nefesim': 1979,
+                'hoşgör sen': 1975,
+                'kim ne derse desin aşk için': 1976,
+                'kimler geldi kimler geçti': 1973,
+                'sensiz yıllarda': 1970,
+                'anlatamıyorum': 1995,
+                'gül bahçesi': 2018,
+                'yolcu': 1997,
+                'ihtilal': 2021,
+                'kurban olayım': 2021,
+                'eylülde gel': 1977,
+                'fabrika kızı': 1970,
+                'seni sana sen': 2020,
+                'dillirga': null,
+                'feslikan': null,
+                'köprüden geçemedim': null,
+                'portakal atışalım': null,
+                'zeytinden aşı mısın': null,
+                'ah bir ataş ver': null,
+                'arpa buğday daneler': null,
+                'ayva çiçek açmış': null,
+                'divane aşık gibi': null,
+                'drama köprüsü': null,
+                'eklemedir koca kocak': null,
+                'eklemedir koca konak': null,
+                'izmir marşı': 1923,
+                'mağusa limanı': null,
+                'çanakkale türküsü': 1915,
+                'ne ağlarsın benim zülfü siyahım': 1983,
+                'kalp kalbe karşı derler': 2007,
+                'bağrı yanık dostlara': 1980,
+                'hayriyem': 2014,
+                'arsız gönül': 2010,
+                'ben böyleyim': 2010,
+                'beyoğlu': 2002,
+                'dam üstüne çul serer': 1998,
+                'herşey güzel olacak': 1998,
+                'kafama göre': 2014,
+                'serseri mayın': 2010,
+                'yalan': 2004,
+                'çilli bom': 1993,
+                'allah sorar': 1998,
+                'anlamazdın': 1975,
+                'bağdat': 2016,
+                'garibim': 1998,
+                'gittiğin yağmurla gel': 1997,
+                'ölünce sevemezsem seni': 1997,
+                'büklüm büklüm': 1976,
+                'ben varım': 1974,
+                'ay inanmıyorum': 1994,
+                'yalancı bahar': 2001,
+                'çeşmi siyahım': 1968,
+                'uzun ince bir yoldayım': 1958
             };
 
             const trMap = {
@@ -876,8 +944,9 @@ export const initializeDB = () => {
                         songTitle = baseName.trim();
                     }
 
-                    if (artistName.toUpperCase() === 'AHMET KAYA') {
-                        artistName = 'Ahmet Kaya';
+                    const artistKey = artistName.trim().toLocaleLowerCase('tr-TR');
+                    if (ARTIST_NORM_MAP[artistKey]) {
+                        artistName = ARTIST_NORM_MAP[artistKey];
                     }
 
                     const srcFilePath = path.join(readDir, filename);

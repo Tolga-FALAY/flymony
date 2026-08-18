@@ -14,8 +14,19 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Year metadata lookup for C:\FLY songs
+// Artist normalization map
+const ARTIST_NORM_MAP = {
+  'alifiru': 'Ali Firu',
+  'anonimcyp': 'Anonim CYP',
+  'anonimtr': 'Anonim',
+  'aşık mahsuni': 'Aşık Mahsuni Şerif',
+  'asik mahsuni': 'Aşık Mahsuni Şerif',
+  'ahmet kaya': 'Ahmet Kaya'
+};
+
+// Known release years lookup
 const SONG_YEARS = {
+  // Batch 1
   'ervahı ezelde': 2013,
   'bebek': 1996,
   'koca yaşlı şişko dünya': 2014,
@@ -33,7 +44,65 @@ const SONG_YEARS = {
   'penceresiz kaldım anne': 1985,
   'yakamoz': 1996,
   'içimde ölen biri var': 1992,
-  'şiire gazele - azeri': 1993
+  'şiire gazele - azeri': 1993,
+
+  // Batch 2
+  'bambaşka biri': 1979,
+  'bir garip yolcuyum (yalan dünya)': 1972,
+  'düşünme hiç': 1983,
+  'haykıracak nefesim': 1979,
+  'hoşgör sen': 1975,
+  'kim ne derse desin aşk için': 1976,
+  'kimler geldi kimler geçti': 1973,
+  'sensiz yıllarda': 1970,
+  'anlatamıyorum': 1995,
+  'gül bahçesi': 2018,
+  'yolcu': 1997,
+  'ihtilal': 2021,
+  'kurban olayım': 2021,
+  'eylülde gel': 1977,
+  'fabrika kızı': 1970,
+  'seni sana sen': 2020,
+  'dillirga': null,
+  'feslikan': null,
+  'köprüden geçemedim': null,
+  'portakal atışalım': null,
+  'zeytinden aşı mısın': null,
+  'ah bir ataş ver': null,
+  'arpa buğday daneler': null,
+  'ayva çiçek açmış': null,
+  'divane aşık gibi': null,
+  'drama köprüsü': null,
+  'eklemedir koca kocak': null,
+  'eklemedir koca konak': null,
+  'izmir marşı': 1923,
+  'mağusa limanı': null,
+  'çanakkale türküsü': 1915,
+  'ne ağlarsın benim zülfü siyahım': 1983,
+  'kalp kalbe karşı derler': 2007,
+  'bağrı yanık dostlara': 1980,
+  'hayriyem': 2014,
+  'arsız gönül': 2010,
+  'ben böyleyim': 2010,
+  'beyoğlu': 2002,
+  'dam üstüne çul serer': 1998,
+  'herşey güzel olacak': 1998,
+  'kafama göre': 2014,
+  'serseri mayın': 2010,
+  'yalan': 2004,
+  'çilli bom': 1993,
+  'allah sorar': 1998,
+  'anlamazdın': 1975,
+  'bağdat': 2016,
+  'garibim': 1998,
+  'gittiğin yağmurla gel': 1997,
+  'ölünce sevemezsem seni': 1997,
+  'büklüm büklüm': 1976,
+  'ben varım': 1974,
+  'ay inanmıyorum': 1994,
+  'yalancı bahar': 2001,
+  'çeşmi siyahım': 1968,
+  'uzun ince bir yoldayım': 1958
 };
 
 function slugify(text) {
@@ -53,26 +122,33 @@ function slugify(text) {
 
 export function importFlySongs(sourceDir = 'C:\\FLY') {
   const seedFilesDir = path.join(__dirname, 'fly_seeds');
-  let useSeedDir = false;
-
-  let fileList = [];
-  let readDir = sourceDir;
-
-  if (fs.existsSync(sourceDir)) {
-    fileList = fs.readdirSync(sourceDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
-    readDir = sourceDir;
-  } else if (fs.existsSync(seedFilesDir)) {
-    fileList = fs.readdirSync(seedFilesDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
-    readDir = seedFilesDir;
-    useSeedDir = true;
-  } else {
-    console.log(`Neither ${sourceDir} nor ${seedFilesDir} found.`);
-    return [];
+  if (!fs.existsSync(seedFilesDir)) {
+    fs.mkdirSync(seedFilesDir, { recursive: true });
   }
 
-  // Also backup to fly_seeds so Hetzner server can access it
-  if (!useSeedDir && !fs.existsSync(seedFilesDir)) {
-    fs.mkdirSync(seedFilesDir, { recursive: true });
+  // Combine files from sourceDir (if exists) and seedFilesDir
+  const fileSourceMap = new Map();
+
+  if (fs.existsSync(seedFilesDir)) {
+    for (const f of fs.readdirSync(seedFilesDir)) {
+      if (/\.(jpg|jpeg|png)$/i.test(f)) {
+        fileSourceMap.set(f, path.join(seedFilesDir, f));
+      }
+    }
+  }
+
+  if (fs.existsSync(sourceDir)) {
+    for (const f of fs.readdirSync(sourceDir)) {
+      if (/\.(jpg|jpeg|png)$/i.test(f)) {
+        const srcPath = path.join(sourceDir, f);
+        fileSourceMap.set(f, srcPath);
+        // Backup to fly_seeds
+        const targetSeed = path.join(seedFilesDir, f);
+        if (!fs.existsSync(targetSeed)) {
+          fs.copyFileSync(srcPath, targetSeed);
+        }
+      }
+    }
   }
 
   const reports = [];
@@ -94,7 +170,7 @@ export function importFlySongs(sourceDir = 'C:\\FLY') {
 
   const insertSongArtistStmt = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
-  for (const filename of fileList) {
+  for (const [filename, srcFilePath] of fileSourceMap.entries()) {
     const ext = path.extname(filename);
     const baseName = path.basename(filename, ext);
 
@@ -109,24 +185,18 @@ export function importFlySongs(sourceDir = 'C:\\FLY') {
       songTitle = baseName.trim();
     }
 
-    if (artistName.toUpperCase() === 'AHMET KAYA') {
-      artistName = 'Ahmet Kaya';
+    // Apply normalization
+    const artistKey = artistName.trim().toLocaleLowerCase('tr-TR');
+    if (ARTIST_NORM_MAP[artistKey]) {
+      artistName = ARTIST_NORM_MAP[artistKey];
     }
 
-    const srcFilePath = path.join(readDir, filename);
-
-    // Save seed copy if we are reading from C:\FLY
-    if (!useSeedDir) {
-      const seedTarget = path.join(seedFilesDir, filename);
-      if (!fs.existsSync(seedTarget)) {
-        fs.copyFileSync(srcFilePath, seedTarget);
-      }
-    }
-
-    // Copy to uploads
+    // Copy to uploads folder
     const destFileName = `chord_fly_${slugify(artistName)}_${slugify(songTitle)}${ext.toLowerCase()}`;
     const destFilePath = path.join(uploadDir, destFileName);
-    fs.copyFileSync(srcFilePath, destFilePath);
+    if (!fs.existsSync(destFilePath)) {
+      fs.copyFileSync(srcFilePath, destFilePath);
+    }
 
     const chordImagePathValue = JSON.stringify([`/uploads/${destFileName}`]);
 
