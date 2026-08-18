@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import JSZip from 'jszip';
 import { api } from '../api';
 import store from '../store';
 import { 
@@ -594,6 +593,18 @@ export default function Gigs() {
     }
   };
 
+  // Dinamik JSZip yükleyici (Sunucuda ekstra npm paket bağımlılığı gerektirmez)
+  const loadJSZip = () => {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      script.onload = () => resolve(window.JSZip);
+      script.onerror = () => reject(new Error('JSZip kütüphanesi yüklenemedi.'));
+      document.head.appendChild(script);
+    });
+  };
+
   // --- Akor Export Function (Export to C:\FLY_rep via File System API or ZIP) ---
   const handleExportChords = async () => {
     if (!formData.Songs || formData.Songs.length === 0) {
@@ -698,7 +709,8 @@ export default function Gigs() {
 
       // 3. Fallback: Eğer klasör seçici tarayıcıda desteklenmiyorsa ZIP paketi olarak indir
       if (!savedDirectly) {
-        const zip = new JSZip();
+        const JSZipLib = await loadJSZip();
+        const zip = new JSZipLib();
         for (const item of filesToExport) {
           zip.file(item.fileName, item.blob);
         }
