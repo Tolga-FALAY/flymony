@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api';
 import store from '../store';
 
 export default function Artists() {
   const [artists, setArtists] = useState([]);
+  const [songs, setSongs] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArtist, setEditingArtist] = useState(null);
   const [artistName, setArtistName] = useState('');
@@ -15,7 +16,10 @@ export default function Artists() {
   const [filterText, setFilterText] = useState('');
 
   useEffect(() => {
-    const syncFromStore = () => setArtists([...store.artists]);
+    const syncFromStore = () => {
+      setArtists([...store.artists]);
+      setSongs([...store.songs]);
+    };
     if (store.isLoaded) {
       syncFromStore();
     } else {
@@ -47,7 +51,6 @@ export default function Artists() {
     try {
       if (editingArtist) {
         await api.updateArtist(editingArtist.ArtistID, { ArtistName: artistName });
-        // Store'u güncelle — Firestore'a okuma yapmadan
         store.updateArtist(editingArtist.ArtistID, { ArtistName: artistName });
       } else {
         const result = await api.createArtist({ ArtistName: artistName });
@@ -61,7 +64,6 @@ export default function Artists() {
 
   const handleDelete = async (id) => {
     try {
-      // Bağlantı kontrolü: Firestore okuma YOK — bellekteki store kullanılır
       const isLinked = store.songs.some(s => (s.ArtistIDs || []).includes(Number(id)));
       if (isLinked) {
         alert("Bu sanatçı bir şarkıda kayıtlı, sanatçıyı silmek için önce ilgili şarkı kaydınız silmeniz gerekir");
@@ -84,21 +86,60 @@ export default function Artists() {
     setSortConfig({ key, direction });
   };
 
-  const sortedArtists = [...artists].sort((a, b) => {
-    const aVal = (a.ArtistName || '').toLocaleLowerCase('tr-TR');
-    const bVal = (b.ArtistName || '').toLocaleLowerCase('tr-TR');
-    const res = aVal.localeCompare(bVal, 'tr');
-    return sortConfig.direction === 'asc' ? res : -res;
-  });
-
-  const filteredArtists = sortedArtists.filter(artist => {
-    if (filterText) {
-      const search = filterText.toLocaleLowerCase('tr-TR');
-      const name = (artist.ArtistName || '').toLocaleLowerCase('tr-TR');
-      if (!name.includes(search)) return false;
+  // Map song counts per artist
+  const songCountMap = useMemo(() => {
+    const map = new Map();
+    for (const s of songs) {
+      for (const aId of (s.ArtistIDs || [])) {
+        const idNum = Number(aId);
+        map.set(idNum, (map.get(idNum) || 0) + 1);
+      }
     }
-    return true;
-  });
+    return map;
+  }, [songs]);
+
+  const artistsWithCounts = useMemo(() => {
+    return artists.map(artist => ({
+      ...artist,
+      SongCount: songCountMap.get(Number(artist.ArtistID)) || 0
+    }));
+  }, [artists, songCountMap]);
+
+  const sortedArtists = useMemo(() => {
+    return [...artistsWithCounts].sort((a, b) => {
+      if (sortConfig.key === 'SongCount') {
+        const aCount = a.SongCount || 0;
+        const bCount = b.SongCount || 0;
+        if (aCount !== bCount) {
+          return sortConfig.direction === 'asc' ? aCount - bCount : bCount - aCount;
+        }
+        // İkincil sıralama: Sanatçı Adı
+        return (a.ArtistName || '').localeCompare((b.ArtistName || ''), 'tr');
+      }
+
+      if (sortConfig.key === 'ArtistID') {
+        return sortConfig.direction === 'asc' 
+          ? Number(a.ArtistID) - Number(b.ArtistID) 
+          : Number(b.ArtistID) - Number(a.ArtistID);
+      }
+
+      const aVal = (a.ArtistName || '').toLocaleLowerCase('tr-TR');
+      const bVal = (b.ArtistName || '').toLocaleLowerCase('tr-TR');
+      const res = aVal.localeCompare(bVal, 'tr');
+      return sortConfig.direction === 'asc' ? res : -res;
+    });
+  }, [artistsWithCounts, sortConfig]);
+
+  const filteredArtists = useMemo(() => {
+    return sortedArtists.filter(artist => {
+      if (filterText) {
+        const search = filterText.toLocaleLowerCase('tr-TR');
+        const name = (artist.ArtistName || '').toLocaleLowerCase('tr-TR');
+        if (!name.includes(search)) return false;
+      }
+      return true;
+    });
+  }, [sortedArtists, filterText]);
 
   const renderSortArrow = (key) => {
     if (sortConfig.key === key) {
@@ -138,21 +179,37 @@ export default function Artists() {
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th onClick={() => handleSort('ArtistID')} style={{ cursor: 'pointer', userSelect: 'none', width: '120px' }}>
+                ID
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistID' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('ArtistID')}
+                </span>
+              </th>
               <th onClick={() => handleSort('ArtistName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Sanatçı Adı
+                SANATÇI ADI
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistName' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('ArtistName')}
                 </span>
               </th>
-              <th style={{width: '150px', textAlign: 'right'}}>İşlemler</th>
+              <th onClick={() => handleSort('SongCount')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', width: '160px' }}>
+                KAYITLI ŞARKI
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongCount' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('SongCount')}
+                </span>
+              </th>
+              <th style={{ width: '150px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {filteredArtists.map(artist => (
               <tr key={artist.ArtistID}>
                 <td data-label="ID">{artist.ArtistID}</td>
-                <td data-label="Sanatçı Adı">{artist.ArtistName}</td>
+                <td data-label="Sanatçı Adı" style={{ fontWeight: '500' }}>{artist.ArtistName}</td>
+                <td data-label="Kayıtlı Şarkı" style={{ textAlign: 'center' }}>
+                  <span className="badge badge-neutral" style={{ fontWeight: '600', fontSize: '0.88rem', minWidth: '28px', display: 'inline-block' }}>
+                    {artist.SongCount}
+                  </span>
+                </td>
                 <td data-label="İşlemler" className="action-btns">
                   <button className="btn btn-sm btn-outline" onClick={() => openModal(artist)}>Düzenle</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(artist.ArtistID)}>Sil</button>
@@ -160,7 +217,7 @@ export default function Artists() {
               </tr>
             ))}
             {filteredArtists.length === 0 && (
-              <tr><td colSpan="3" style={{textAlign: 'center'}}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>

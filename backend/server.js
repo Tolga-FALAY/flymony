@@ -32,7 +32,12 @@ initializeDB();
 // ========================
 app.get('/api/artists', (req, res) => {
     try {
-        const artists = db.prepare('SELECT * FROM Artists').all();
+        const artists = db.prepare(`
+            SELECT a.ArtistID, a.ArtistName, COUNT(sa.SongID) AS SongCount
+            FROM Artists a
+            LEFT JOIN Song_Artists sa ON a.ArtistID = sa.ArtistID
+            GROUP BY a.ArtistID, a.ArtistName
+        `).all();
         res.json(artists);
     } catch (err) {
         res.status(500).json({ error: err.message });
