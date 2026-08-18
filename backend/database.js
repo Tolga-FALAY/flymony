@@ -752,6 +752,47 @@ export const initializeDB = () => {
         console.error("Migration error while updating Gig_Guests table:", e);
     }
 
+    // ----------------------------------------------------
+    // SONGS TABLE MIGRATION (Populate missing SongYear & Notes)
+    // ----------------------------------------------------
+    try {
+        const songsToUpdate = [
+            { title: 'Tutamıyorum Zamanı', year: 2001, notes: null },
+            { title: 'Kumralım', year: 1996, notes: null },
+            { title: 'Acılara Tutunmak', year: 1985, notes: 'Ahmet Kaya (1985)' },
+            { title: 'İçim paramparça', year: 2011, notes: null },
+            { title: 'Paramparça', year: 2000, notes: 'Teoman (2000)' },
+            { title: 'Saydım', year: 2004, notes: null },
+            { title: 'Bak', year: 2007, notes: null },
+            { title: 'Sabahçı Kahvesi', year: 1992, notes: null },
+            { title: 'İhtiyacım Var', year: 2026, notes: null },
+            { title: 'No woman no cry', year: 1974, notes: null },
+            { title: 'One Love One Heart', year: 1965, notes: null }
+        ];
+
+        const checkStmt = db.prepare('SELECT SongID, SongYear, Notes FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?))');
+        const updateWithNotes = db.prepare('UPDATE Songs SET SongYear = ?, Notes = ? WHERE SongID = ?');
+        const updateYearOnly = db.prepare('UPDATE Songs SET SongYear = ? WHERE SongID = ?');
+
+        const runSongMigration = db.transaction(() => {
+            for (const item of songsToUpdate) {
+                const found = checkStmt.all(item.title);
+                for (const song of found) {
+                    if (!song.SongYear) {
+                        if (item.notes && !song.Notes) {
+                            updateWithNotes.run(item.year, item.notes, song.SongID);
+                        } else {
+                            updateYearOnly.run(item.year, song.SongID);
+                        }
+                    }
+                }
+            }
+        });
+        runSongMigration();
+    } catch (e) {
+        console.error("Migration error while updating missing song years:", e);
+    }
+
     console.log("Database tables initialized.");
 };
 
