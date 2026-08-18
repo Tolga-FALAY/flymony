@@ -79,6 +79,7 @@ export default function Gigs() {
   const [liveShowUnplayedOnly, setLiveShowUnplayedOnly] = useState(false);
 
   const [liveChordPageIndex, setLiveChordPageIndex] = useState(0);
+  const [isExportingChords, setIsExportingChords] = useState(false);
 
   const liveChordContentRef = useRef(null);
 
@@ -589,6 +590,33 @@ export default function Gigs() {
       setSelectedGroupGuests(prev => ({ ...prev, [tableName]: new Set() }));
     } catch (err) {
       alert('İlişkilendirme hatası: ' + err.message);
+    }
+  };
+
+  // --- Akor Export Function (Export to C:\FLY_rep) ---
+  const handleExportChords = async () => {
+    if (!formData.Songs || formData.Songs.length === 0) {
+      alert('Şarkı listesinde export edilecek şarkı bulunmuyor.');
+      return;
+    }
+
+    setIsExportingChords(true);
+    try {
+      const res = await api.exportGigChords({ songs: formData.Songs });
+      if (res.success) {
+        let msg = `✅ ${res.exportedCount} adet akor görseli başarıyla "${res.targetDir}" klasörüne aktarıldı.`;
+        if (res.skippedCount > 0) {
+          msg += `\n(Akor görseli bulunmayan ${res.skippedCount} şarkı atlandı)`;
+        }
+        alert(msg);
+      } else {
+        alert('Export işlemi tamamlanamadı.');
+      }
+    } catch (err) {
+      console.error('Export chords error:', err);
+      alert('Akor export hatası: ' + (err.message || err));
+    } finally {
+      setIsExportingChords(false);
     }
   };
 
@@ -1228,7 +1256,8 @@ export default function Gigs() {
                   <button 
                     type="button" 
                     className="btn btn-outline" 
-                    onClick={() => {}}
+                    onClick={handleExportChords}
+                    disabled={isExportingChords}
                     style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
@@ -1238,11 +1267,13 @@ export default function Gigs() {
                       fontWeight: 700, 
                       fontSize: '0.85rem',
                       borderRadius: '8px',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      opacity: isExportingChords ? 0.7 : 1,
+                      cursor: isExportingChords ? 'wait' : 'pointer'
                     }}
-                    title="Akor Export"
+                    title="Şarkı listesindeki akorları C:\FLY_rep klasörüne JPG olarak export et"
                   >
-                    📤 Akor Export
+                    {isExportingChords ? '⏳ Aktarılıyor...' : '📤 Akor Export'}
                   </button>
                   <button 
                     type="button" 

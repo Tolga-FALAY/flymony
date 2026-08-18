@@ -1228,6 +1228,96 @@ app.delete('/api/gigs/:id', (req, res) => {
 });
 
 // ========================
+// GIG CHORDS EXPORT API
+// ========================
+app.post('/api/gigs/export-chords', (req, res) => {
+    try {
+        const { songs } = req.body;
+        if (!songs || !Array.isArray(songs) || songs.length === 0) {
+            return res.status(400).json({ error: 'Export edilecek şarkı listesi boş!' });
+        }
+
+        const targetDir = 'C:\\FLY_rep';
+        if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        // Sıra numarasına göre sırala
+        const sortedSongs = [...songs].sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
+
+        let exportedCount = 0;
+        let skippedCount = 0;
+
+        sortedSongs.forEach((item, idx) => {
+            const songData = db.prepare(`
+                SELECT s.SongID, s.SongTitle, s.ChordImagePath,
+                       (
+                           SELECT GROUP_CONCAT(a.ArtistName, ', ')
+                           FROM Song_Artists sa
+                           JOIN Artists a ON sa.ArtistID = a.ArtistID
+                           WHERE sa.SongID = s.SongID
+                       ) as ArtistNames
+                FROM Songs s
+                WHERE s.SongID = ?
+            `).get(item.SongID);
+
+            const chordImages = parseChordImages(songData?.ChordImagePath || item.ChordImagePath || (Array.isArray(item.ChordImages) ? item.ChordImages : []));
+
+            if (!chordImages || chordImages.length === 0) {
+                skippedCount++;
+                return;
+            }
+
+            const orderNum = Number(item.SortOrder) || (idx + 1);
+            const twoDigitOrder = String(orderNum).padStart(2, '0');
+
+            const rawArtist = (songData?.ArtistNames || item.ArtistNames || 'Bilinmeyen Sanatçı').trim();
+            const rawTitle = (songData?.SongTitle || item.SongTitle || 'İsimsiz Şarkı').trim();
+            const cleanArtist = rawArtist.replace(/[\\/:*?"<>|]/g, '_').trim();
+            const cleanTitle = rawTitle.replace(/[\\/:*?"<>|]/g, '_').trim();
+
+            chordImages.forEach((chordImg, imgIdx) => {
+                const prefix = chordImages.length > 1 
+                    ? `${twoDigitOrder}${String.fromCharCode(97 + imgIdx)}` // 01a, 01b, 01c...
+                    : twoDigitOrder; // 01, 02...
+
+                const fileName = `${prefix} ${cleanArtist} - ${cleanTitle}.JPG`;
+                const destPath = path.join(targetDir, fileName);
+
+                try {
+                    if (typeof chordImg === 'string' && chordImg.startsWith('data:image/')) {
+                        const base64Data = chordImg.replace(/^data:image\/\w+;base64,/, '');
+                        fs.writeFileSync(destPath, Buffer.from(base64Data, 'base64'));
+                        exportedCount++;
+                    } else if (typeof chordImg === 'string') {
+                        const cleanPath = chordImg.startsWith('/') ? chordImg.slice(1) : chordImg;
+                        const srcPath = path.isAbsolute(chordImg) ? chordImg : path.join(__dirname, '..', cleanPath);
+                        
+                        if (fs.existsSync(srcPath)) {
+                            fs.copyFileSync(srcPath, destPath);
+                            exportedCount++;
+                        }
+                    }
+                } catch (copyErr) {
+                    console.error(`Error exporting chord image ${fileName}:`, copyErr);
+                }
+            });
+        });
+
+        res.json({
+            success: true,
+            exportedCount,
+            totalSongs: sortedSongs.length,
+            skippedCount,
+            targetDir
+        });
+    } catch (err) {
+        console.error('Export chords API error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ========================
 // QUICK NOTES CRUD ENDPOINTS
 // ========================
 app.get('/api/notes', (req, res) => {

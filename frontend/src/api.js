@@ -323,6 +323,10 @@ export const api = {
     return request(`/gigs/${id}`, 'DELETE');
   },
 
+  exportGigChords: async (data) => {
+    return request('/gigs/export-chords', 'POST', data);
+  },
+
   // Notes
   getNotes: async () => {
     const data = await request('/notes');
