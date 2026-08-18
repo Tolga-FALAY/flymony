@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -791,6 +792,138 @@ export const initializeDB = () => {
         runSongMigration();
     } catch (e) {
         console.error("Migration error while updating missing song years:", e);
+    }
+
+    // ----------------------------------------------------
+    // C:\FLY SONGS & CHORD IMAGES SEEDING (Idempotent)
+    // ----------------------------------------------------
+    try {
+        const uploadDir = path.join(__dirname, '../uploads');
+        const seedFilesDir = path.join(__dirname, 'fly_seeds');
+        const flyDir = 'C:\\FLY';
+
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        let readDir = null;
+        if (fs.existsSync(flyDir)) {
+            readDir = flyDir;
+        } else if (fs.existsSync(seedFilesDir)) {
+            readDir = seedFilesDir;
+        }
+
+        if (readDir) {
+            const fileList = fs.readdirSync(readDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
+            
+            const SONG_YEARS = {
+                'ervahı ezelde': 2013,
+                'bebek': 1996,
+                'koca yaşlı şişko dünya': 2014,
+                'minnet eylemem': 2015,
+                'beni vur': 1993,
+                'dardayım': 1998,
+                'doruklara sevdalandım': 1994,
+                'hep sonradan': 2001,
+                'kafama sıkar giderim': 1998,
+                'kendine iyi bak v1': 1990,
+                'kendine iyi bak v2': 1990,
+                'korkarım': 1998,
+                'kum gibi': 1994,
+                'nerden bileceksiniz': 2001,
+                'penceresiz kaldım anne': 1985,
+                'yakamoz': 1996,
+                'içimde ölen biri var': 1992,
+                'şiire gazele - azeri': 1993
+            };
+
+            const trMap = {
+                'ç': 'c', 'Ç': 'c', 'ğ': 'g', 'Ğ': 'g', 'ı': 'i', 'I': 'i', 'İ': 'i', 'i': 'i',
+                'ö': 'o', 'Ö': 'o', 'ş': 's', 'Ş': 's', 'ü': 'u', 'Ü': 'u'
+            };
+            const toSlug = (t) => t.split('').map(c => trMap[c] || c).join('').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+
+            const checkArtistStmt = db.prepare('SELECT ArtistID, ArtistName FROM Artists WHERE TRIM(LOWER(ArtistName)) = TRIM(LOWER(?))');
+            const insertArtistStmt = db.prepare('INSERT INTO Artists (ArtistName) VALUES (?)');
+
+            const checkSongStmt = db.prepare(`
+                SELECT s.SongID, s.SongTitle, sa.ArtistID 
+                FROM Songs s 
+                INNER JOIN Song_Artists sa ON s.SongID = sa.SongID 
+                WHERE TRIM(LOWER(s.SongTitle)) = TRIM(LOWER(?)) AND sa.ArtistID = ?
+            `);
+
+            const insertSongStmt = db.prepare(`
+                INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID, Notes) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+
+            const insertSongArtistStmt = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
+
+            const runFlySeeding = db.transaction(() => {
+                for (const filename of fileList) {
+                    const ext = path.extname(filename);
+                    const baseName = path.basename(filename, ext);
+
+                    const dashIndex = baseName.indexOf('-');
+                    let artistName = '';
+                    let songTitle = '';
+
+                    if (dashIndex !== -1) {
+                        artistName = baseName.substring(0, dashIndex).trim();
+                        songTitle = baseName.substring(dashIndex + 1).trim();
+                    } else {
+                        songTitle = baseName.trim();
+                    }
+
+                    if (artistName.toUpperCase() === 'AHMET KAYA') {
+                        artistName = 'Ahmet Kaya';
+                    }
+
+                    const srcFilePath = path.join(readDir, filename);
+                    const destFileName = `chord_fly_${toSlug(artistName)}_${toSlug(songTitle)}${ext.toLowerCase()}`;
+                    const destFilePath = path.join(uploadDir, destFileName);
+
+                    if (!fs.existsSync(destFilePath)) {
+                        fs.copyFileSync(srcFilePath, destFilePath);
+                    }
+
+                    const chordImagePathValue = JSON.stringify([`/uploads/${destFileName}`]);
+
+                    let artistRow = checkArtistStmt.get(artistName);
+                    let artistId = null;
+                    if (!artistRow) {
+                        const info = insertArtistStmt.run(artistName);
+                        artistId = info.lastInsertRowid;
+                    } else {
+                        artistId = artistRow.ArtistID;
+                    }
+
+                    const existingSong = checkSongStmt.get(songTitle, artistId);
+                    if (!existingSong) {
+                        const normalizedTitleKey = songTitle.trim().toLocaleLowerCase('tr-TR');
+                        const songYear = SONG_YEARS[normalizedTitleKey] || null;
+                        const info = insertSongStmt.run(
+                            songTitle,
+                            '',
+                            songYear,
+                            null,
+                            null,
+                            null,
+                            chordImagePathValue,
+                            1, // Türkçe
+                            null
+                        );
+                        const songId = info.lastInsertRowid;
+                        insertSongArtistStmt.run(songId, artistId);
+                    }
+                }
+            });
+
+            runFlySeeding();
+        }
+    } catch (e) {
+        console.error("Migration error while seeding FLY songs:", e);
     }
 
     console.log("Database tables initialized.");
