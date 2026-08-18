@@ -831,35 +831,34 @@ export default function Songs() {
       </div>
 
       <div className="table-wrapper">
-        <table>
+        <table style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr>
-              <th onClick={() => handleSort('SongTitle')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('SongTitle')} style={{ cursor: 'pointer', userSelect: 'none', width: '42%' }}>
                 Şarkı Adı
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongTitle' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('SongTitle')}
                 </span>
               </th>
-              <th onClick={() => handleSort('ArtistNames')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('ArtistNames')} style={{ cursor: 'pointer', userSelect: 'none', width: '32%' }}>
                 Sanatçılar
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistNames' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('ArtistNames')}
                 </span>
               </th>
-              <th onClick={() => handleSort('SongYear')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('SongYear')} style={{ cursor: 'pointer', userSelect: 'none', width: '8%', textAlign: 'center' }}>
                 Yıl
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongYear' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('SongYear')}
                 </span>
               </th>
-              <th>Dil</th>
-              <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
+              <th style={{ width: '18%', textAlign: 'right', paddingRight: '1rem' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {filteredSongs.map(song => (
               <tr key={song.SongID}>
-                <td data-label="Şarkı Adı">
+                <td data-label="Şarkı Adı" style={{ width: '42%' }}>
                   <div className="song-title-wrapper">
                     <span>{song.SongTitle}</span>
                     {song.AudioPath && (
@@ -875,10 +874,9 @@ export default function Songs() {
                     )}
                   </div>
                 </td>
-                <td data-label="Sanatçılar">{song.ArtistNames || '-'}</td>
-                <td data-label="Yıl">{song.SongYear || '-'}</td>
-                <td data-label="Dil">{song.LanguageName || '-'}</td>
-                <td data-label="İşlemler" style={{ width: '300px', textAlign: 'right' }}>
+                <td data-label="Sanatçılar" style={{ width: '32%' }}>{song.ArtistNames || '-'}</td>
+                <td data-label="Yıl" style={{ width: '8%', textAlign: 'center' }}>{song.SongYear || '-'}</td>
+                <td data-label="İşlemler" style={{ width: '18%', textAlign: 'right', paddingRight: '1rem' }}>
                   <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', alignItems: 'center' }}>
                     {String(song.Notes || '').trim().length > 0 && (
                       <button 
@@ -916,7 +914,7 @@ export default function Songs() {
               </tr>
             ))}
             {filteredSongs.length === 0 && (
-              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
