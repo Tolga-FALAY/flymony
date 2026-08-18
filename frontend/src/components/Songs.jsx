@@ -834,13 +834,13 @@ export default function Songs() {
         <table style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr>
-              <th onClick={() => handleSort('SongTitle')} style={{ cursor: 'pointer', userSelect: 'none', width: '42%' }}>
+              <th onClick={() => handleSort('SongTitle')} style={{ cursor: 'pointer', userSelect: 'none', width: '26%' }}>
                 Şarkı Adı
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongTitle' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('SongTitle')}
                 </span>
               </th>
-              <th onClick={() => handleSort('ArtistNames')} style={{ cursor: 'pointer', userSelect: 'none', width: '32%' }}>
+              <th onClick={() => handleSort('ArtistNames')} style={{ cursor: 'pointer', userSelect: 'none', width: '38%' }}>
                 Sanatçılar
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'ArtistNames' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('ArtistNames')}
@@ -852,37 +852,39 @@ export default function Songs() {
                   {renderSortArrow('SongYear')}
                 </span>
               </th>
-              <th style={{ width: '18%', textAlign: 'right', paddingRight: '1rem' }}>İşlemler</th>
+              <th style={{ width: '28%', textAlign: 'right', paddingRight: '0.75rem' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {filteredSongs.map(song => (
               <tr key={song.SongID}>
-                <td data-label="Şarkı Adı" style={{ width: '42%' }}>
-                  <div className="song-title-wrapper">
-                    <span>{song.SongTitle}</span>
+                <td data-label="Şarkı Adı" style={{ width: '26%', overflow: 'hidden' }}>
+                  <div className="song-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={song.SongTitle}>{song.SongTitle}</span>
                     {song.AudioPath && (
                       <button 
                          type="button" 
                          className="audio-play-btn" 
                          onClick={() => playSongAudio(song)} 
                          title="Ses Kaydını Oynat" 
-                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '0.5rem', fontSize: '1.1rem', lineHeight: 1 }}
+                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '0.3rem', fontSize: '1.1rem', lineHeight: 1, flexShrink: 0 }}
                       >
                         ▶️
                       </button>
                     )}
                   </div>
                 </td>
-                <td data-label="Sanatçılar" style={{ width: '32%' }}>{song.ArtistNames || '-'}</td>
-                <td data-label="Yıl" style={{ width: '8%', textAlign: 'center' }}>{song.SongYear || '-'}</td>
-                <td data-label="İşlemler" style={{ width: '18%', textAlign: 'right', paddingRight: '1rem' }}>
-                  <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', alignItems: 'center' }}>
+                <td data-label="Sanatçılar" style={{ width: '38%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={song.ArtistNames}>
+                  {song.ArtistNames || '-'}
+                </td>
+                <td data-label="Yıl" style={{ width: '8%', textAlign: 'center', whiteSpace: 'nowrap' }}>{song.SongYear || '-'}</td>
+                <td data-label="İşlemler" style={{ width: '28%', textAlign: 'right', paddingRight: '0.75rem' }}>
+                  <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', alignItems: 'center', flexWrap: 'nowrap' }}>
                     {String(song.Notes || '').trim().length > 0 && (
                       <button 
-                        type="button"
+                        type="button" 
                         className="btn btn-sm" 
-                        style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
+                        style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.32rem 0.5rem', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}
                         onClick={() => setNoteModalSong(song)}
                         title={song.Notes}
                       >
@@ -894,21 +896,21 @@ export default function Songs() {
                       const hasTranspose = hasLyricsContent(song.Lyrics);
                       if (hasChord && hasTranspose) {
                         return (
-                          <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>A/T</button>
+                          <button className="btn btn-sm btn-outline btn-added-style" style={{ flexShrink: 0 }} onClick={() => openChordImageViewer(song)}>A/T</button>
                         );
                       } else if (hasChord) {
                         return (
-                          <button className="btn btn-sm btn-outline btn-added-style" onClick={() => openChordImageViewer(song)}>Akor</button>
+                          <button className="btn btn-sm btn-outline btn-added-style" style={{ flexShrink: 0 }} onClick={() => openChordImageViewer(song)}>Akor</button>
                         );
                       } else if (hasTranspose) {
                         return (
-                          <button className="btn btn-sm btn-outline" onClick={() => openChordViewer(song)}>Trans.</button>
+                          <button className="btn btn-sm btn-outline" style={{ flexShrink: 0 }} onClick={() => openChordViewer(song)}>Trans.</button>
                         );
                       }
                       return null;
                     })()}
-                    <button className="btn btn-sm btn-outline" onClick={() => openModal(song)}>Düzenle</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(song.SongID)}>Sil</button>
+                    <button className="btn btn-sm btn-outline" style={{ flexShrink: 0 }} onClick={() => openModal(song)}>Düzenle</button>
+                    <button className="btn btn-sm btn-danger" style={{ flexShrink: 0 }} onClick={() => handleDelete(song.SongID)}>Sil</button>
                   </div>
                 </td>
               </tr>
