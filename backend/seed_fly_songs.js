@@ -15,10 +15,11 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Artist normalization map
-const ARTIST_NORM_MAP = {
+export const ARTIST_NORM_MAP = {
   'alifiru': 'Ali Firu',
   'anonimcyp': 'Anonim CYP',
   'anonimtr': 'Anonim',
+  'anonim': 'Anonim',
   'aşık mahsuni': 'Aşık Mahsuni Şerif',
   'asik mahsuni': 'Aşık Mahsuni Şerif',
   'ahmet kaya': 'Ahmet Kaya',
@@ -62,11 +63,15 @@ const ARTIST_NORM_MAP = {
   'sertab erener': 'Sertab Erener',
   'yüzyüzeyken konuşuşuruz': 'Yüzyüzeyken Konuşuruz',
   'yuzyuzeyken konusuruz': 'Yüzyüzeyken Konuşuruz',
-  'yuzyuzeyken konuslasuruz': 'Yüzyüzeyken Konuşuruz'
+  'yuzyuzeyken konuslasuruz': 'Yüzyüzeyken Konuşuruz',
+  'fecri ebcioglu': 'Fecri Ebcioğlu',
+  'fecri ebcioğlu': 'Fecri Ebcioğlu',
+  'koma se bıra': 'Koma Se Bıra',
+  'koma se bira': 'Koma Se Bıra'
 };
 
 // Known release years lookup
-const SONG_YEARS = {
+export const SONG_YEARS = {
   // Batch 1
   'ervahı ezelde': 2013,
   'bebek': 1996,
@@ -620,7 +625,152 @@ const SONG_YEARS = {
   'bu aşk fazla sana': 1996,
   'sigara': 2001,
   'sil baştan': 2001,
-  'yağmurlar': 1996
+  'yağmurlar': 1996,
+
+  // Batch 6 - Multi-Artist New Songs from C:\FLY
+  'cennet': 2012,
+  'ankaranın bağları': 2009,
+  'ankaranin baglari': 2009,
+  'elvan dalton': 2010,
+  'erik dalı': 2017,
+  'erik dali': 2017,
+  'esmerin adı oya': 1989,
+  'esmerin adi oya': 1989,
+  'hayatı tespih yapmışım': 2013,
+  'hayati tespih yapmisim': 2013,
+  'ille de roman olsun': 2008,
+  'kara çalı gibi': 1993,
+  'kara cali gibi': 1993,
+  'konyalım': 1968,
+  'konyalim': 1968,
+  'osman aga': 1974,
+  'zühtü': 1976,
+  'zuhtu': 1976,
+  'susma': 1990,
+  'serserim benim': 1990,
+  'ayrılık azeri': 1957,
+  'ayrilik azeri': 1957,
+  'anlıyorsun değil mi': 1979,
+  'anliyorsun degil mi': 1979,
+  'rüyamda buluttum': 2021,
+  'ruyamda buluttum': 2021,
+  'gökyüzünde yalnız gezen yıldızlar': 1968,
+  'gokyuzunde yalniz gezen yildizlar': 1968,
+  'sarı gelin': 1977,
+  'sari gelin': 1977,
+  'sen benim şarkılarımsın': 2001,
+  'sen benim sarkilarimsin': 2001,
+  'altın yüzüğüm kırıldı (pes)': 1972,
+  'altin yuzugum kirildi (pes)': 1972,
+  'altın yüzüğüm kırıldı': 1972,
+  'altin yuzugum kirildi': 1972,
+  'kerkük zindanı': 1999,
+  'kerkuk zindani': 1999,
+  'sarhoş (her akşam votka rakı ve şarap)': 1967,
+  'sarhos (her aksam votka raki ve sarap)': 1967,
+  'sahte sevgililer': 1989,
+  'her şey seninle güzel': 1982,
+  'her sey seninle guzel': 1982,
+  'merdo': 1982,
+  'sen benden gittin gideli': 2001,
+  'yaşamdan ölüme': 2001,
+  'yasamdan olume': 2001,
+  'çıkmaz sokaklar': 2012,
+  'cikmaz sokaklar': 2012,
+  'yüreğimden tut': 2008,
+  'yuregimden tut': 2008,
+  'düşler sokağı': 1997,
+  'dusler sokagi': 1997,
+  'eksik bir şey mi var': 2000,
+  'eksik bir sey mi var': 2000,
+  'farketmeden': 1995,
+  'kurşuni renkler': 1988,
+  'kursuni renkler': 1988,
+  'herşey bitmedi bitemez': 1976,
+  'hersey bitmedi bitemez': 1976,
+  'hasretler ayrılıkla başlar': 1996,
+  'hasretler ayrilikla baslar': 1996,
+  'rüyalar': 1991,
+  'ruyalar': 1991,
+  'yaz gülü': 2022,
+  'yaz gulu': 2022,
+  'jingle bells': 1857,
+  'jingle bells - en ve tr': 1857,
+  'jingle bells (en ve tr)': 1857,
+  'en ve tr': 1857,
+  'göçmen kızı': 1998,
+  'gocmen kizi': 1998,
+  'ağlama değmez hayat': 1968,
+  'aglama degmez hayat': 1968,
+  'ayrılmam': 1990,
+  'ayrilmam': 1990,
+  'bir hadise var (mühürledim seni kalbime)': 1991,
+  'bir hadise var (muhurledim seni kalbime)': 1991,
+  'bir hadise var': 1991,
+  'bir pazar kahvaltısı': 2014,
+  'bir pazar kahvaltisi': 2014,
+  'rüyalara sor': 2024,
+  'ruyalara sor': 2024,
+  'nilüfer': 2006,
+  'nilufer': 2006,
+  'itirazım var': 1981,
+  'itirazim var': 1981,
+  'i̇tirazım var': 1981,
+  'elveda meyhaneci': 1972,
+  'huysuz ve tatlı kadın (şarkılar seni söyler)': 1970,
+  'huysuz ve tatli kadin (sarkilar seni soyler)': 1970,
+  'huysuz ve tatlı kadın': 1970,
+  'huysuz ve tatli kadin': 1970,
+  'leylam (yazımı kışa çevirdin)': 1970,
+  'leylam (yazimi kisa cevirdin)': 1970,
+  'leylam': 1970,
+  'neredesin sen': 1969,
+  'mevsim bahar': 1996,
+  'her yerde kar var': 1965,
+  'aşk kitabı': 1982,
+  'ask kitabi': 1982,
+  'haram geceler': 1992,
+  'dokunma': 1979,
+  'kal benim için': 2001,
+  'kal benim icin': 2001,
+  'kal benim i̇çin': 2001,
+  'vazgeç gönül': 1996,
+  'vazgec gonul': 1996,
+  'kara kedi': 2010,
+  'rüya': 1999,
+  'ruya': 1999,
+  'şinanay (ada vapuru)': 1989,
+  'sinanay (ada vapuru)': 1989,
+  'şinanay': 1989,
+  'sinanay': 1989,
+  'adı bende saklı': 1998,
+  'adi bende sakli': 1998,
+  'zalim': 1995,
+  'yalnızlık senfonisi': 2011,
+  'yalnizlik senfonisi': 2011,
+  'biliyorsun': 1980,
+  'lale devri': 2005,
+  'sevemez kimse seni': 1969,
+  'muhbir': 2017,
+  'şımarık': 1997,
+  'simarik': 1997,
+  'sevdim seni bir kere': 1977,
+  'iki yabancı': 2000,
+  'iki yabanci': 2000,
+  'i̇ki yabancı': 2000,
+  'birden geldin aklıma': 2016,
+  'birden geldin aklima': 2016,
+  'yine sevebilirim': 2017,
+  'beni sana hapsettin': 1999,
+  'hareket vakti': 1994,
+  'muhtemel aşk': 2015,
+  'muhtemel ask': 2015,
+  'vursalar ölemem': 1998,
+  'vursalar olemem': 1998,
+  'şimdi uzaklardasın': 1952,
+  'simdi uzaklardasin': 1952,
+  'lan': 2024,
+  'leylim ley': 1975
 };
 
 function slugify(text) {
@@ -671,106 +821,120 @@ export function importFlySongs(sourceDir = 'C:\\FLY') {
   }
 
   const reports = [];
+  const artistsProcessedMap = new Map(); // artistName -> 'Vardı' | 'Eklendi'
+  const songsProcessedMap = new Map();   // songTitle -> { status, year, artists, chordPath }
 
   const checkArtistStmt = db.prepare('SELECT ArtistID, ArtistName FROM Artists WHERE TRIM(LOWER(ArtistName)) = TRIM(LOWER(?))');
   const insertArtistStmt = db.prepare('INSERT INTO Artists (ArtistName) VALUES (?)');
 
-  const checkSongStmt = db.prepare(`
-    SELECT s.SongID, s.SongTitle, sa.ArtistID 
-    FROM Songs s 
-    INNER JOIN Song_Artists sa ON s.SongID = sa.SongID 
-    WHERE TRIM(LOWER(s.SongTitle)) = TRIM(LOWER(?)) AND sa.ArtistID = ?
-  `);
-
+  const checkSongStmt = db.prepare('SELECT SongID, SongTitle, SongYear, ChordImagePath FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?))');
   const insertSongStmt = db.prepare(`
     INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID, Notes) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const updateSongYearStmt = db.prepare('UPDATE Songs SET SongYear = ? WHERE SongID = ?');
+  const updateSongChordStmt = db.prepare('UPDATE Songs SET ChordImagePath = ? WHERE SongID = ?');
 
-  const insertSongArtistStmt = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
+  const checkSongArtistStmt = db.prepare('SELECT 1 FROM Song_Artists WHERE SongID = ? AND ArtistID = ?');
+  const insertSongArtistStmt = db.prepare('INSERT OR IGNORE INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
 
   for (const [filename, srcFilePath] of fileSourceMap.entries()) {
     const ext = path.extname(filename);
     const baseName = path.basename(filename, ext).normalize('NFC');
 
-    // Rule: Skip files with more than one dash '-'
-    const dashCount = (baseName.match(/-/g) || []).length;
-    if (dashCount > 1) {
-      reports.push({
-        file: filename,
-        artistName: '-',
-        artistStatus: '-',
-        artistId: null,
-        songTitle: '-',
-        songYear: null,
-        songStatus: 'Atlandı (Birden fazla tire içeriyor)',
-        songId: null,
-        chordPath: '-'
-      });
-      continue;
-    }
-
     const dashIndex = baseName.indexOf('-');
     if (dashIndex === -1) {
       reports.push({
         file: filename,
-        artistName: '-',
-        artistStatus: '-',
-        artistId: null,
+        artists: [],
         songTitle: baseName,
         songYear: null,
         songStatus: 'Atlandı (Tire bulunamadı)',
-        songId: null,
         chordPath: '-'
       });
       continue;
     }
 
-    let artistName = baseName.substring(0, dashIndex).trim();
-    let songTitle = baseName.substring(dashIndex + 1).trim();
+    let rawArtistPart = baseName.substring(0, dashIndex).trim();
+    let rawSongPart = baseName.substring(dashIndex + 1).trim();
 
-    // Clean trailing underscores/commas in song titles
-    songTitle = songTitle.replace(/[_,]+$/, '').trim();
+    // Clean trailing underscores/commas/(FLY) in song titles
+    rawSongPart = rawSongPart.replace(/\s*\(FLY\)\s*$/i, '').replace(/[_,]+$/, '').trim();
 
-    // Apply normalization
-    const artistKey = artistName.trim().toLocaleLowerCase('tr-TR');
-    if (ARTIST_NORM_MAP[artistKey]) {
-      artistName = ARTIST_NORM_MAP[artistKey];
+    // Special case for Jingle Bells
+    let songTitle = rawSongPart;
+    let rawArtistList = rawArtistPart.split(',').map(a => a.trim()).filter(Boolean);
+
+    if (rawArtistPart.toLowerCase() === 'jingle bells' && rawSongPart.toLowerCase() === 'en ve tr') {
+      rawArtistList = ['Anonim'];
+      songTitle = 'Jingle Bells (EN ve TR)';
     }
 
-    // Copy to uploads folder
-    const destFileName = `chord_fly_${slugify(artistName)}_${slugify(songTitle)}${ext.toLowerCase()}`;
+    // Process and normalize artists
+    const artistObjects = [];
+    for (let aName of rawArtistList) {
+      const aKey = aName.trim().toLocaleLowerCase('tr-TR');
+      if (ARTIST_NORM_MAP[aKey]) {
+        aName = ARTIST_NORM_MAP[aKey];
+      }
+
+      let artistRow = checkArtistStmt.get(aName);
+      let aStatus = 'Vardı';
+      let aId = null;
+
+      if (!artistRow) {
+        const info = insertArtistStmt.run(aName);
+        aId = info.lastInsertRowid;
+        aStatus = 'Eklendi';
+      } else {
+        aId = artistRow.ArtistID;
+      }
+
+      if (!artistsProcessedMap.has(aName) || artistsProcessedMap.get(aName) === 'Vardı') {
+        artistsProcessedMap.set(aName, aStatus);
+      }
+
+      artistObjects.push({ id: aId, name: aName, status: aStatus });
+    }
+
+    // Prepare chord destination filename & copy
+    const firstArtistSlug = slugify(artistObjects[0]?.name || 'various');
+    const songSlug = slugify(songTitle);
+    const destFileName = `chord_fly_${firstArtistSlug}_${songSlug}${ext.toLowerCase()}`;
     const destFilePath = path.join(uploadDir, destFileName);
     if (!fs.existsSync(destFilePath)) {
       fs.copyFileSync(srcFilePath, destFilePath);
     }
+    const chordRelativePath = `/uploads/${destFileName}`;
+    const chordImagePathValue = JSON.stringify([chordRelativePath]);
 
-    const chordImagePathValue = JSON.stringify([`/uploads/${destFileName}`]);
+    // Song Year determination
+    const normalizedTitleKey = songTitle.trim().toLocaleLowerCase('tr-TR');
+    const songYear = SONG_YEARS[normalizedTitleKey] || SONG_YEARS[slugify(songTitle).replace(/_/g, ' ')] || null;
 
-    // 1. Check or Insert Artist
-    let artistRow = checkArtistStmt.get(artistName);
-    let artistStatus = 'Vardı';
-    let artistId = null;
-
-    if (!artistRow) {
-      const info = insertArtistStmt.run(artistName);
-      artistId = info.lastInsertRowid;
-      artistStatus = 'Yeni Eklendi';
-    } else {
-      artistId = artistRow.ArtistID;
-    }
-
-    // 2. Check or Insert Song
-    const existingSong = checkSongStmt.get(songTitle, artistId);
+    // Check if Song exists
+    const existingSong = checkSongStmt.get(songTitle);
     let songStatus = 'Eklendi';
     let songId = null;
 
-    const normalizedTitleKey = songTitle.trim().toLocaleLowerCase('tr-TR');
-    const songYear = SONG_YEARS[normalizedTitleKey] || null;
-
     if (existingSong) {
-      songStatus = 'Zaten Vardı (Atlandı)';
+      songStatus = 'Vardı';
       songId = existingSong.SongID;
+
+      // If existing song missing year, update it
+      if (!existingSong.SongYear && songYear) {
+        updateSongYearStmt.run(songYear, songId);
+      }
+
+      // If existing song missing ChordImagePath, update it
+      if (!existingSong.ChordImagePath || existingSong.ChordImagePath === '[]' || existingSong.ChordImagePath === '') {
+        updateSongChordStmt.run(chordImagePathValue, songId);
+      }
+
+      // Link all artists
+      for (const aObj of artistObjects) {
+        insertSongArtistStmt.run(songId, aObj.id);
+      }
     } else {
       const info = insertSongStmt.run(
         songTitle,
@@ -784,38 +948,58 @@ export function importFlySongs(sourceDir = 'C:\\FLY') {
         null
       );
       songId = info.lastInsertRowid;
-      insertSongArtistStmt.run(songId, artistId);
+      songStatus = 'Eklendi';
+
+      // Link all artists
+      for (const aObj of artistObjects) {
+        insertSongArtistStmt.run(songId, aObj.id);
+      }
     }
+
+    songsProcessedMap.set(songTitle, {
+      songId,
+      status: songStatus,
+      year: songYear,
+      artists: artistObjects.map(a => a.name).join(', '),
+      chordPath: chordRelativePath
+    });
 
     reports.push({
       file: filename,
-      artistName,
-      artistStatus,
-      artistId,
+      artists: artistObjects,
       songTitle,
       songYear,
       songStatus,
       songId,
-      chordPath: `/uploads/${destFileName}`
+      chordPath: chordRelativePath
     });
   }
 
-  return reports;
+  return {
+    reports,
+    artistsReport: Array.from(artistsProcessedMap.entries()).map(([artistName, status]) => ({ artistName, status })),
+    songsReport: Array.from(songsProcessedMap.entries()).map(([songTitle, data]) => ({ songTitle, ...data }))
+  };
 }
 
 // Run if called directly
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename);
 if (isMain) {
   console.log("Starting C:\\FLY import...");
-  const results = importFlySongs();
-  console.log("\n=== IMPORT REPORT ===");
-  console.table(results.map(r => ({
-    'Dosya': r.file,
-    'Sanatçı': r.artistName,
-    'Sanatçı Durumu': r.artistStatus,
-    'Şarkı': r.songTitle,
-    'Yıl': r.songYear || '-',
-    'Şarkı Durumu': r.songStatus,
-    'Akor Görseli': r.chordPath
+  const { reports, artistsReport, songsReport } = importFlySongs();
+  
+  console.log("\n=== ARTISTS SUMMARY REPORT ===");
+  console.table(artistsReport.map(a => ({
+    'Sanatçı': a.artistName,
+    'Durum': a.status
+  })));
+
+  console.log("\n=== SONGS SUMMARY REPORT ===");
+  console.table(songsReport.map(s => ({
+    'Şarkı': s.songTitle,
+    'Sanatçı(lar)': s.artists,
+    'İlk Söylediği Yıl': s.year || '-',
+    'Durum': s.status,
+    'Akor Görseli': s.chordPath
   })));
 }
