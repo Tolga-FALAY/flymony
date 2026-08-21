@@ -897,7 +897,7 @@ export default function Songs() {
                   {song.ArtistNames || '-'}
                 </td>
                 <td data-label="Yıl" style={{ width: '8%', textAlign: 'center', whiteSpace: 'nowrap' }}>{song.SongYear || '-'}</td>
-                <td data-label="İşlemler" style={{ width: '28%', textAlign: 'right', paddingRight: '0.75rem' }}>
+                <td data-label="KAYIT TARİHİ" style={{ width: '28%', textAlign: 'right', paddingRight: '0.75rem' }}>
                   <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', alignItems: 'center', flexWrap: 'nowrap' }}>
                     {String(song.Notes || '').trim().length > 0 && (
                       <button 
@@ -911,7 +911,7 @@ export default function Songs() {
                       </button>
                     )}
                     {(() => {
-                      const hasChord = !!song.ChordImagePath;
+                      const hasChord = !!(song.ChordImagePath && song.ChordImagePath.trim()) || (Array.isArray(song.ChordImages) && song.ChordImages.length > 0);
                       const hasTranspose = hasLyricsContent(song.Lyrics);
                       if (hasChord && hasTranspose) {
                         return (
@@ -925,8 +925,13 @@ export default function Songs() {
                         return (
                           <button className="btn btn-sm btn-outline" style={{ flexShrink: 0 }} onClick={() => openChordViewer(song)}>Trans.</button>
                         );
+                      } else {
+                        return (
+                          <span style={{ color: '#991b1b', fontWeight: '600', fontSize: '0.82rem', padding: '3px 6px', background: 'rgba(153, 27, 27, 0.1)', borderRadius: '4px', border: '1px solid rgba(153, 27, 27, 0.2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '28px', boxSizing: 'border-box', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            Akor Yok
+                          </span>
+                        );
                       }
-                      return null;
                     })()}
                     <button className="btn btn-sm btn-outline" style={{ flexShrink: 0 }} onClick={() => openModal(song)}>Düzenle</button>
                     <button className="btn btn-sm btn-danger" style={{ flexShrink: 0 }} onClick={() => handleDelete(song.SongID)}>Sil</button>
