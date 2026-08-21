@@ -76,7 +76,7 @@ export default function Guests() {
   const [showTRCity, setShowTRCity] = useState(false);
 
   // Sorting configuration
-  const [sortConfig, setSortConfig] = useState({ key: 'FullName', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'CreatedAt', direction: 'desc' });
 
   // Filter States
   const [filterName, setFilterName] = useState('');

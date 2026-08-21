@@ -15,7 +15,8 @@ export const initializeDB = () => {
     db.exec(`
         CREATE TABLE IF NOT EXISTS Artists (
             ArtistID INTEGER PRIMARY KEY AUTOINCREMENT,
-            ArtistName TEXT NOT NULL
+            ArtistName TEXT NOT NULL,
+            CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS Songs (
@@ -28,6 +29,8 @@ export const initializeDB = () => {
             OriginalKey TEXT,
             ChordImagePath TEXT,
             LanguageID INTEGER,
+            Notes TEXT,
+            CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (LanguageID) REFERENCES Languages(LanguageID)
         );
 
@@ -495,8 +498,32 @@ export const initializeDB = () => {
             db.exec("ALTER TABLE Songs ADD COLUMN Notes TEXT;");
             console.log("Songs table migration complete: Notes added.");
         }
+
+        const hasCreatedAt = songTableInfo.some(col => col.name === 'CreatedAt');
+        if (!hasCreatedAt) {
+            console.log("Migrating Songs table: Adding CreatedAt column...");
+            db.exec("ALTER TABLE Songs ADD COLUMN CreatedAt DATETIME;");
+            db.exec("UPDATE Songs SET CreatedAt = datetime('now') WHERE CreatedAt IS NULL;");
+            console.log("Songs table migration complete: CreatedAt added.");
+        }
     } catch (e) {
         console.error("Migration error while updating Songs table:", e);
+    }
+
+    // ----------------------------------------------------
+    // ARTISTS TABLE MIGRATION (Add CreatedAt)
+    // ----------------------------------------------------
+    try {
+        const artistTableInfo = db.prepare("PRAGMA table_info(Artists)").all();
+        const hasCreatedAt = artistTableInfo.some(col => col.name === 'CreatedAt');
+        if (!hasCreatedAt) {
+            console.log("Migrating Artists table: Adding CreatedAt column...");
+            db.exec("ALTER TABLE Artists ADD COLUMN CreatedAt DATETIME;");
+            db.exec("UPDATE Artists SET CreatedAt = datetime('now') WHERE CreatedAt IS NULL;");
+            console.log("Artists table migration complete: CreatedAt added.");
+        }
+    } catch (e) {
+        console.error("Migration error while updating Artists table:", e);
     }
 
     // ----------------------------------------------------

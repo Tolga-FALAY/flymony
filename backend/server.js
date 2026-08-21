@@ -33,10 +33,10 @@ initializeDB();
 app.get('/api/artists', (req, res) => {
     try {
         const artists = db.prepare(`
-            SELECT a.ArtistID, a.ArtistName, COUNT(sa.SongID) AS SongCount
+            SELECT a.ArtistID, a.ArtistName, a.CreatedAt, COUNT(sa.SongID) AS SongCount
             FROM Artists a
             LEFT JOIN Song_Artists sa ON a.ArtistID = sa.ArtistID
-            GROUP BY a.ArtistID, a.ArtistName
+            GROUP BY a.ArtistID, a.ArtistName, a.CreatedAt
         `).all();
         res.json(artists);
     } catch (err) {
@@ -55,7 +55,8 @@ app.post('/api/artists', (req, res) => {
             return res.status(400).json({ error: 'Bu sanatçı zaten kayıtlı!' });
         }
         const info = db.prepare('INSERT INTO Artists (ArtistName) VALUES (?)').run(ArtistName);
-        res.status(201).json({ id: info.lastInsertRowid, ArtistName });
+        const row = db.prepare('SELECT * FROM Artists WHERE ArtistID = ?').get(info.lastInsertRowid);
+        res.status(201).json({ id: info.lastInsertRowid, ArtistName, CreatedAt: row?.CreatedAt || new Date().toISOString() });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -119,7 +120,7 @@ app.get('/api/songs', (req, res) => {
     try {
         // Fetch songs with their associated artists
         const songs = db.prepare(`
-            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath, s.LanguageID, s.Notes, l.LanguageName,
+            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath, s.LanguageID, s.Notes, s.CreatedAt, l.LanguageName,
                    GROUP_CONCAT(a.ArtistID) as ArtistIDs,
                    GROUP_CONCAT(a.ArtistName, ', ') as ArtistNames
             FROM Songs s
@@ -143,7 +144,8 @@ app.get('/api/songs', (req, res) => {
                 ChordImages: chordImages,
                 LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
                 LanguageName: s.LanguageName || '',
-                Notes: s.Notes || ''
+                Notes: s.Notes || '',
+                CreatedAt: s.CreatedAt || ''
             };
         });
 

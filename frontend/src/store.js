@@ -151,7 +151,8 @@ const store = {
     // 1. Sanatçıları yükle
     _artists = artistsList.map(a => ({
       ArtistID: Number(a.ArtistID),
-      ArtistName: a.ArtistName
+      ArtistName: a.ArtistName,
+      CreatedAt: a.CreatedAt || new Date().toISOString()
     }));
 
     // 2. Şarkıları yükle (sanatçı adlarını bellekte çöz)
@@ -172,7 +173,8 @@ const store = {
         ArtistNames: artistNames,
         LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
         LanguageName: s.LanguageName || '',
-        Notes: s.Notes || ''
+        Notes: s.Notes || '',
+        CreatedAt: s.CreatedAt || new Date().toISOString()
       };
     });
 

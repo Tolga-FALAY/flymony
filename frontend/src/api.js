@@ -30,12 +30,16 @@ export const api = {
   // ========================
   getArtists: async () => {
     const list = await request('/artists');
-    return list.map(a => ({ ArtistID: Number(a.ArtistID), ArtistName: a.ArtistName }));
+    return list.map(a => ({
+      ArtistID: Number(a.ArtistID),
+      ArtistName: a.ArtistName,
+      CreatedAt: a.CreatedAt || ''
+    }));
   },
 
   createArtist: async (data) => {
     const result = await request('/artists', 'POST', data);
-    return { ArtistID: Number(result.id), ArtistName: result.ArtistName };
+    return { ArtistID: Number(result.id), ArtistName: result.ArtistName, CreatedAt: result.CreatedAt || '' };
   },
 
   updateArtist: async (id, data) => {
@@ -65,7 +69,8 @@ export const api = {
       ArtistNames: s.ArtistNames || '-',
       LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
       LanguageName: s.LanguageName || '',
-      Notes: s.Notes || ''
+      Notes: s.Notes || '',
+      CreatedAt: s.CreatedAt || ''
     }));
   },
 

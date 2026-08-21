@@ -14,7 +14,7 @@ export default function Songs() {
   const [noteModalSong, setNoteModalSong] = useState(null);
 
   // Sorting configuration
-  const [sortConfig, setSortConfig] = useState({ key: 'SongTitle', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'CreatedAt', direction: 'desc' });
 
   // Filter States
   const [filterSong, setFilterSong] = useState('');
@@ -635,6 +635,8 @@ export default function Songs() {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
+    } else if (sortConfig.key !== key && key === 'CreatedAt') {
+      direction = 'desc';
     }
     setSortConfig({ key, direction });
   };
@@ -653,6 +655,14 @@ export default function Songs() {
       const aVal = Number(a.SongYear) || 0;
       const bVal = Number(b.SongYear) || 0;
       res = aVal - bVal;
+    } else if (sortConfig.key === 'CreatedAt') {
+      const timeA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : 0;
+      const timeB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : 0;
+      if (timeA && timeB && !isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+        res = timeA - timeB;
+      } else {
+        res = (Number(a.SongID) || 0) - (Number(b.SongID) || 0);
+      }
     }
     return sortConfig.direction === 'asc' ? res : -res;
   });
@@ -852,7 +862,16 @@ export default function Songs() {
                   {renderSortArrow('SongYear')}
                 </span>
               </th>
-              <th style={{ width: '28%', textAlign: 'right', paddingRight: '0.75rem' }}>İşlemler</th>
+              <th 
+                onClick={() => handleSort('CreatedAt')} 
+                style={{ cursor: 'pointer', userSelect: 'none', width: '28%', textAlign: 'right', paddingRight: '0.75rem' }}
+                title="Kayıt Tarihine Göre Sırala"
+              >
+                KAYIT TARİHİ
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('CreatedAt')}
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>

@@ -82,6 +82,8 @@ export default function Artists() {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
+    } else if (sortConfig.key !== key && key === 'CreatedAt') {
+      direction = 'desc';
     }
     setSortConfig({ key, direction });
   };
@@ -121,6 +123,18 @@ export default function Artists() {
         return sortConfig.direction === 'asc' 
           ? Number(a.ArtistID) - Number(b.ArtistID) 
           : Number(b.ArtistID) - Number(a.ArtistID);
+      }
+
+      if (sortConfig.key === 'CreatedAt') {
+        const timeA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : 0;
+        const timeB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : 0;
+        let res = 0;
+        if (timeA && timeB && !isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+          res = timeA - timeB;
+        } else {
+          res = (Number(a.ArtistID) || 0) - (Number(b.ArtistID) || 0);
+        }
+        return sortConfig.direction === 'asc' ? res : -res;
       }
 
       const aVal = (a.ArtistName || '').toLocaleLowerCase('tr-TR');
@@ -197,7 +211,16 @@ export default function Artists() {
                   {renderSortArrow('SongCount')}
                 </span>
               </th>
-              <th style={{ width: '22%', textAlign: 'right', paddingRight: '1rem' }}>İŞLEMLER</th>
+              <th 
+                onClick={() => handleSort('CreatedAt')} 
+                style={{ cursor: 'pointer', userSelect: 'none', width: '22%', textAlign: 'right', paddingRight: '1rem' }}
+                title="Kayıt Tarihine Göre Sırala"
+              >
+                KAYIT TARİHİ
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'CreatedAt' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('CreatedAt')}
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
