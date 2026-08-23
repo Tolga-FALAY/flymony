@@ -1232,25 +1232,30 @@ function renderVanillaGalleryPreviews() {
 }
 
 function populateVanillaGuestRelationDropdown() {
-  const select = document.getElementById('guestRelationSelect');
-  if (!select) return;
+  const dropdownList = document.getElementById('guestRelationDropdownList');
+  if (!dropdownList) return;
 
-  const currentGuestId = document.getElementById('guestID').value;
-  const searchQuery = (document.getElementById('guestRelationSearch')?.value || '').toLowerCase().trim();
+  const currentGuestId = document.getElementById('guestID')?.value;
+  const searchInput = document.getElementById('guestRelationSearch');
+  const searchQuery = (searchInput?.value || '').toLocaleLowerCase('tr-TR').trim();
+
+  if (!searchQuery) {
+    dropdownList.style.display = 'none';
+    dropdownList.innerHTML = '';
+    return;
+  }
 
   // Get all guests except current guest and already linked guests
-  let options = DB.guests.filter(g => {
+  let options = (DB.guests || []).filter(g => {
     // Exclude self
     if (currentGuestId && String(g.id) === String(currentGuestId)) return false;
     // Exclude already added relations
     if (vanillaRelatedGuestIDs.includes(Number(g.id))) return false;
     
-    // Filter by search query if present
-    if (searchQuery) {
-      const fullName = `${g.firstName} ${g.lastName}`.toLowerCase();
-      return fullName.includes(searchQuery);
-    }
-    return true;
+    const fullName = `${g.firstName || ''} ${g.lastName || ''}`.toLocaleLowerCase('tr-TR');
+    const city = (g.city || g.cityTR || '').toLocaleLowerCase('tr-TR');
+    const phone = (g.phone || '');
+    return fullName.includes(searchQuery) || city.includes(searchQuery) || phone.includes(searchQuery);
   });
 
   // Sort options alphabetically by name
@@ -1260,37 +1265,53 @@ function populateVanillaGuestRelationDropdown() {
     return nameA.localeCompare(nameB, 'tr-TR');
   });
 
-  // Re-fill select
-  select.innerHTML = '<option value="">Misafir Seçin...</option>';
-  options.forEach(g => {
-    const opt = document.createElement('option');
-    opt.value = g.id;
-    opt.textContent = `${g.firstName} ${g.lastName}`;
-    select.appendChild(opt);
+  if (options.length === 0) {
+    dropdownList.innerHTML = `<div style="padding: 0.75rem 1rem; font-size: 0.85rem; color: #64748b; text-align: center;">"${searchQuery}" ile eşleşen misafir bulunamadı.</div>`;
+    dropdownList.style.display = 'block';
+    return;
+  }
+
+  dropdownList.innerHTML = '';
+  options.slice(0, 15).forEach(g => {
+    const item = document.createElement('div');
+    item.style.cssText = 'padding: 0.55rem 0.85rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; transition: background 0.15s ease;';
+    item.onmouseenter = () => { item.style.background = '#e0f2fe'; };
+    item.onmouseleave = () => { item.style.background = 'transparent'; };
+
+    const left = document.createElement('div');
+    left.style.cssText = 'display: flex; align-items: center; gap: 0.5rem;';
+    left.innerHTML = `<span style="font-weight: 600; color: #0f172a;">${g.firstName} ${g.lastName}</span>${(g.city || g.cityTR) ? `<span style="font-size: 0.75rem; color: #64748b;">(${g.city || g.cityTR})</span>` : ''}`;
+
+    const btn = document.createElement('span');
+    btn.style.cssText = 'font-size: 0.75rem; color: #0284c7; font-weight: 700; background: #e0f2fe; padding: 3px 8px; border-radius: 6px;';
+    btn.textContent = '+ İlişki Ekle';
+
+    item.appendChild(left);
+    item.appendChild(btn);
+
+    item.onclick = () => {
+      selectVanillaGuestRelation(Number(g.id));
+    };
+
+    dropdownList.appendChild(item);
   });
+
+  dropdownList.style.display = 'block';
+}
+
+function selectVanillaGuestRelation(guestId) {
+  if (!vanillaRelatedGuestIDs.includes(guestId)) {
+    vanillaRelatedGuestIDs.push(guestId);
+  }
+  const searchInput = document.getElementById('guestRelationSearch');
+  if (searchInput) searchInput.value = '';
+  const dropdownList = document.getElementById('guestRelationDropdownList');
+  if (dropdownList) dropdownList.style.display = 'none';
+  renderVanillaGuestRelationsList();
 }
 
 function filterVanillaGuestRelations() {
   populateVanillaGuestRelationDropdown();
-}
-
-function addVanillaGuestRelation() {
-  const select = document.getElementById('guestRelationSelect');
-  if (!select) return;
-  const guestIdVal = select.value;
-  if (!guestIdVal) return;
-
-  const guestId = Number(guestIdVal);
-  if (!vanillaRelatedGuestIDs.includes(guestId)) {
-    vanillaRelatedGuestIDs.push(guestId);
-    // Clear search
-    const searchInput = document.getElementById('guestRelationSearch');
-    if (searchInput) searchInput.value = '';
-    
-    // Refresh UI
-    renderVanillaGuestRelationsList();
-    populateVanillaGuestRelationDropdown();
-  }
 }
 
 function removeVanillaGuestRelation(id) {

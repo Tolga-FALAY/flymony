@@ -1354,52 +1354,172 @@ export default function Guests() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    placeholder="İlişkili misafir ara..."
-                    value={relationSearch}
-                    onChange={(e) => setRelationSearch(e.target.value)}
-                    style={{ flex: 1, margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
-                  />
-                  <select
-                    value={selectedRelationId}
-                    onChange={(e) => setSelectedRelationId(e.target.value)}
-                    style={{ flex: 1.5, margin: 0, padding: '0.5rem', fontSize: '0.9rem', height: '38px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                  >
-                    <option value="">Misafir Seçin...</option>
-                    {guests
-                      .filter(g => {
-                        if (editingGuest && g.GuestID === editingGuest.GuestID) return false;
-                        if (formData.RelatedGuestIDs && formData.RelatedGuestIDs.includes(String(g.GuestID))) return false;
-                        return (g.FullName || '').toLocaleLowerCase('tr-TR').includes(relationSearch.toLocaleLowerCase('tr-TR'));
-                      })
-                      .map(g => (
-                        <option key={g.GuestID} value={String(g.GuestID)}>
-                          {g.FullName}
-                        </option>
-                      ))
-                    }
-                  </select>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => {
-                      if (!selectedRelationId) {
-                        alert("Lütfen listeden bir misafir seçin.");
-                        return;
-                      }
-                      setFormData(prev => ({
-                        ...prev,
-                        RelatedGuestIDs: [...(prev.RelatedGuestIDs || []), String(selectedRelationId)]
-                      }));
-                      setSelectedRelationId('');
-                      setRelationSearch('');
-                    }}
-                  >
-                    +
-                  </button>
+                {/* Auto-adding Search Dropdown for Related Guests */}
+                <div style={{ position: 'relative', width: '100%', marginTop: '0.4rem' }}>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="🔍 Misafir ara ve seçerek doğrudan ilişkili ekle..."
+                      value={relationSearch}
+                      onChange={(e) => setRelationSearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        margin: 0,
+                        padding: '0.55rem 0.85rem',
+                        paddingRight: relationSearch.trim() ? '2.2rem' : '0.85rem',
+                        fontSize: '0.9rem',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface-muted, #f8fafc)'
+                      }}
+                    />
+                    {relationSearch.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setRelationSearch('')}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          padding: '2px 6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="Aramayı Temizle"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {relationSearch.trim() && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 50,
+                        background: 'var(--surface, #ffffff)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        maxHeight: '220px',
+                        overflowY: 'auto',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.05)'
+                      }}
+                    >
+                      {(() => {
+                        const query = relationSearch.toLocaleLowerCase('tr-TR');
+                        const filtered = guests.filter(g => {
+                          if (editingGuest && g.GuestID === editingGuest.GuestID) return false;
+                          if (formData.RelatedGuestIDs && formData.RelatedGuestIDs.map(String).includes(String(g.GuestID))) return false;
+                          const fullName = (g.FullName || `${g.FirstName || ''} ${g.LastName || ''}`).toLocaleLowerCase('tr-TR');
+                          const city = (g.City || g.CityTR || '').toLocaleLowerCase('tr-TR');
+                          const phone = (g.PhoneNumber || '');
+                          const insta = (g.InstagramLink || '').toLocaleLowerCase('tr-TR');
+                          return fullName.includes(query) || city.includes(query) || phone.includes(query) || insta.includes(query);
+                        });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <div style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                              "{relationSearch}" ile eşleşen misafir bulunamadı.
+                            </div>
+                          );
+                        }
+
+                        return filtered.slice(0, 20).map(g => {
+                          const name = g.FullName || `${g.FirstName} ${g.LastName}`;
+                          const city = g.City || g.CityTR || '';
+                          return (
+                            <div
+                              key={g.GuestID}
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  RelatedGuestIDs: [...(prev.RelatedGuestIDs || []), String(g.GuestID)]
+                                }));
+                                setRelationSearch('');
+                              }}
+                              style={{
+                                padding: '0.55rem 0.85rem',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid var(--border-soft, #f1f5f9)',
+                                fontSize: '0.9rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.5rem',
+                                transition: 'background 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-soft, #e0f2fe)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                                {g.ProfilePicture ? (
+                                  <img
+                                    src={g.ProfilePicture}
+                                    alt=""
+                                    style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                                  />
+                                ) : (
+                                  <div
+                                    style={{
+                                      width: '26px',
+                                      height: '26px',
+                                      borderRadius: '50%',
+                                      background: 'var(--primary, #0ea5e9)',
+                                      color: '#fff',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    {(g.FirstName || 'M').charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <span style={{ fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {name}
+                                </span>
+                                {city && (
+                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                                    ({city})
+                                  </span>
+                                )}
+                                {g.IsMusician ? (
+                                  <span style={{ fontSize: '0.75rem', flexShrink: 0 }} title="Müzisyen">
+                                    🎸
+                                  </span>
+                                ) : null}
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: 'var(--primary-strong, #0369a1)',
+                                  fontWeight: 700,
+                                  background: 'var(--primary-soft, #e0f2fe)',
+                                  border: '1px solid var(--primary-soft-2, #bae6fd)',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  flexShrink: 0
+                                }}
+                              >
+                                + İlişki Ekle
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
 
