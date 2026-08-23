@@ -992,55 +992,162 @@ export default function Songs() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
-                  <input
-                    type="text"
-                    placeholder="Sanatçı ara..."
-                    value={artistSearch}
-                    onChange={(e) => setArtistSearch(e.target.value)}
-                    style={{ flex: '0 1 30%', minWidth: '0', margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
-                  />
-                  <select
-                    value={selectedArtistId}
-                    onChange={(e) => setSelectedArtistId(e.target.value)}
-                    style={{ flex: '0 1 45%', minWidth: '0', margin: 0, padding: '0.5rem', fontSize: '0.9rem', height: '38px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: 'white' }}
-                  >
-                    <option value="">Sanatçı Seçin...</option>
-                    {artists
-                      .filter(a => {
-                        if (formData.ArtistIDs && formData.ArtistIDs.includes(String(a.ArtistID))) return false;
-                        return (a.ArtistName || '').toLocaleLowerCase('tr-TR').includes(artistSearch.toLocaleLowerCase('tr-TR'));
-                      })
-                      .map(a => (
-                        <option key={a.ArtistID} value={String(a.ArtistID)}>
-                          {a.ArtistName}
-                        </option>
-                      ))
-                    }
-                  </select>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => {
-                      if (!selectedArtistId) {
-                        alert("Lütfen listeden bir sanatçı seçin.");
-                        return;
-                      }
-                      setFormData(prev => ({
-                        ...prev,
-                        ArtistIDs: [...(prev.ArtistIDs || []), String(selectedArtistId)]
-                      }));
-                      setSelectedArtistId('');
-                      setArtistSearch('');
-                    }}
-                  >
-                    +
-                  </button>
+                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        placeholder="🔍 Sanatçı ara ve seçerek doğrudan ekle..."
+                        value={artistSearch}
+                        onChange={(e) => setArtistSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          margin: 0,
+                          padding: '0.55rem 0.85rem',
+                          paddingRight: artistSearch.trim() ? '2.2rem' : '0.85rem',
+                          fontSize: '0.9rem',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface-muted, #f8fafc)'
+                        }}
+                      />
+                      {artistSearch.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setArtistSearch('')}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            padding: '2px 6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Aramayı Temizle"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {artistSearch.trim() && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 4px)',
+                          left: 0,
+                          right: 0,
+                          zIndex: 50,
+                          background: 'var(--surface, #ffffff)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.05)'
+                        }}
+                      >
+                        {(() => {
+                          const query = artistSearch.toLocaleLowerCase('tr-TR');
+                          const filtered = artists.filter(a => {
+                            if (formData.ArtistIDs && formData.ArtistIDs.map(String).includes(String(a.ArtistID))) return false;
+                            return (a.ArtistName || '').toLocaleLowerCase('tr-TR').includes(query);
+                          });
+
+                          // Sort alphabetically
+                          filtered.sort((a, b) => (a.ArtistName || '').toLocaleLowerCase('tr-TR').localeCompare((b.ArtistName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+
+                          if (filtered.length === 0) {
+                            return (
+                              <div style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                "{artistSearch}" ile eşleşen sanatçı bulunamadı.
+                              </div>
+                            );
+                          }
+
+                          return filtered.slice(0, 20).map(a => (
+                            <div
+                              key={a.ArtistID}
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  ArtistIDs: [...(prev.ArtistIDs || []), String(a.ArtistID)]
+                                }));
+                                setArtistSearch('');
+                              }}
+                              style={{
+                                padding: '0.55rem 0.85rem',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid var(--border-soft, #f1f5f9)',
+                                fontSize: '0.9rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.5rem',
+                                transition: 'background 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-soft, #e0f2fe)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    width: '26px',
+                                    height: '26px',
+                                    borderRadius: '50%',
+                                    background: 'var(--primary, #0ea5e9)',
+                                    color: '#fff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  {(a.ArtistName || 'S').charAt(0).toUpperCase()}
+                                </div>
+                                <span style={{ fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {a.ArtistName}
+                                </span>
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: 'var(--primary-strong, #0369a1)',
+                                  fontWeight: 700,
+                                  background: 'var(--primary-soft, #e0f2fe)',
+                                  border: '1px solid var(--primary-soft-2, #bae6fd)',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  flexShrink: 0
+                                }}
+                              >
+                                + Ekle
+                              </span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     className="btn btn-outline"
                     onClick={() => setIsArtistModalOpen(true)}
-                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{
+                      flex: '0 0 auto',
+                      padding: '0.55rem 1rem',
+                      fontWeight: 'bold',
+                      height: '38px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
                     title="Yeni Sanatçı Ekle"
                   >
                     Yeni
