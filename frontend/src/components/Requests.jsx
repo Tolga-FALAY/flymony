@@ -94,12 +94,7 @@ export default function Requests() {
       if (selectedSong) {
         setSongSearch(selectedSong.SongTitle);
       }
-      const selectedGuestList = guests.filter(g => (req.GuestIDs || []).includes(g.GuestID));
-      if (selectedGuestList.length === 1) {
-        setGuestSearch(selectedGuestList[0].FullName);
-      } else {
-        setGuestSearch('');
-      }
+      setGuestSearch('');
     } else {
       setEditingRequest(null);
       setFormData({ SongID: '', GuestIDs: [], Status: store.statuses[0] ? store.statuses[0].StatusName : 'Kayıtlı', Link: '', Vardi: false, Notes: '', StatusChangeDate: '' });
@@ -641,50 +636,172 @@ export default function Requests() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%' }}>
-                  <input
-                    type="text"
-                    placeholder="Misafir ara..."
-                    value={guestSearch}
-                    onChange={(e) => setGuestSearch(e.target.value)}
-                    style={{ flex: '0 1 30%', minWidth: '0', margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.9rem' }}
-                  />
-                  <select
-                    value={selectedGuestId}
-                    onChange={(e) => setSelectedGuestId(e.target.value)}
-                    style={{ flex: '0 1 45%', minWidth: '0', margin: 0, padding: '0.5rem', fontSize: '0.9rem', height: '38px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: 'white' }}
-                  >
-                    <option value="">Misafir Seçin...</option>
-                    {guests
-                      .filter(g => {
-                        if (formData.GuestIDs && formData.GuestIDs.includes(String(g.GuestID))) return false;
-                        return (g.FullName || '').toLocaleLowerCase('tr-TR').includes((guestSearch || '').toLocaleLowerCase('tr-TR'));
-                      })
-                      .map(g => (
-                        <option key={g.GuestID} value={String(g.GuestID)}>
-                          {g.FullName}
-                        </option>
-                      ))
-                    }
-                  </select>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => {
-                      if (!selectedGuestId) {
-                        alert("Lütfen listeden bir misafir seçin.");
-                        return;
-                      }
-                      setFormData(prev => ({
-                        ...prev,
-                        GuestIDs: [...(prev.GuestIDs || []), String(selectedGuestId)]
-                      }));
-                      setSelectedGuestId('');
-                      setGuestSearch('');
-                    }}
-                  >
-                    +
-                  </button>
+                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        placeholder="🔍 Misafir ara ve seçerek doğrudan ekle..."
+                        value={guestSearch}
+                        onChange={(e) => setGuestSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          margin: 0,
+                          padding: '0.55rem 0.85rem',
+                          paddingRight: guestSearch.trim() ? '2.2rem' : '0.85rem',
+                          fontSize: '0.9rem',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface-muted, #f8fafc)'
+                        }}
+                      />
+                      {guestSearch.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setGuestSearch('')}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            padding: '2px 6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Aramayı Temizle"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {guestSearch.trim() && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 4px)',
+                          left: 0,
+                          right: 0,
+                          zIndex: 50,
+                          background: 'var(--surface, #ffffff)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.05)'
+                        }}
+                      >
+                        {(() => {
+                          const query = guestSearch.toLocaleLowerCase('tr-TR');
+                          const filtered = guests.filter(g => {
+                            if (formData.GuestIDs && formData.GuestIDs.map(String).includes(String(g.GuestID))) return false;
+                            const fullName = (g.FullName || `${g.FirstName || ''} ${g.LastName || ''}`).toLocaleLowerCase('tr-TR');
+                            const city = (g.City || g.CityTR || '').toLocaleLowerCase('tr-TR');
+                            const phone = (g.PhoneNumber || '');
+                            const insta = (g.InstagramLink || '').toLocaleLowerCase('tr-TR');
+                            return fullName.includes(query) || city.includes(query) || phone.includes(query) || insta.includes(query);
+                          });
+
+                          if (filtered.length === 0) {
+                            return (
+                              <div style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                                "{guestSearch}" ile eşleşen misafir bulunamadı.
+                              </div>
+                            );
+                          }
+
+                          return filtered.slice(0, 20).map(g => {
+                            const name = g.FullName || `${g.FirstName} ${g.LastName}`;
+                            const city = g.City || g.CityTR || '';
+                            return (
+                              <div
+                                key={g.GuestID}
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    GuestIDs: [...(prev.GuestIDs || []), String(g.GuestID)]
+                                  }));
+                                  setGuestSearch('');
+                                }}
+                                style={{
+                                  padding: '0.55rem 0.85rem',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid var(--border-soft, #f1f5f9)',
+                                  fontSize: '0.9rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '0.5rem',
+                                  transition: 'background 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-soft, #e0f2fe)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                                  {g.ProfilePicture ? (
+                                    <img
+                                      src={g.ProfilePicture}
+                                      alt=""
+                                      style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '50%',
+                                        background: 'var(--primary, #0ea5e9)',
+                                        color: '#fff',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        flexShrink: 0
+                                      }}
+                                    >
+                                      {(g.FirstName || 'M').charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <span style={{ fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {name}
+                                  </span>
+                                  {city && (
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                                      ({city})
+                                    </span>
+                                  )}
+                                  {g.IsMusician ? (
+                                    <span style={{ fontSize: '0.75rem', flexShrink: 0 }} title="Müzisyen">
+                                      🎸
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <span
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    color: 'var(--primary-strong, #0369a1)',
+                                    fontWeight: 700,
+                                    background: 'var(--primary-soft, #e0f2fe)',
+                                    border: '1px solid var(--primary-soft-2, #bae6fd)',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  + Ekle
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     className="btn btn-outline"
@@ -697,7 +814,15 @@ export default function Requests() {
                       };
                       window.dispatchEvent(new CustomEvent('open-guest-modal-from-external'));
                     }}
-                    style={{ flex: '0 0 auto', padding: '0.5rem 1rem', fontWeight: 'bold', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{
+                      flex: '0 0 auto',
+                      padding: '0.55rem 1rem',
+                      fontWeight: 'bold',
+                      height: '38px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
                     title="Yeni Misafir Ekle"
                   >
                     Yeni
