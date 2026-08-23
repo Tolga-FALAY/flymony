@@ -237,8 +237,13 @@ export default function Guests() {
     setIsModalOpen(true);
   };
 
+  const [returnGigId, setReturnGigId] = useState(null);
+
   useEffect(() => {
     const handleOpenExternal = (e) => {
+      const gigId = e.detail?.returnToGigId || null;
+      setReturnGigId(gigId);
+
       if (e.detail && e.detail.guest) {
         openModal(e.detail.guest);
       } else if (e.detail && e.detail.guestId) {
@@ -265,6 +270,11 @@ export default function Guests() {
     setSelectedRelationId('');
     if (typeof window.onGuestCreated === 'function') {
       window.onGuestCreated = null;
+    }
+    if (returnGigId) {
+      const gigToReturn = returnGigId;
+      setReturnGigId(null);
+      window.dispatchEvent(new CustomEvent('open-gig-from-guest', { detail: { gigId: gigToReturn } }));
     }
   };
 

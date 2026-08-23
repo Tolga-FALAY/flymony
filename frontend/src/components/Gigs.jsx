@@ -1762,11 +1762,12 @@ export default function Gigs() {
                                       <span 
                                         onClick={() => {
                                           setIsModalOpen(false);
+                                          const currentGigId = editingGig?.GigID || editingGig?.id || formData?.GigID;
                                           const targetGuest = guests.find(g => Number(g.GuestID || g.id) === Number(gEntry.GuestID));
                                           if (targetGuest) {
-                                            window.dispatchEvent(new CustomEvent('open-guest-modal-from-external', { detail: { guest: targetGuest } }));
+                                            window.dispatchEvent(new CustomEvent('open-guest-modal-from-external', { detail: { guest: targetGuest, returnToGigId: currentGigId } }));
                                           } else {
-                                            window.dispatchEvent(new CustomEvent('open-guest-modal-from-external', { detail: { guestId: gEntry.GuestID } }));
+                                            window.dispatchEvent(new CustomEvent('open-guest-modal-from-external', { detail: { guestId: gEntry.GuestID, returnToGigId: currentGigId } }));
                                           }
                                         }}
                                         style={{ 
