@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { initializeAuthDB } from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,9 @@ const db = new Database(path.join(__dirname, 'song_requests.db'), { verbose: con
 
 // Initialize Tables
 export const initializeDB = () => {
+    // 0. Initialize Auth and Users table
+    initializeAuthDB();
+
     // 1. Create base tables if they don't exist
     db.exec(`
         CREATE TABLE IF NOT EXISTS Artists (

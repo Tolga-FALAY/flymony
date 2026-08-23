@@ -7,11 +7,18 @@ const API_BASE_URL = typeof window !== 'undefined' && window.location.port === '
   : '/api';
 
 async function request(endpoint, method = 'GET', data = null) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('flymony_token') : null;
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const options = {
     method,
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    headers,
+    credentials: 'include' // Sends HttpOnly cookie
   };
   if (data) {
     options.body = JSON.stringify(data);
@@ -364,6 +371,50 @@ export const api = {
 
   permanentDeleteNote: async (id) => {
     return request(`/notes/${id}/permanent`, 'DELETE');
+  },
+
+  // ========================
+  // AUTH API
+  // ========================
+  login: async (username, password) => {
+    const res = await request('/auth/login', 'POST', { username, password });
+    if (res.token) {
+      localStorage.setItem('flymony_token', res.token);
+    }
+    return res;
+  },
+
+  verify2FA: async (tempToken, code) => {
+    const res = await request('/auth/verify-2fa', 'POST', { tempToken, code });
+    if (res.token) {
+      localStorage.setItem('flymony_token', res.token);
+    }
+    return res;
+  },
+
+  getMe: async () => {
+    return request('/auth/me');
+  },
+
+  logout: async () => {
+    localStorage.removeItem('flymony_token');
+    return request('/auth/logout', 'POST');
+  },
+
+  setup2FA: async () => {
+    return request('/auth/setup-2fa', 'POST');
+  },
+
+  enable2FA: async (code, backupCodes) => {
+    return request('/auth/enable-2fa', 'POST', { code, backupCodes });
+  },
+
+  disable2FA: async (password) => {
+    return request('/auth/disable-2fa', 'POST', { password });
+  },
+
+  changePassword: async (oldPassword, newPassword) => {
+    return request('/auth/change-password', 'POST', { oldPassword, newPassword });
   }
 };
 

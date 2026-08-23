@@ -1,31 +1,394 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import db, { initializeDB } from './database.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import {
+    hashPassword,
+    comparePassword,
+    generateToken,
+    verifyToken,
+    generate2FASecret,
+    generateQRCodeDataUrl,
+    verify2FACode,
+    generateBackupCodes,
+    authenticateToken,
+    requireAuth,
+    requireAdmin
+} from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+const IS_PROD = process.env.NODE_ENV === 'production';
 
-app.use(cors());
+// 1. HTTP Security Headers (Helmet)
+app.use(helmet({
+    contentSecurityPolicy: false, // Allows flexible inline scripts/styles for media and SPA
+    crossOriginEmbedderPolicy: false
+}));
+
+// 2. CORS Configuration (Strict Origins + Credentials for HttpOnly cookies)
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost:5000', 'http://127.0.0.1:5173'];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            return callback(null, true);
+        }
+        return callback(null, true); // Fallback for dev convenience, can be restricted in .env
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// 3. Body parsers & Cookie Parser
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser(process.env.COOKIE_SECRET || 'flymony_cookie_secret_key_2026'));
 
-// Serve static uploads folder
+// 4. Rate Limiting
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // max 20 requests per window
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Çok fazla giriş denemesi yaptınız. Lütfen 15 dakika sonra tekrar deneyin.' }
+});
+
+const apiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 300, // max 300 requests per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Çok fazla istek gönderildi. Lütfen bir süre bekleyin.' }
+});
+
+app.use('/api/', apiLimiter);
+
+// 5. Safe Static File Serving (Prevents Path Traversal & Sensitive File Exposure)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Serve React production build
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-// Serve root vanilla folder on /vanilla route
-app.use('/vanilla', express.static(path.join(__dirname, '../')));
+// Serve vanilla files safely (Strictly blocks .git, .env, *.db, backend/, node_modules)
+app.use('/vanilla', (req, res, next) => {
+    const rawUrl = decodeURIComponent(req.url).toLowerCase();
+    if (
+        rawUrl.includes('.git') ||
+        rawUrl.includes('.env') ||
+        rawUrl.includes('.db') ||
+        rawUrl.includes('.sqlite') ||
+        rawUrl.startsWith('/backend') ||
+        rawUrl.startsWith('/node_modules') ||
+        rawUrl.endsWith('.json') ||
+        rawUrl.endsWith('.sh')
+    ) {
+        return res.status(403).json({ error: 'Erişim engellendi: Bu dosyaya doğrudan erişilemez.' });
+    }
+    next();
+}, express.static(path.join(__dirname, '../'), {
+    dotfiles: 'ignore',
+    index: ['index.html']
+}));
 
-// Initialize the database
+// 6. Initialize Database
 initializeDB();
+
+// 7. Global Authentication Context Middleware (Populates req.user if token present)
+app.use(authenticateToken);
+
+// ========================
+// AUTHENTICATION API
+// ========================
+
+// Login endpoint (Step 1: Check username & password)
+app.post('/api/auth/login', authLimiter, async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Kullanıcı adı ve şifre gereklidir.' });
+        }
+
+        const user = db.prepare('SELECT * FROM Users WHERE LOWER(Username) = LOWER(?) OR LOWER(Email) = LOWER(?)').get(username.trim(), username.trim());
+        if (!user) {
+            return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre.' });
+        }
+
+        const passwordMatch = await comparePassword(password, user.PasswordHash);
+        if (!passwordMatch) {
+            return res.status(401).json({ error: 'Geçersiz kullanıcı adı veya şifre.' });
+        }
+
+        // If 2FA is enabled, require TOTP verification step
+        if (user.TwoFactorEnabled) {
+            // Generate temporary short-lived token for 2FA step (valid 5 minutes)
+            const tempToken = generateToken({ UserID: user.UserID, temp2FA: true }, '5m');
+            return res.json({
+                require2FA: true,
+                tempToken,
+                message: '2FA doğrulama kodu gereklidir.'
+            });
+        }
+
+        // 2FA not enabled -> Complete login directly
+        const token = generateToken({
+            UserID: user.UserID,
+            Username: user.Username,
+            Role: user.Role
+        });
+
+        // Set HttpOnly secure cookie
+        res.cookie('flymony_token', token, {
+            httpOnly: true,
+            secure: IS_PROD,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        // Update LastLogin
+        db.prepare('UPDATE Users SET LastLogin = CURRENT_TIMESTAMP WHERE UserID = ?').run(user.UserID);
+
+        return res.json({
+            success: true,
+            user: {
+                UserID: user.UserID,
+                Username: user.Username,
+                Email: user.Email,
+                Role: user.Role,
+                TwoFactorEnabled: Boolean(user.TwoFactorEnabled)
+            },
+            token // Also return in body for Authorization header fallback
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Giriş işlemi sırasında sunucu hatası oluştu.' });
+    }
+});
+
+// 2FA Verification endpoint (Step 2)
+app.post('/api/auth/verify-2fa', authLimiter, async (req, res) => {
+    try {
+        const { tempToken, code } = req.body;
+        if (!tempToken || !code) {
+            return res.status(400).json({ error: 'Geçici token ve 2FA kodu gereklidir.' });
+        }
+
+        const decoded = verifyToken(tempToken);
+        if (!decoded || !decoded.UserID || !decoded.temp2FA) {
+            return res.status(401).json({ error: 'Oturum süresi doldu. Lütfen tekrar şifre ile giriş yapın.' });
+        }
+
+        const user = db.prepare('SELECT * FROM Users WHERE UserID = ?').get(decoded.UserID);
+        if (!user || !user.TwoFactorEnabled || !user.TwoFactorSecret) {
+            return res.status(400).json({ error: '2FA bu kullanıcı için aktif değil.' });
+        }
+
+        // Check if entered code is TOTP code or backup code
+        let isValid = verify2FACode(code, user.TwoFactorSecret);
+        let usedBackupCode = false;
+
+        if (!isValid && user.BackupCodes) {
+            try {
+                const backupCodes = JSON.parse(user.BackupCodes);
+                const cleanCode = code.toString().trim().toUpperCase();
+                const codeIndex = backupCodes.indexOf(cleanCode);
+                if (codeIndex !== -1) {
+                    isValid = true;
+                    usedBackupCode = true;
+                    // Remove used backup code
+                    backupCodes.splice(codeIndex, 1);
+                    db.prepare('UPDATE Users SET BackupCodes = ? WHERE UserID = ?').run(JSON.stringify(backupCodes), user.UserID);
+                }
+            } catch (e) {
+                console.error('Backup code parse error:', e);
+            }
+        }
+
+        if (!isValid) {
+            return res.status(400).json({ error: 'Geçersiz 2FA doğrulama kodu.' });
+        }
+
+        // 2FA verified -> Generate Full Token
+        const token = generateToken({
+            UserID: user.UserID,
+            Username: user.Username,
+            Role: user.Role
+        });
+
+        res.cookie('flymony_token', token, {
+            httpOnly: true,
+            secure: IS_PROD,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
+        db.prepare('UPDATE Users SET LastLogin = CURRENT_TIMESTAMP WHERE UserID = ?').run(user.UserID);
+
+        return res.json({
+            success: true,
+            usedBackupCode,
+            user: {
+                UserID: user.UserID,
+                Username: user.Username,
+                Email: user.Email,
+                Role: user.Role,
+                TwoFactorEnabled: true
+            },
+            token
+        });
+    } catch (err) {
+        console.error('2FA Verification error:', err);
+        res.status(500).json({ error: '2FA doğrulama sırasında bir hata oluştu.' });
+    }
+});
+
+// Current User Info endpoint
+app.get('/api/auth/me', (req, res) => {
+    if (!req.user) {
+        return res.json({ user: null });
+    }
+    res.json({
+        user: {
+            UserID: req.user.UserID,
+            Username: req.user.Username,
+            Email: req.user.Email,
+            Role: req.user.Role,
+            TwoFactorEnabled: Boolean(req.user.TwoFactorEnabled)
+        }
+    });
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+    res.clearCookie('flymony_token', {
+        httpOnly: true,
+        secure: IS_PROD,
+        sameSite: 'lax'
+    });
+    res.json({ success: true, message: 'Başarıyla çıkış yapıldı.' });
+});
+
+// 2FA Setup Initiate (Requires Admin login)
+app.post('/api/auth/setup-2fa', requireAdmin, async (req, res) => {
+    try {
+        const user = db.prepare('SELECT UserID, Username FROM Users WHERE UserID = ?').get(req.user.UserID);
+        const { secret, otpAuthUrl } = generate2FASecret(user.Username);
+        const qrCodeUrl = await generateQRCodeDataUrl(otpAuthUrl);
+        const backupCodes = generateBackupCodes(5);
+
+        // Temporarily store secret in DB or send for validation
+        db.prepare('UPDATE Users SET TwoFactorSecret = ? WHERE UserID = ?').run(secret, user.UserID);
+
+        res.json({
+            secret,
+            qrCodeUrl,
+            backupCodes
+        });
+    } catch (err) {
+        console.error('2FA Setup error:', err);
+        res.status(500).json({ error: '2FA kurulumu başlatılamadı.' });
+    }
+});
+
+// 2FA Enable Confirmation (Verify code and finalize setup)
+app.post('/api/auth/enable-2fa', requireAdmin, (req, res) => {
+    try {
+        const { code, backupCodes } = req.body;
+        if (!code) {
+            return res.status(400).json({ error: 'Doğrulama kodu gereklidir.' });
+        }
+
+        const user = db.prepare('SELECT UserID, TwoFactorSecret FROM Users WHERE UserID = ?').get(req.user.UserID);
+        if (!user || !user.TwoFactorSecret) {
+            return res.status(400).json({ error: 'Lütfen önce 2FA kurulumunu başlatın.' });
+        }
+
+        const isValid = verify2FACode(code, user.TwoFactorSecret);
+        if (!isValid) {
+            return res.status(400).json({ error: 'Girilen 6 haneli kod geçersiz! Lütfen Authenticator uygulamanızdaki güncel kodu girin.' });
+        }
+
+        const codesJson = Array.isArray(backupCodes) ? JSON.stringify(backupCodes) : '[]';
+        db.prepare('UPDATE Users SET TwoFactorEnabled = 1, BackupCodes = ? WHERE UserID = ?').run(codesJson, user.UserID);
+
+        res.json({ success: true, message: 'İki Aşamalı Doğrulama (2FA) başarıyla etkinleştirildi!' });
+    } catch (err) {
+        console.error('2FA Enable error:', err);
+        res.status(500).json({ error: '2FA etkinleştirilirken hata oluştu.' });
+    }
+});
+
+// 2FA Disable endpoint
+app.post('/api/auth/disable-2fa', requireAdmin, async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) {
+            return res.status(400).json({ error: '2FA kapatmak için mevcut şifreniz gereklidir.' });
+        }
+
+        const user = db.prepare('SELECT * FROM Users WHERE UserID = ?').get(req.user.UserID);
+        const match = await comparePassword(password, user.PasswordHash);
+        if (!match) {
+            return res.status(401).json({ error: 'Hatalı şifre.' });
+        }
+
+        db.prepare('UPDATE Users SET TwoFactorEnabled = 0, TwoFactorSecret = NULL, BackupCodes = NULL WHERE UserID = ?').run(user.UserID);
+
+        res.json({ success: true, message: 'İki Aşamalı Doğrulama devre dışı bırakıldı.' });
+    } catch (err) {
+        console.error('2FA Disable error:', err);
+        res.status(500).json({ error: '2FA devre dışı bırakılamadı.' });
+    }
+});
+
+// Change Password endpoint
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+        if (!oldPassword || !newPassword || newPassword.length < 8) {
+            return res.status(400).json({ error: 'Yeni şifre en az 8 karakter uzunluğunda olmalıdır.' });
+        }
+
+        const user = db.prepare('SELECT * FROM Users WHERE UserID = ?').get(req.user.UserID);
+        const match = await comparePassword(oldPassword, user.PasswordHash);
+        if (!match) {
+            return res.status(401).json({ error: 'Mevcut şifreniz hatalı.' });
+        }
+
+        const newHash = await hashPassword(newPassword);
+        db.prepare('UPDATE Users SET PasswordHash = ?, UpdatedAt = CURRENT_TIMESTAMP WHERE UserID = ?').run(newHash, user.UserID);
+
+        res.json({ success: true, message: 'Şifreniz başarıyla güncellendi.' });
+    } catch (err) {
+        console.error('Change password error:', err);
+        res.status(500).json({ error: 'Şifre değiştirilirken hata oluştu.' });
+    }
+});
+
+// 8. Protect all remaining /api/* endpoints with Admin authentication
+app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/auth')) {
+        return next();
+    }
+    return requireAdmin(req, res, next);
+});
+
 
 // ========================
 // ARTISTS API

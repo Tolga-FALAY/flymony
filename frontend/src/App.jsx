@@ -9,6 +9,10 @@ import Parameters from './components/Parameters';
 import Notes from './components/Notes';
 import store from './store';
 import ChordFullscreenViewer from './components/ChordFullscreenViewer';
+import LoginModal from './components/LoginModal';
+import TwoFactorSetupModal from './components/TwoFactorSetupModal';
+import ChangePasswordModal from './components/ChangePasswordModal';
+import api from './api';
 
 const NAV_ITEMS = [
   {
@@ -126,6 +130,47 @@ function App() {
 
   const [notesCount, setNotesCount] = useState(0);
 
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [is2FASetupModalOpen, setIs2FASetupModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+
+  useEffect(() => {
+    // Check initial auth status
+    api.getMe()
+      .then(res => {
+        if (res && res.user) {
+          setCurrentUser(res.user);
+        } else {
+          setCurrentUser(null);
+        }
+      })
+      .catch(err => {
+        console.warn('Auth check failed:', err);
+        setCurrentUser(null);
+      })
+      .finally(() => {
+        setIsCheckingAuth(false);
+      });
+  }, []);
+
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    store.load().then(updateCounts);
+  };
+
+  const handleLogout = async () => {
+    if (!window.confirm('Oturumu kapatmak istediğinize emin misiniz?')) return;
+    try {
+      await api.logout();
+    } catch (err) {
+      console.warn('Logout error:', err);
+    } finally {
+      setCurrentUser(null);
+    }
+  };
+
   const switchTab = (tabKey) => {
     if (!VALID_TABS.includes(tabKey)) return;
     setActiveTab(tabKey);
@@ -169,10 +214,12 @@ function App() {
   };
 
   useEffect(() => {
-    store.load().then(updateCounts);
+    if (currentUser) {
+      store.load().then(updateCounts);
+    }
     window.addEventListener('store-updated', updateCounts);
     return () => window.removeEventListener('store-updated', updateCounts);
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -338,7 +385,66 @@ function App() {
             )}
           </button>
         </nav>
-        <div className="sidebar-footer">flymony</div>
+        
+        {/* User Profile & Security Section in Sidebar */}
+        {currentUser && (
+          <div className="sidebar-user-section">
+            {!sidebarCollapsed ? (
+              <>
+                <div className="sidebar-user-card" title={currentUser.Email || currentUser.Username}>
+                  <div className="sidebar-user-avatar">
+                    {currentUser.Username ? currentUser.Username.charAt(0).toUpperCase() : 'A'}
+                  </div>
+                  <div className="sidebar-user-info">
+                    <span className="sidebar-user-name">{currentUser.Username}</span>
+                    <span className="sidebar-user-role">
+                      {currentUser.TwoFactorEnabled ? '🛡️ 2FA Aktif' : '⚠️ 2FA Kapalı'} • {currentUser.Role === 'admin' ? 'Yönetici' : 'Misafir'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="sidebar-user-actions">
+                  <button
+                    type="button"
+                    className="sidebar-user-action-btn"
+                    onClick={() => setIs2FASetupModalOpen(true)}
+                    title="2FA Güvenlik Ayarları"
+                  >
+                    🔐 2FA
+                  </button>
+                  <button
+                    type="button"
+                    className="sidebar-user-action-btn"
+                    onClick={() => setIsChangePasswordModalOpen(true)}
+                    title="Şifre Değiştir"
+                  >
+                    🔑 Şifre
+                  </button>
+                  <button
+                    type="button"
+                    className="sidebar-user-action-btn btn-logout"
+                    onClick={handleLogout}
+                    title="Güvenli Çıkış"
+                  >
+                    🚪 Çıkış
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="nav-btn"
+                onClick={handleLogout}
+                title="Güvenli Çıkış Yap"
+                style={{ color: '#ef4444' }}
+              >
+                <span className="nav-icon">🚪</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="sidebar-footer">flymony • v2.6</div>
       </aside>
 
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
@@ -364,7 +470,28 @@ function App() {
           <div style={{ display: activeTab === 'notes' ? 'block' : 'none' }}><Notes /></div>
         </div>
       </main>
+
       <ChordFullscreenViewer />
+
+      {/* Login & 2FA Modal when not authenticated */}
+      <LoginModal
+        isOpen={!isCheckingAuth && !currentUser}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
+      {/* 2FA Setup / Settings Modal */}
+      <TwoFactorSetupModal
+        isOpen={is2FASetupModalOpen}
+        onClose={() => setIs2FASetupModalOpen(false)}
+        currentUser={currentUser}
+        onStatusChange={(updatedUser) => setCurrentUser(updatedUser)}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+      />
     </div>
   );
 }

@@ -1,27 +1,37 @@
 #!/bin/bash
 
-# Flymony Otomatik Deployment Scripti
+# Flymony Otomatik & Güvenli Deployment Scripti
 echo "==========================================="
-echo "   Flymony Guncellemesi Baslatiliyor...   "
+echo "   Flymony Güvenli Güncelleme Başlatılıyor "
 echo "==========================================="
 
 # 1. Proje ana dizinine git
 cd /var/www/flymony || exit
 
-echo ">>> 1. Yerel degisiklikler temizleniyor..."
+echo ">>> 1. Yerel değişiklikler temizleniyor..."
 git reset --hard HEAD
 
-echo ">>> 2. En guncel kodlar GitHub'dan cekiliyor..."
-git pull
+echo ">>> 2. En güncel kodlar GitHub'dan çekiliyor..."
+git pull origin main
 
-echo ">>> 3. Frontend (React) projesi derleniyor..."
-cd frontend || exit
-npm run build
+echo ">>> 3. Backend paketleri yükleniyor..."
+cd backend || exit
+npm install --omit=dev
 
-echo ">>> 4. Backend servisi (PM2) yeniden baslatiliyor..."
+# Veritabanı ve env dosya izinlerini sıkılaştır
+chmod 600 .env 2>/dev/null || true
+chmod 600 song_requests.db 2>/dev/null || true
 cd /var/www/flymony || exit
-pm2 restart flymony
+
+echo ">>> 4. Frontend (React) projesi derleniyor..."
+cd frontend || exit
+npm install
+npm run build
+cd /var/www/flymony || exit
+
+echo ">>> 5. Backend servisi (PM2) yeniden başlatılıyor..."
+pm2 reload flymony || pm2 start backend/server.js --name flymony
 
 echo "==========================================="
-echo "   Guncelleme Basariyla Tamamlandi!   "
+echo "   Güncelleme Başarıyla Tamamlandı!   "
 echo "==========================================="
