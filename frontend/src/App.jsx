@@ -248,11 +248,18 @@ function App() {
         switchTab('gigs');
       }
     };
+    const handleOpenGuestModalExternal = (e) => {
+      if (e.detail) {
+        switchTab('guests');
+      }
+    };
     window.addEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
     window.addEventListener('open-gig-from-guest', handleOpenGigFromGuest);
+    window.addEventListener('open-guest-modal-from-external', handleOpenGuestModalExternal);
     return () => {
       window.removeEventListener('open-song-modal-from-external', handleOpenSongModalExternal);
       window.removeEventListener('open-gig-from-guest', handleOpenGigFromGuest);
+      window.removeEventListener('open-guest-modal-from-external', handleOpenGuestModalExternal);
     };
   }, []);
 

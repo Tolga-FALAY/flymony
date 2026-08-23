@@ -1759,7 +1759,33 @@ export default function Gigs() {
                                         onChange={() => toggleGroupGuestSelect(tName, gEntry.GuestID)}
                                         style={{ margin: 0 }}
                                       />
-                                      <span style={{ fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{gEntry.FullName}</span>
+                                      <span 
+                                        onClick={() => {
+                                          setIsModalOpen(false);
+                                          const targetGuest = guests.find(g => Number(g.GuestID || g.id) === Number(gEntry.GuestID));
+                                          if (targetGuest) {
+                                            window.dispatchEvent(new CustomEvent('open-guest-modal-from-external', { detail: { guest: targetGuest } }));
+                                          } else {
+                                            window.dispatchEvent(new CustomEvent('open-guest-modal-from-external', { detail: { guestId: gEntry.GuestID } }));
+                                          }
+                                        }}
+                                        style={{ 
+                                          fontWeight: 600, 
+                                          textOverflow: 'ellipsis', 
+                                          overflow: 'hidden', 
+                                          whiteSpace: 'nowrap',
+                                          cursor: 'pointer',
+                                          color: 'var(--primary, #0ea5e9)',
+                                          textDecoration: 'underline',
+                                          textUnderlineOffset: '2px',
+                                          transition: 'color 0.15s ease'
+                                        }}
+                                        title={`${gEntry.FullName} misafir kaydını aç ve düzenle`}
+                                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--primary-strong, #0369a1)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--primary, #0ea5e9)'; }}
+                                      >
+                                        {gEntry.FullName}
+                                      </span>
                                     </div>
                                   )}
                                   
