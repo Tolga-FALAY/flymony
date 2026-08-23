@@ -194,14 +194,6 @@ export default function Guests() {
     };
   }, [isModalOpen, activePasteSection]);
 
-  useEffect(() => {
-    const handleOpenExternal = () => {
-      openModal();
-    };
-    window.addEventListener('open-guest-modal-from-external', handleOpenExternal);
-    return () => window.removeEventListener('open-guest-modal-from-external', handleOpenExternal);
-  }, []);
-
   const openModal = (guest = null) => {
     setRelationSearch('');
     setSelectedRelationId('');
@@ -244,6 +236,27 @@ export default function Guests() {
     }
     setIsModalOpen(true);
   };
+
+  useEffect(() => {
+    const handleOpenExternal = (e) => {
+      if (e.detail && e.detail.guest) {
+        openModal(e.detail.guest);
+      } else if (e.detail && e.detail.guestId) {
+        const targetId = Number(e.detail.guestId);
+        const guestObj = (guests || []).find(g => Number(g.GuestID || g.id) === targetId) ||
+                         (store.guests || []).find(g => Number(g.GuestID || g.id) === targetId);
+        if (guestObj) {
+          openModal(guestObj);
+        } else {
+          openModal();
+        }
+      } else {
+        openModal();
+      }
+    };
+    window.addEventListener('open-guest-modal-from-external', handleOpenExternal);
+    return () => window.removeEventListener('open-guest-modal-from-external', handleOpenExternal);
+  }, [guests]);
 
   const closeModal = () => {
     setIsModalOpen(false);
