@@ -22,8 +22,8 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
 
 
 // In-memory lists mapped dynamically from Firestore
-let requestsSortKey = 'song';
-let requestsSortDirection = 'asc';
+let requestsSortKey = 'updatedat';
+let requestsSortDirection = 'desc';
 let songsSortKey = 'title';
 let songsSortDirection = 'asc';
 let artistsSortKey = 'name';
@@ -193,18 +193,23 @@ const DB = {
         return (a.title || "").toLocaleLowerCase('tr-TR').localeCompare((b.title || "").toLocaleLowerCase('tr-TR'), 'tr');
       });
 
-      this.requests = requestsList.map(r => ({
-        id: Number(r.RequestID),
-        songId: Number(r.SongID),
-        guestIds: (r.GuestIDs || []).map(Number),
-        guestId: (r.GuestIDs || [])[0] || null,
-        date: r.RequestDate ? new Date(r.RequestDate).getTime() : Date.now(),
-        status: r.Status || 'Kayıtlı',
-        link: r.Link || '',
-        vardi: r.Vardi ? 1 : 0,
-        statusChangeDate: r.StatusChangeDate || '',
-        notes: r.Notes || ''
-      }));
+      this.requests = requestsList.map(r => {
+        const reqDate = r.RequestDate ? new Date(r.RequestDate).getTime() : Date.now();
+        const updatedDate = r.UpdatedAt ? new Date(r.UpdatedAt).getTime() : reqDate;
+        return {
+          id: Number(r.RequestID),
+          songId: Number(r.SongID),
+          guestIds: (r.GuestIDs || []).map(Number),
+          guestId: (r.GuestIDs || [])[0] || null,
+          date: reqDate,
+          updatedAt: updatedDate,
+          status: r.Status || 'Kayıtlı',
+          link: r.Link || '',
+          vardi: r.Vardi ? 1 : 0,
+          statusChangeDate: r.StatusChangeDate || '',
+          notes: r.Notes || ''
+        };
+      });
 
       this.cities = citiesList.map(c => ({ id: Number(c.CityID), name: c.CityName }));
       this.venues = venuesList.map(v => ({
@@ -2061,7 +2066,9 @@ function renderRequests() {
   // Sort requests dynamically based on requestsSortKey and requestsSortDirection
   const sortedReqs = [...DB.requests].sort((a, b) => {
     let res = 0;
-    if (requestsSortKey === 'date') {
+    if (requestsSortKey === 'updatedat') {
+      res = (a.updatedAt || a.date) - (b.updatedAt || b.date);
+    } else if (requestsSortKey === 'date' || requestsSortKey === 'createdat') {
       res = a.date - b.date;
     } else if (requestsSortKey === 'guest') {
       const guestIdsA = a.guestIds || (a.guestId ? [a.guestId] : []);
@@ -2158,12 +2165,12 @@ function renderRequests() {
   tbody.innerHTML = filteredReqs.length === 0 ? '<tr><td colspan="5" style="text-align:center">Kayıt bulunamadı.</td></tr>' : '';
 
   // Render header sorting indicators dynamically
-  const keys = ['date', 'guest', 'song', 'status'];
-  const ids = { date: 'sortIconDate', guest: 'sortIconGuest', song: 'sortIconSong', status: 'sortIconStatus' };
+  const keys = ['createdat', 'updatedat', 'guest', 'song', 'status'];
+  const ids = { createdat: 'sortIconDate', updatedat: 'sortIconUpdatedAt', guest: 'sortIconGuest', song: 'sortIconSong', status: 'sortIconStatus' };
   keys.forEach(k => {
     const iconEl = document.getElementById(ids[k]);
     if (iconEl) {
-      if (requestsSortKey === k) {
+      if (requestsSortKey === k || (k === 'createdat' && requestsSortKey === 'date')) {
         iconEl.innerText = requestsSortDirection === 'asc' ? ' ▲' : ' ▼';
         iconEl.style.color = 'inherit';
       } else {
@@ -2181,7 +2188,7 @@ function renderRequests() {
     if(guests.length === 0 || !song) return; // Eksik veri varsa atla
 
     const guestNames = guests.map(g => `${g.firstName} ${g.lastName}`).join(', ');
-    const dateStr = new Date(req.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: 'numeric' });
+    const createdDateStr = req.date ? new Date(req.date).toLocaleString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
     // Resolve Song Artist names
     const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
@@ -2221,7 +2228,6 @@ function renderRequests() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="Tarih">${dateStr}</td>
       <td data-label="Misafir">${guestNames}</td>
       <td data-label="İstenen Şarkı">
         <span class="song-title-wrapper">
@@ -2230,7 +2236,8 @@ function renderRequests() {
         </span>
       </td>
       <td data-label="Durum">${statusHtml}</td>
-      <td data-label="İşlemler" class="action-btns">
+      <td data-label="KAYIT TAR." style="text-align: center; white-space: nowrap; font-size: 0.85rem; color: var(--text-muted);">${createdDateStr}</td>
+      <td data-label="DÜZENLEME TAR." class="action-btns">
         ${songBtnHtml}
         ${editSongBtnHtml}
         <button class="btn btn-sm btn-outline" onclick="editRequest(${req.id})">Düzenle</button>
@@ -2242,11 +2249,11 @@ function renderRequests() {
 }
 
 function sortRequests(key) {
-  if (requestsSortKey === key) {
+  if (requestsSortKey === key || (key === 'createdat' && requestsSortKey === 'date')) {
     requestsSortDirection = requestsSortDirection === 'asc' ? 'desc' : 'asc';
   } else {
     requestsSortKey = key;
-    requestsSortDirection = 'asc';
+    requestsSortDirection = (key === 'updatedat' || key === 'createdat' || key === 'date') ? 'desc' : 'asc';
   }
   renderRequests();
 }
@@ -2316,13 +2323,15 @@ async function saveRequest(e) {
 
   try {
     let requestId = id;
+    const nowIso = new Date().toISOString();
     const reqData = {
       SongID: Number(songId),
       GuestIDs: guestIds.map(Number),
       Status: status || 'Kayıtlı',
       Link: link || '',
       Vardi: document.getElementById('reqVardi').checked ? 1 : 0,
-      StatusChangeDate: document.getElementById('reqStatusChangeDate').value || null
+      StatusChangeDate: document.getElementById('reqStatusChangeDate').value || null,
+      UpdatedAt: nowIso
     };
 
     if (id) {
@@ -4911,12 +4920,8 @@ async function deleteGig(gigId) {
   }
 }
 
-let liveGigObj = null;
-let liveGigSongIndex = -1;
 let liveGigViewMode = 'chords'; // 'chords' vs 'image'
 let liveGigTransposeShift = 0;
-let liveGigFontSize = 16;
-let liveGigTheme = 'dark';
 let liveGigSingleScreen = false;
 let liveGigDrawerOpen = false;
 

@@ -22,8 +22,25 @@ export default function Requests() {
   const [filterLanguage, setFilterLanguage] = useState('');
   const [languages, setLanguages] = useState([]);
 
-  // Default sorting configuration: Sort by RequestDate Descending
-  const [sortConfig, setSortConfig] = useState({ key: 'RequestDate', direction: 'desc' });
+  // Default sorting configuration: Sort by UpdatedAt Descending
+  const [sortConfig, setSortConfig] = useState({ key: 'UpdatedAt', direction: 'desc' });
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString('tr-TR', {
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
 
   const [formData, setFormData] = useState({
     SongID: '',
@@ -183,6 +200,7 @@ export default function Requests() {
       }
     }
 
+    const nowIso = new Date().toISOString();
     const dataToSend = {
       SongID: songIdNum,
       GuestIDs: formData.GuestIDs.map(Number),
@@ -190,7 +208,8 @@ export default function Requests() {
       Link: formData.Link || '',
       Vardi: formData.Vardi ? 1 : 0,
       Notes: formData.Notes || '',
-      StatusChangeDate: formData.StatusChangeDate || null
+      StatusChangeDate: formData.StatusChangeDate || null,
+      UpdatedAt: nowIso
     };
     try {
       if (editingRequest) {
@@ -206,13 +225,15 @@ export default function Requests() {
           Link: dataToSend.Link || '',
           Vardi: formData.Vardi,
           Notes: dataToSend.Notes,
-          StatusChangeDate: dataToSend.StatusChangeDate
+          StatusChangeDate: dataToSend.StatusChangeDate,
+          UpdatedAt: nowIso
         });
       } else {
         const result = await api.createRequest(dataToSend);
         store.addRequest({
           RequestID: result.RequestID,
-          RequestDate: new Date().toISOString(),
+          RequestDate: nowIso,
+          UpdatedAt: nowIso,
           SongID: songIdNum,
           SongTitle: store.resolveSongDisplay(songIdNum),
           GuestIDs: dataToSend.GuestIDs,
@@ -240,8 +261,10 @@ export default function Requests() {
   // Handle header sorting
   const handleSort = (key) => {
     let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+    if (sortConfig.key === key) {
+      direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      direction = (key === 'UpdatedAt' || key === 'RequestDate') ? 'desc' : 'asc';
     }
     setSortConfig({ key, direction });
   };
@@ -249,8 +272,14 @@ export default function Requests() {
   // Sort Requests dynamically based on sortConfig
   const sortedRequests = [...requests].sort((a, b) => {
     let res = 0;
-    if (sortConfig.key === 'RequestDate') {
-      res = new Date(a.RequestDate) - new Date(b.RequestDate);
+    if (sortConfig.key === 'UpdatedAt') {
+      const timeA = new Date(a.UpdatedAt || a.RequestDate || 0).getTime();
+      const timeB = new Date(b.UpdatedAt || b.RequestDate || 0).getTime();
+      res = timeA - timeB;
+    } else if (sortConfig.key === 'RequestDate') {
+      const timeA = new Date(a.RequestDate || 0).getTime();
+      const timeB = new Date(b.RequestDate || 0).getTime();
+      res = timeA - timeB;
     } else if (sortConfig.key === 'FullNames') {
       const aVal = (a.FullNames || '').toLocaleLowerCase('tr-TR');
       const bVal = (b.FullNames || '').toLocaleLowerCase('tr-TR');
@@ -465,10 +494,16 @@ export default function Requests() {
                   {renderSortArrow('Status')}
                 </span>
               </th>
-              <th onClick={() => handleSort('RequestDate')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }}>
-                Tarih / Saat
+              <th onClick={() => handleSort('RequestDate')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', whiteSpace: 'nowrap' }} title="Kayıt Tarihine Göre Sırala">
+                KAYIT TAR.
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'RequestDate' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('RequestDate')}
+                </span>
+              </th>
+              <th onClick={() => handleSort('UpdatedAt')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right', whiteSpace: 'nowrap' }} title="Düzenleme Tarihine Göre Sırala">
+                DÜZENLEME TAR.
+                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'UpdatedAt' ? 'inherit' : 'var(--text-muted)' }}>
+                  {renderSortArrow('UpdatedAt')}
                 </span>
               </th>
             </tr>
@@ -502,7 +537,10 @@ export default function Requests() {
                       {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
                     </div>
                   </td>
-                  <td data-label="Tarih / Saat">
+                  <td data-label="KAYIT TAR." style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {formatDate(req.RequestDate)}
+                  </td>
+                  <td data-label="DÜZENLEME TAR.">
                     <div className="action-btns">
                       <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
                         {req.Notes && req.Notes.trim() ? (
@@ -588,7 +626,7 @@ export default function Requests() {
               );
             })}
             {filteredRequests.length === 0 && (
-              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>

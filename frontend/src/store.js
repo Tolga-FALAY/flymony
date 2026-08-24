@@ -207,9 +207,12 @@ const store = {
       const guestIds = (r.GuestIDs || []).map(Number);
       const songId   = Number(r.SongID);
       const song     = _songs.find(s => s.SongID === songId);
+      const reqDate  = r.RequestDate || new Date().toISOString();
+      const updatedDate = r.UpdatedAt || reqDate;
       return {
         RequestID:   Number(r.RequestID),
-        RequestDate: r.RequestDate || new Date().toISOString(),
+        RequestDate: reqDate,
+        UpdatedAt:   updatedDate,
         SongID:      songId,
         SongTitle:   _buildSongDisplay(song),
         GuestIDs:    guestIds,
@@ -221,8 +224,8 @@ const store = {
         StatusChangeDate: r.StatusChangeDate || ''
       };
     });
-    // Yeniden eskiye sırala
-    _requests.sort((a, b) => new Date(b.RequestDate) - new Date(a.RequestDate));
+    // Yeniden eskiye sırala (Son düzenleme tarihine göre DESC)
+    _requests.sort((a, b) => new Date(b.UpdatedAt || b.RequestDate) - new Date(a.UpdatedAt || a.RequestDate));
 
     // 5. Durumları yükle
     _statuses = statusesList.map(s => ({
@@ -451,7 +454,11 @@ const store = {
   updateRequest(id, updatedRequest) {
     const idx = _requests.findIndex(r => r.RequestID === id);
     if (idx !== -1) {
-      _requests[idx] = { ..._requests[idx], ...updatedRequest };
+      _requests[idx] = { 
+        ..._requests[idx], 
+        ...updatedRequest, 
+        UpdatedAt: updatedRequest.UpdatedAt || new Date().toISOString() 
+      };
     }
     _notify();
   },

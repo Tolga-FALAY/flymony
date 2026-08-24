@@ -142,6 +142,7 @@ export const api = {
     return list.map(r => ({
       RequestID:   Number(r.RequestID),
       RequestDate: r.RequestDate || '',
+      UpdatedAt:   r.UpdatedAt || r.RequestDate || '',
       SongID:      Number(r.SongID),
       GuestIDs:    (r.GuestIDs || []).map(Number),
       Status:      r.Status || 'Kayıtlı',
@@ -153,12 +154,14 @@ export const api = {
   },
 
   createRequest: async (data) => {
-    const result = await request('/requests', 'POST', data);
-    return { RequestID: Number(result.id), message: result.message };
+    const nowIso = new Date().toISOString();
+    const result = await request('/requests', 'POST', { ...data, UpdatedAt: data.UpdatedAt || nowIso });
+    return { RequestID: Number(result.id), message: result.message, RequestDate: data.RequestDate || nowIso, UpdatedAt: data.UpdatedAt || nowIso };
   },
 
   updateRequest: async (id, data) => {
-    return request(`/requests/${id}`, 'PUT', data);
+    const nowIso = new Date().toISOString();
+    return request(`/requests/${id}`, 'PUT', { ...data, UpdatedAt: data.UpdatedAt || nowIso });
   },
 
   deleteRequest: async (id) => {

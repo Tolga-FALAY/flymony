@@ -208,6 +208,7 @@ export const initializeDB = () => {
                     RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
                     SongID INTEGER NOT NULL,
                     RequestDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                     Status TEXT DEFAULT 'Kayıtlı',
                     Link TEXT,
                     Vardi INTEGER DEFAULT 0,
@@ -232,6 +233,7 @@ export const initializeDB = () => {
                 RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
                 SongID INTEGER NOT NULL,
                 RequestDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                 Status TEXT DEFAULT 'Kayıtlı',
                 Link TEXT,
                 Vardi INTEGER DEFAULT 0,
@@ -248,6 +250,17 @@ export const initializeDB = () => {
                 FOREIGN KEY (GuestID) REFERENCES Guests(GuestID) ON DELETE CASCADE
             );
         `);
+    }
+
+    // Ensure Requests has UpdatedAt column
+    try {
+        const reqCols = db.prepare("PRAGMA table_info(Requests)").all();
+        if (reqCols.length > 0 && !reqCols.some(col => col.name === 'UpdatedAt')) {
+            db.exec("ALTER TABLE Requests ADD COLUMN UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP;");
+            db.exec("UPDATE Requests SET UpdatedAt = RequestDate WHERE UpdatedAt IS NULL;");
+        }
+    } catch (e) {
+        console.warn("Requests UpdatedAt migration check error:", e);
     }
 
     // Migration for adding new guest columns dynamically if they do not exist
