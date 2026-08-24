@@ -441,7 +441,7 @@ export const initializeDB = () => {
                 CityName TEXT NOT NULL UNIQUE
             );
         `);
-        
+
         // Seed default city if empty
         const cityCount = db.prepare("SELECT COUNT(*) as count FROM Cities").get().count;
         if (cityCount === 0) {
@@ -462,7 +462,7 @@ export const initializeDB = () => {
                 LanguageName TEXT NOT NULL UNIQUE
             );
         `);
-        
+
         // Seed default languages if empty
         const langCount = db.prepare("SELECT COUNT(*) as count FROM Languages").get().count;
         if (langCount === 0) {
@@ -482,11 +482,11 @@ export const initializeDB = () => {
         const hasLanguageID = songTableInfo.some(col => col.name === 'LanguageID');
         if (!hasLanguageID) {
             console.log("Migrating Songs table: Adding LanguageID column...");
-            
+
             // Get default language ID (Türkçe)
             const defaultLang = db.prepare("SELECT LanguageID FROM Languages WHERE LanguageName = ?").get("Türkçe");
             const defaultLangID = defaultLang ? defaultLang.LanguageID : 1;
-            
+
             db.transaction(() => {
                 // SQLite supports ALTER TABLE Songs ADD COLUMN LanguageID INTEGER REFERENCES Languages(LanguageID)
                 db.exec("ALTER TABLE Songs ADD COLUMN LanguageID INTEGER REFERENCES Languages(LanguageID);");
@@ -538,16 +538,16 @@ export const initializeDB = () => {
         const hasCityID = tableInfo.some(col => col.name === 'CityID');
         if (!hasCityID) {
             console.log("Migrating Venues table: Adding CityID column...");
-            
+
             // Get default city ID
-            const defaultCity = db.prepare("SELECT CityID FROM Cities WHERE CityName = ?").get("İstanbul") 
+            const defaultCity = db.prepare("SELECT CityID FROM Cities WHERE CityName = ?").get("İstanbul")
                 || db.prepare("SELECT CityID FROM Cities LIMIT 1").get();
             const defaultCityID = defaultCity ? defaultCity.CityID : 1;
 
             db.transaction(() => {
                 // Rename Venues to Venues_old
                 db.exec("ALTER TABLE Venues RENAME TO Venues_old;");
-                
+
                 // Create new Venues table
                 db.exec(`
                     CREATE TABLE Venues (
@@ -586,8 +586,8 @@ export const initializeDB = () => {
         const hasVenueID = tableInfo.some(col => col.name === 'VenueID');
         if (!hasVenueID) {
             console.log("Migrating Gigs table: Replacing VenueName with VenueID...");
-            
-            const defaultCity = db.prepare("SELECT CityID FROM Cities WHERE CityName = ?").get("İstanbul") 
+
+            const defaultCity = db.prepare("SELECT CityID FROM Cities WHERE CityName = ?").get("İstanbul")
                 || db.prepare("SELECT CityID FROM Cities LIMIT 1").get();
             const defaultCityID = defaultCity ? defaultCity.CityID : 1;
 
@@ -612,13 +612,13 @@ export const initializeDB = () => {
 
                 // Get old Gigs
                 const oldGigs = db.prepare("SELECT * FROM Gigs_old").all();
-                
+
                 for (const gig of oldGigs) {
                     const venueName = (gig.VenueName || 'Bilinmeyen Mekan').trim();
-                    
+
                     // Check if venue already exists in Venues
                     let venue = db.prepare("SELECT VenueID FROM Venues WHERE TRIM(LOWER(VenueName)) = TRIM(LOWER(?))").get(venueName);
-                    
+
                     if (!venue) {
                         // Create a new venue entry with the default city
                         const ins = db.prepare("INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink) VALUES (?, ?, '', '', '', '', '')").run(venueName, defaultCityID);
@@ -660,7 +660,7 @@ export const initializeDB = () => {
 
         if (gigSongsSql.includes('Gigs_old') || gigGuestsSql.includes('Gigs_old')) {
             console.log("Repairing broken foreign keys in Gig_Songs and Gig_Guests...");
-            
+
             db.transaction(() => {
                 // Rebuild Gig_Songs
                 if (gigSongsSql.includes('Gigs_old')) {
@@ -740,7 +740,7 @@ export const initializeDB = () => {
     try {
         const tableInfo = db.prepare("PRAGMA table_info(Gig_Guests)").all();
         const existingCols = tableInfo.map(col => col.name);
-        
+
         if (!existingCols.includes('Description')) {
             console.log("Migrating database: Adding Description column to Gig_Guests table...");
             db.exec("ALTER TABLE Gig_Guests ADD COLUMN Description TEXT;");
@@ -846,7 +846,7 @@ export const initializeDB = () => {
 
         if (readDir) {
             const fileList = fs.readdirSync(readDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f));
-            
+
             const ARTIST_NORM_MAP = {
                 'alifiru': 'Ali Firu',
                 'anonimcyp': 'Anonim CYP',
