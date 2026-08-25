@@ -190,11 +190,15 @@ export default function Gigs() {
       Notes: gig.Notes || '',
       Photos: gig.Photos || [],
       Videos: gig.Videos || [],
-      Songs: gig.Songs ? gig.Songs.map(s => ({
+      Songs: gig.Songs ? gig.Songs.map((s, idx) => ({
+        _uid: 'gs_' + (s.GigSongID ? s.GigSongID + '_' : '') + s.SongID + '_' + idx + '_' + Math.random().toString(36).slice(2),
         SongID: Number(s.SongID),
-        SortOrder: Number(s.SortOrder),
-        IsPlayed: Number(s.IsPlayed),
-        IsRequest: Number(s.IsRequest)
+        SortOrder: Number(s.SortOrder) || (idx + 1),
+        IsPlayed: Number(s.IsPlayed || 0),
+        IsRequest: Number(s.IsRequest || 0)
+      })).sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0)).map((s, idx) => ({
+        ...s,
+        SortOrder: idx + 1
       })) : [],
       Guests: gig.Guests ? gig.Guests.map(g => ({
         GuestID: g.GuestID ? Number(g.GuestID) : null,
@@ -232,33 +236,40 @@ export default function Gigs() {
     const finalDotSong = dotSong || songs.find(s => s.SongTitle === '...');
     const dotSongId = finalDotSong ? finalDotSong.SongID : null;
 
+    const sortedCurrentSongs = [...formData.Songs]
+      .filter(s => Number(s.IsRequest) !== 1) // Geçen haftadan İstek olarak listeye girmiş olan şarkılar yeni sahneye taşınmaz
+      .sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
+
     const newSongs = [];
-    const sortedCurrentSongs = [...formData.Songs].sort((a, b) => Number(a.SortOrder) - Number(b.SortOrder));
 
-    sortedCurrentSongs.forEach(currentSong => {
-      // Geçen haftadan İstek olarak listeye girmiş olan şarkılar yeni sahneye taşınmaz
-      if (Number(currentSong.IsRequest) === 1) {
-        return;
-      }
-
+    sortedCurrentSongs.forEach((currentSong, idx) => {
+      const uid = 'nw_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).slice(2);
       if (!currentSong.IsPlayed) {
         newSongs.push({
+          _uid: uid,
           SongID: currentSong.SongID,
-          SortOrder: currentSong.SortOrder,
+          SortOrder: idx + 1,
           IsPlayed: 0,
           IsRequest: 0
         });
       } else {
         if (dotSongId) {
           newSongs.push({
+            _uid: uid,
             SongID: dotSongId,
-            SortOrder: currentSong.SortOrder,
+            SortOrder: idx + 1,
             IsPlayed: 0,
             IsRequest: 0
           });
         }
       }
     });
+
+    // Kesintisiz 1..N sıralama garantisi
+    const cleanNewSongs = newSongs.map((s, idx) => ({
+      ...s,
+      SortOrder: idx + 1
+    }));
 
     setEditingGig(null);
     let nextDate = new Date();
@@ -274,7 +285,7 @@ export default function Gigs() {
       Notes: '',
       Photos: [],
       Videos: [],
-      Songs: newSongs,
+      Songs: cleanNewSongs,
       Guests: []
     });
     setSongSearchText('');
@@ -365,36 +376,30 @@ export default function Gigs() {
     }
 
     const newSongEntry = {
+      _uid: 'add_' + Date.now() + '_' + Math.random().toString(36).slice(2),
       SongID: song.SongID,
       SortOrder: 0,
       IsPlayed: 0,
       IsRequest: 0
     };
 
-    const targetOrder = parseInt(songInsertOrder, 10);
-    let updatedSongs = [];
+    // Her zaman mevcut listeyi SortOrder'a göre sıralı al
+    const currentList = [...formData.Songs].sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
 
+    const targetOrder = parseInt(songInsertOrder, 10);
     if (!isNaN(targetOrder) && targetOrder > 0) {
-      // Sıra numarasına göre dizilmiş mevcut listeyi al
-      const currentList = [...formData.Songs].sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
-      
-      // Belirtilen sıra numarasına yerleştir (1-tabanlı, örn: 7 -> index 6)
+      // 1-tabanlı hedef sıra (örn: 7 -> index 6)
       const insertIdx = Math.min(Math.max(0, targetOrder - 1), currentList.length);
       currentList.splice(insertIdx, 0, newSongEntry);
-
-      // Listenin tamamının SortOrder'ını 1'den başlayarak yeniden güncelle
-      updatedSongs = currentList.map((s, idx) => ({
-        ...s,
-        SortOrder: idx + 1
-      }));
     } else {
-      // Sıra belirtilmediyse en sona ekle
-      const nextOrder = formData.Songs.length > 0 
-        ? Math.max(...formData.Songs.map(s => Number(s.SortOrder) || 0)) + 1 
-        : 1;
-      newSongEntry.SortOrder = nextOrder;
-      updatedSongs = [...formData.Songs, newSongEntry];
+      currentList.push(newSongEntry);
     }
+
+    // Listenin tamamını 1'den N'e kadar sıralı ve kesintisiz yeniden numaralandır
+    const updatedSongs = currentList.map((s, idx) => ({
+      ...s,
+      SortOrder: idx + 1
+    }));
 
     setFormData(prev => ({
       ...prev,
@@ -404,8 +409,8 @@ export default function Gigs() {
     setSongInsertOrder('');
   };
 
-  const removeSongFromGig = (songId) => {
-    const filtered = formData.Songs.filter(s => s.SongID !== songId);
+  const removeSongFromGigByIndex = (indexToRemove) => {
+    const filtered = formData.Songs.filter((_, idx) => idx !== indexToRemove);
     // Recalculate SortOrders
     const recalculated = filtered.map((s, idx) => ({ ...s, SortOrder: idx + 1 }));
     setFormData(prev => ({
@@ -428,9 +433,9 @@ export default function Gigs() {
   };
 
   const moveSongToOrder = (currentIndex, targetOrderVal) => {
-    const targetOrder = parseInt(targetOrderVal);
-    if (isNaN(targetOrder) || targetOrder < 1 || targetOrder > formData.Songs.length) return;
-    const targetIdx = targetOrder - 1;
+    const targetOrder = parseInt(targetOrderVal, 10);
+    if (isNaN(targetOrder) || targetOrder < 1) return;
+    const targetIdx = Math.min(Math.max(0, targetOrder - 1), formData.Songs.length - 1);
     if (currentIndex === targetIdx) return;
 
     const list = [...formData.Songs];
@@ -444,10 +449,10 @@ export default function Gigs() {
     }));
   };
 
-  const toggleGigModalSongPlayed = (songId) => {
+  const toggleGigModalSongPlayedByIndex = (indexToToggle) => {
     setFormData(prev => ({
       ...prev,
-      Songs: prev.Songs.map(s => s.SongID === songId ? { ...s, IsPlayed: s.IsPlayed ? 0 : 1 } : s)
+      Songs: prev.Songs.map((s, idx) => idx === indexToToggle ? { ...s, IsPlayed: s.IsPlayed ? 0 : 1 } : s)
     }));
   };
 
@@ -1638,7 +1643,7 @@ export default function Gigs() {
                           const isPlayed = Boolean(gSong.IsPlayed);
                           const hasChord = Boolean((songObj.ChordImagePath && songObj.ChordImagePath.trim()) || (gSong.ChordImagePath && gSong.ChordImagePath.trim()));
                           return (
-                            <div key={gSong.SongID} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', background: isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent', gap: '0.5rem' }}>
+                            <div key={gSong._uid || `${gSong.SongID}_${idx}_${gSong.SortOrder}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', background: isPlayed ? 'rgba(16, 185, 129, 0.06)' : 'transparent', gap: '0.5rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                                 <span style={{ fontWeight: 'bold', color: 'var(--text-muted)', width: '22px', flexShrink: 0 }}>{gSong.SortOrder}.</span>
                                 {Number(gSong.IsRequest) === 1 && (
@@ -1669,7 +1674,7 @@ export default function Gigs() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
                                 <button 
                                   type="button" 
-                                  onClick={() => toggleGigModalSongPlayed(gSong.SongID)}
+                                  onClick={() => toggleGigModalSongPlayedByIndex(idx)}
                                   style={{
                                     width: '24px',
                                     height: '24px',
@@ -1717,7 +1722,7 @@ export default function Gigs() {
                                 />
                                 <button type="button" className="btn btn-outline" style={{ padding: '2px 5px', fontSize: '0.72rem', height: '24px', flexShrink: 0 }} onClick={() => swapSongs(idx, idx - 1)} disabled={idx === 0}>▲</button>
                                 <button type="button" className="btn btn-outline" style={{ padding: '2px 5px', fontSize: '0.72rem', height: '24px', flexShrink: 0 }} onClick={() => swapSongs(idx, idx + 1)} disabled={idx === formData.Songs.length - 1}>▼</button>
-                                <button type="button" className="btn btn-sm btn-danger" style={{ padding: '2px 6px', fontSize: '0.75rem', height: '24px', borderRadius: '4px', flexShrink: 0 }} onClick={() => removeSongFromGig(gSong.SongID)}>&times;</button>
+                                <button type="button" className="btn btn-sm btn-danger" style={{ padding: '2px 6px', fontSize: '0.75rem', height: '24px', borderRadius: '4px', flexShrink: 0 }} onClick={() => removeSongFromGigByIndex(idx)}>&times;</button>
                               </div>
                             </div>
                           );
