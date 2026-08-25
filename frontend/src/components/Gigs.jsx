@@ -224,6 +224,59 @@ export default function Gigs() {
     });
   };
 
+  const handleNextWeek = () => {
+    // Bulunabilen "..." şarkısını al
+    const dotSong = songs.find(s => s.SongTitle === '...' && (s.ArtistNames === 'Tolga FALAY' || s.ArtistNames?.includes('Tolga FALAY')));
+    const finalDotSong = dotSong || songs.find(s => s.SongTitle === '...');
+    const dotSongId = finalDotSong ? finalDotSong.SongID : null;
+
+    const newSongs = [];
+    const sortedCurrentSongs = [...formData.Songs].sort((a, b) => Number(a.SortOrder) - Number(b.SortOrder));
+
+    sortedCurrentSongs.forEach(currentSong => {
+      if (!currentSong.IsPlayed) {
+        newSongs.push({
+          SongID: currentSong.SongID,
+          SortOrder: currentSong.SortOrder,
+          IsPlayed: 0,
+          IsRequest: currentSong.IsRequest
+        });
+      } else {
+        if (dotSongId) {
+          newSongs.push({
+            SongID: dotSongId,
+            SortOrder: currentSong.SortOrder,
+            IsPlayed: 0,
+            IsRequest: 0
+          });
+        }
+      }
+    });
+
+    setEditingGig(null);
+    let nextDate = new Date();
+    if (formData.GigDate) {
+      nextDate = new Date(formData.GigDate);
+    }
+    nextDate.setDate(nextDate.getDate() + 7);
+    const nextDateStr = nextDate.toISOString().split('T')[0];
+
+    setFormData({
+      VenueID: formData.VenueID || '',
+      GigDate: nextDateStr,
+      Notes: '',
+      Photos: [],
+      Videos: [],
+      Songs: newSongs,
+      Guests: []
+    });
+    setSongSearchText('');
+    setGuestSearchText('');
+    setSelectedGroupGuests({});
+    setSelectedTargetTable('Masa 1');
+    setIsModalOpen(true);
+  };
+
   const handleCreateNew = () => {
     setEditingGig(null);
     const today = new Date().toISOString().split('T')[0];
@@ -297,7 +350,8 @@ export default function Gigs() {
 
   // --- Song management inside Gig Editor ---
   const addSongToGig = (song) => {
-    if (formData.Songs.some(s => s.SongID === song.SongID)) {
+    const isDotSong = song.SongTitle === '...';
+    if (!isDotSong && formData.Songs.some(s => s.SongID === song.SongID)) {
       alert('Bu şarkı repertuvarda zaten ekli.');
       return;
     }
@@ -1396,7 +1450,7 @@ export default function Gigs() {
                   <button 
                     type="button" 
                     className="btn btn-outline" 
-                    onClick={() => {}}
+                    onClick={handleNextWeek}
                     style={{ 
                       display: 'flex', 
                       alignItems: 'center', 
