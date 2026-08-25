@@ -494,17 +494,37 @@ export default function Requests() {
                   {renderSortArrow('Status')}
                 </span>
               </th>
-              <th onClick={() => handleSort('RequestDate')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'center', whiteSpace: 'nowrap' }} title="Kayıt Tarihine Göre Sırala">
-                KAYIT TAR.
-                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'RequestDate' ? 'inherit' : 'var(--text-muted)' }}>
-                  {renderSortArrow('RequestDate')}
-                </span>
-              </th>
-              <th onClick={() => handleSort('UpdatedAt')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right', whiteSpace: 'nowrap' }} title="Düzenleme Tarihine Göre Sırala">
-                DÜZENLEME TAR.
-                <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'UpdatedAt' ? 'inherit' : 'var(--text-muted)' }}>
-                  {renderSortArrow('UpdatedAt')}
-                </span>
+              <th style={{ textAlign: 'right', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1.25rem' }}>
+                  <span
+                    onClick={() => handleSort('RequestDate')}
+                    style={{
+                      cursor: 'pointer',
+                      color: sortConfig.key === 'RequestDate' ? 'var(--primary-color, inherit)' : 'var(--text-muted)',
+                      fontWeight: sortConfig.key === 'RequestDate' ? 'bold' : '600'
+                    }}
+                    title="Kayıt Tarihine Göre Sırala"
+                  >
+                    KAYIT TAR.
+                    <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'RequestDate' ? 'inherit' : 'var(--text-muted)' }}>
+                      {renderSortArrow('RequestDate')}
+                    </span>
+                  </span>
+                  <span
+                    onClick={() => handleSort('UpdatedAt')}
+                    style={{
+                      cursor: 'pointer',
+                      color: sortConfig.key === 'UpdatedAt' ? 'var(--primary-color, inherit)' : 'var(--text-muted)',
+                      fontWeight: sortConfig.key === 'UpdatedAt' ? 'bold' : '600'
+                    }}
+                    title="Düzenleme Tarihine Göre Sırala"
+                  >
+                    DÜZENLEME TAR.
+                    <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'UpdatedAt' ? 'inherit' : 'var(--text-muted)' }}>
+                      {renderSortArrow('UpdatedAt')}
+                    </span>
+                  </span>
+                </div>
               </th>
             </tr>
           </thead>
@@ -537,10 +557,7 @@ export default function Requests() {
                       {req.Vardi && <span style={{ color: '#059669', fontWeight: 'bold', fontSize: '1.2rem', lineHeight: 1 }} title="Vardı">✓</span>}
                     </div>
                   </td>
-                  <td data-label="KAYIT TAR." style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    {formatDate(req.RequestDate)}
-                  </td>
-                  <td data-label="DÜZENLEME TAR.">
+                  <td data-label="İşlemler">
                     <div className="action-btns">
                       <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
                         {req.Notes && req.Notes.trim() ? (
@@ -626,7 +643,7 @@ export default function Requests() {
               );
             })}
             {filteredRequests.length === 0 && (
-              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
         </table>
