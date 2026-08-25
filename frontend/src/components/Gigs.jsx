@@ -388,10 +388,27 @@ export default function Gigs() {
 
     const targetOrder = parseInt(songInsertOrder, 10);
     if (!isNaN(targetOrder) && targetOrder > 0) {
-      // 1-tabanlı hedef sıra (örn: 7 -> index 6)
-      const insertIdx = Math.min(Math.max(0, targetOrder - 1), currentList.length);
-      currentList.splice(insertIdx, 0, newSongEntry);
+      const targetIdx = targetOrder - 1;
+
+      if (targetIdx < currentList.length) {
+        // Hedef sırada halihazırda bulunan şarkıyı kontrol et
+        const existingSongEntry = currentList[targetIdx];
+        const existingSongObj = songs.find(s => s.SongID === existingSongEntry.SongID);
+        const isExistingDotSong = existingSongObj && existingSongObj.SongTitle === '...';
+
+        if (isExistingDotSong) {
+          // O sıradaki şarkı "..." ise, onu silerek yerine yeni şarkıyı yerleştir
+          currentList.splice(targetIdx, 1, newSongEntry);
+        } else {
+          // Başka kayıtlı bir şarkı varsa, araya ekle ve mevcut şarkıyı bir alt sıraya kaydır
+          currentList.splice(targetIdx, 0, newSongEntry);
+        }
+      } else {
+        // Liste uzunluğundan büyük bir sayı girildiyse en sona ekle
+        currentList.push(newSongEntry);
+      }
     } else {
+      // Sıra belirtilmediyse en sona ekle
       currentList.push(newSongEntry);
     }
 
