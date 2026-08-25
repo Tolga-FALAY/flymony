@@ -153,11 +153,17 @@ function App() {
       .finally(() => {
         setIsCheckingAuth(false);
       });
+
+    const handleUnauthorized = () => {
+      setCurrentUser(null);
+    };
+    window.addEventListener('flymony-unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('flymony-unauthorized', handleUnauthorized);
   }, []);
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    store.load().then(updateCounts);
+    store.load(true).then(updateCounts);
   };
 
   const handleLogout = async () => {
@@ -293,6 +299,27 @@ function App() {
       window.location.reload();
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="auth-overlay" style={{ background: '#f8fafc' }}>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <img src="/flymonyLogo.png" alt="FLY Logo" style={{ width: '90px', height: 'auto', marginBottom: '0.5rem' }} />
+          <div className="auth-spinner" style={{ width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#0284c7', borderRadius: '50%' }}></div>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: '600' }}>Güvenlik doğrulanıyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <LoginModal
+        isOpen={true}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -480,11 +507,6 @@ function App() {
 
       <ChordFullscreenViewer />
 
-      {/* Login & 2FA Modal when not authenticated */}
-      <LoginModal
-        isOpen={!isCheckingAuth && !currentUser}
-        onLoginSuccess={handleLoginSuccess}
-      />
 
       {/* 2FA Setup / Settings Modal */}
       <TwoFactorSetupModal

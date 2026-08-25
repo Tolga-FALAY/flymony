@@ -135,186 +135,192 @@ const store = {
       }
     }
 
-    const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList, languagesList, notesList] = await Promise.all([
-      api.getArtists(),
-      api.getSongs(),
-      api.getGuests(),
-      api.getRequests(),
-      api.getStatuses(),
-      api.getVenues(),
-      api.getGigs(),
-      api.getCities(),
-      api.getLanguages(),
-      api.getNotes()
-    ]);
+    try {
+      const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList, languagesList, notesList] = await Promise.all([
+        api.getArtists(),
+        api.getSongs(),
+        api.getGuests(),
+        api.getRequests(),
+        api.getStatuses(),
+        api.getVenues(),
+        api.getGigs(),
+        api.getCities(),
+        api.getLanguages(),
+        api.getNotes()
+      ]);
 
-    // 1. Sanatçıları yükle
-    _artists = artistsList.map(a => ({
-      ArtistID: Number(a.ArtistID),
-      ArtistName: a.ArtistName,
-      CreatedAt: a.CreatedAt || new Date().toISOString()
-    }));
+      // 1. Sanatçıları yükle
+      _artists = artistsList.map(a => ({
+        ArtistID: Number(a.ArtistID),
+        ArtistName: a.ArtistName,
+        CreatedAt: a.CreatedAt || new Date().toISOString()
+      }));
 
-    // 2. Şarkıları yükle (sanatçı adlarını bellekte çöz)
-    _songs = songsList.map(s => {
-      const artistIds = (s.ArtistIDs || []).map(Number);
-      const artistNames = _resolveArtistNames(artistIds, _artists) || '-';
-      return {
-        SongID: Number(s.SongID),
-        SongTitle: s.SongTitle,
-        Duration: s.Duration || '',
-        SongYear: s.SongYear || '',
-        Lyrics: s.Lyrics || '',
-        AudioPath: s.AudioPath || '',
-        OriginalKey: s.OriginalKey || '',
-        ChordImagePath: s.ChordImagePath || (Array.isArray(s.ChordImages) && s.ChordImages[0]) || '',
-        ChordImages: Array.isArray(s.ChordImages) ? s.ChordImages : (s.ChordImagePath ? [s.ChordImagePath] : []),
-        ArtistIDs: artistIds,
-        ArtistNames: artistNames,
-        LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
-        LanguageName: s.LanguageName || '',
-        Notes: s.Notes || '',
-        CreatedAt: s.CreatedAt || new Date().toISOString()
-      };
-    });
+      // 2. Şarkıları yükle (sanatçı adlarını bellekte çöz)
+      _songs = songsList.map(s => {
+        const artistIds = (s.ArtistIDs || []).map(Number);
+        const artistNames = _resolveArtistNames(artistIds, _artists) || '-';
+        return {
+          SongID: Number(s.SongID),
+          SongTitle: s.SongTitle,
+          Duration: s.Duration || '',
+          SongYear: s.SongYear || '',
+          Lyrics: s.Lyrics || '',
+          AudioPath: s.AudioPath || '',
+          OriginalKey: s.OriginalKey || '',
+          ChordImagePath: s.ChordImagePath || (Array.isArray(s.ChordImages) && s.ChordImages[0]) || '',
+          ChordImages: Array.isArray(s.ChordImages) ? s.ChordImages : (s.ChordImagePath ? [s.ChordImagePath] : []),
+          ArtistIDs: artistIds,
+          ArtistNames: artistNames,
+          LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
+          LanguageName: s.LanguageName || '',
+          Notes: s.Notes || '',
+          CreatedAt: s.CreatedAt || new Date().toISOString()
+        };
+      });
 
-    // 3. Misafirleri yükle
-    _guests = guestsList.map(g => ({
-      GuestID:        Number(g.GuestID),
-      FirstName:      g.FirstName || '',
-      LastName:       g.LastName  || '',
-      FullName:       (g.FullName || `${g.FirstName || ""} ${g.LastName || ""}`).trim(),
-      PhoneNumber:    g.PhoneNumber    || '',
-      InstagramLink:  g.InstagramLink  || '',
-      City:           g.City           || '',
-      CityTR:         g.CityTR         || '',
-      Notes:          g.Notes          || '',
-      ProfilePicture: g.ProfilePicture || '',
-      BirthDateDay:   g.BirthDateDay   || '',
-      BirthDateMonth: g.BirthDateMonth || '',
-      BirthDateYear:  g.BirthDateYear  || '',
-      Photos:         g.Photos         || [],
-      RelatedGuestIDs: (g.RelatedGuestIDs || []).map(Number),
-      IsMusician:     g.IsMusician ? true : false,
-      CreatedAt:      g.CreatedAt      || new Date().toISOString(),
-      UpdatedAt:      g.UpdatedAt      || new Date().toISOString()
-    }));
-    // Türkçe ada göre sırala
-    _sortGuests();
+      // 3. Misafirleri yükle
+      _guests = guestsList.map(g => ({
+        GuestID:        Number(g.GuestID),
+        FirstName:      g.FirstName || '',
+        LastName:       g.LastName  || '',
+        FullName:       (g.FullName || `${g.FirstName || ""} ${g.LastName || ""}`).trim(),
+        PhoneNumber:    g.PhoneNumber    || '',
+        InstagramLink:  g.InstagramLink  || '',
+        City:           g.City           || '',
+        CityTR:         g.CityTR         || '',
+        Notes:          g.Notes          || '',
+        ProfilePicture: g.ProfilePicture || '',
+        BirthDateDay:   g.BirthDateDay   || '',
+        BirthDateMonth: g.BirthDateMonth || '',
+        BirthDateYear:  g.BirthDateYear  || '',
+        Photos:         g.Photos         || [],
+        RelatedGuestIDs: (g.RelatedGuestIDs || []).map(Number),
+        IsMusician:     g.IsMusician ? true : false,
+        CreatedAt:      g.CreatedAt      || new Date().toISOString(),
+        UpdatedAt:      g.UpdatedAt      || new Date().toISOString()
+      }));
+      // Türkçe ada göre sırala
+      _sortGuests();
 
-    // 4. İstekleri yükle (misafir ve şarkı adlarını bellekte çöz)
-    _requests = requestsList.map(r => {
-      const guestIds = (r.GuestIDs || []).map(Number);
-      const songId   = Number(r.SongID);
-      const song     = _songs.find(s => s.SongID === songId);
-      const reqDate  = r.RequestDate || new Date().toISOString();
-      const updatedDate = r.UpdatedAt || reqDate;
-      return {
-        RequestID:   Number(r.RequestID),
-        RequestDate: reqDate,
-        UpdatedAt:   updatedDate,
-        SongID:      songId,
-        SongTitle:   _buildSongDisplay(song),
-        GuestIDs:    guestIds,
-        FullNames:   _resolveGuestNames(guestIds, _guests),
-        Status:      r.Status || 'Kayıtlı',
-        Link:        r.Link   || '',
-        Vardi:       r.Vardi  ? true : false,
-        Notes:       r.Notes  || '',
-        StatusChangeDate: r.StatusChangeDate || ''
-      };
-    });
-    // Yeniden eskiye sırala (Son düzenleme tarihine göre DESC)
-    _requests.sort((a, b) => new Date(b.UpdatedAt || b.RequestDate) - new Date(a.UpdatedAt || a.RequestDate));
+      // 4. İstekleri yükle (misafir ve şarkı adlarını bellekte çöz)
+      _requests = requestsList.map(r => {
+        const guestIds = (r.GuestIDs || []).map(Number);
+        const songId   = Number(r.SongID);
+        const song     = _songs.find(s => s.SongID === songId);
+        const reqDate  = r.RequestDate || new Date().toISOString();
+        const updatedDate = r.UpdatedAt || reqDate;
+        return {
+          RequestID:   Number(r.RequestID),
+          RequestDate: reqDate,
+          UpdatedAt:   updatedDate,
+          SongID:      songId,
+          SongTitle:   _buildSongDisplay(song),
+          GuestIDs:    guestIds,
+          FullNames:   _resolveGuestNames(guestIds, _guests),
+          Status:      r.Status || 'Kayıtlı',
+          Link:        r.Link   || '',
+          Vardi:       r.Vardi  ? true : false,
+          Notes:       r.Notes  || '',
+          StatusChangeDate: r.StatusChangeDate || ''
+        };
+      });
+      // Yeniden eskiye sırala (Son düzenleme tarihine göre DESC)
+      _requests.sort((a, b) => new Date(b.UpdatedAt || b.RequestDate) - new Date(a.UpdatedAt || a.RequestDate));
 
-    // 5. Durumları yükle
-    _statuses = statusesList.map(s => ({
-      StatusID: Number(s.StatusID),
-      StatusName: s.StatusName,
-      Color: s.Color
-    }));
+      // 5. Durumları yükle
+      _statuses = statusesList.map(s => ({
+        StatusID: Number(s.StatusID),
+        StatusName: s.StatusName,
+        Color: s.Color
+      }));
 
-    // 6. Şehirleri yükle
-    _cities = citiesList.map(c => ({
-      CityID: Number(c.CityID),
-      CityName: c.CityName
-    }));
-    _cities.sort((a, b) =>
-      (a.CityName || '').toLocaleLowerCase('tr-TR')
-        .localeCompare((b.CityName || '').toLocaleLowerCase('tr-TR'), 'tr')
-    );
+      // 6. Şehirleri yükle
+      _cities = citiesList.map(c => ({
+        CityID: Number(c.CityID),
+        CityName: c.CityName
+      }));
+      _cities.sort((a, b) =>
+        (a.CityName || '').toLocaleLowerCase('tr-TR')
+          .localeCompare((b.CityName || '').toLocaleLowerCase('tr-TR'), 'tr')
+      );
 
-    // 7. Mekanları yükle
-    _venues = venuesList.map(v => ({
-      VenueID: Number(v.VenueID),
-      VenueName: v.VenueName,
-      CityID: Number(v.CityID),
-      CityName: v.CityName || '-',
-      ContactPerson: v.ContactPerson || '',
-      ContactPhone: v.ContactPhone || '',
-      InstagramLink: v.InstagramLink || '',
-      Notes: v.Notes || '',
-      GoogleMapsLink: v.GoogleMapsLink || ''
-    }));
-    _venues.sort((a, b) =>
-      (a.VenueName || '').toLocaleLowerCase('tr-TR')
-        .localeCompare((b.VenueName || '').toLocaleLowerCase('tr-TR'), 'tr')
-    );
-    
-    // 8. Sahneleri yükle
-    _gigs = gigsList.map(gig => ({
-      GigID: Number(gig.GigID),
-      VenueID: Number(gig.VenueID),
-      VenueName: gig.VenueName,
-      CityName: gig.CityName || '-',
-      GigDate: gig.GigDate,
-      Notes: gig.Notes || '',
-      Photos: gig.Photos || [],
-      Videos: gig.Videos || [],
-      Songs: (gig.Songs || []).map(s => ({
-        GigSongID: Number(s.GigSongID),
-        SongID: Number(s.SongID),
-        SortOrder: Number(s.SortOrder),
-        IsPlayed: Number(s.IsPlayed),
-        IsRequest: Number(s.IsRequest),
-        SongTitle: s.SongTitle,
-        ArtistNames: s.ArtistNames || '-'
-      })),
-      Guests: (gig.Guests || []).map(g => ({
-        GigGuestID: Number(g.GigGuestID),
-        GuestID: g.GuestID ? Number(g.GuestID) : null,
-        TableName: g.TableName || '',
-        Description: g.Description || '',
-        GuestCount: Number(g.GuestCount || 1),
-        IsAnonymous: Number(g.IsAnonymous || (!g.GuestID ? 1 : 0)),
-        FullName: g.FullName || ''
-      })),
-      CreatedAt: gig.CreatedAt,
-      UpdatedAt: gig.UpdatedAt
-    }));
+      // 7. Mekanları yükle
+      _venues = venuesList.map(v => ({
+        VenueID: Number(v.VenueID),
+        VenueName: v.VenueName,
+        CityID: Number(v.CityID),
+        CityName: v.CityName || '-',
+        ContactPerson: v.ContactPerson || '',
+        ContactPhone: v.ContactPhone || '',
+        InstagramLink: v.InstagramLink || '',
+        Notes: v.Notes || '',
+        GoogleMapsLink: v.GoogleMapsLink || ''
+      }));
+      _venues.sort((a, b) =>
+        (a.VenueName || '').toLocaleLowerCase('tr-TR')
+          .localeCompare((b.VenueName || '').toLocaleLowerCase('tr-TR'), 'tr')
+      );
+      
+      // 8. Sahneleri yükle
+      _gigs = gigsList.map(gig => ({
+        GigID: Number(gig.GigID),
+        VenueID: Number(gig.VenueID),
+        VenueName: gig.VenueName,
+        CityName: gig.CityName || '-',
+        GigDate: gig.GigDate,
+        Notes: gig.Notes || '',
+        Photos: gig.Photos || [],
+        Videos: gig.Videos || [],
+        Songs: (gig.Songs || []).map(s => ({
+          GigSongID: Number(s.GigSongID),
+          SongID: Number(s.SongID),
+          SortOrder: Number(s.SortOrder),
+          IsPlayed: Number(s.IsPlayed),
+          IsRequest: Number(s.IsRequest),
+          SongTitle: s.SongTitle,
+          ArtistNames: s.ArtistNames || '-'
+        })),
+        Guests: (gig.Guests || []).map(g => ({
+          GigGuestID: Number(g.GigGuestID),
+          GuestID: g.GuestID ? Number(g.GuestID) : null,
+          TableName: g.TableName || '',
+          Description: g.Description || '',
+          GuestCount: Number(g.GuestCount || 1),
+          IsAnonymous: Number(g.IsAnonymous || (!g.GuestID ? 1 : 0)),
+          FullName: g.FullName || ''
+        })),
+        CreatedAt: gig.CreatedAt,
+        UpdatedAt: gig.UpdatedAt
+      }));
 
-    // 9. Dilleri yükle
-    _languages = languagesList.map(l => ({
-      LanguageID: Number(l.LanguageID),
-      LanguageName: l.LanguageName
-    }));
-    _languages.sort((a, b) =>
-      (a.LanguageName || '').toLocaleLowerCase('tr-TR')
-        .localeCompare((b.LanguageName || '').toLocaleLowerCase('tr-TR'), 'tr')
-    );
+      // 9. Dilleri yükle
+      _languages = languagesList.map(l => ({
+        LanguageID: Number(l.LanguageID),
+        LanguageName: l.LanguageName
+      }));
+      _languages.sort((a, b) =>
+        (a.LanguageName || '').toLocaleLowerCase('tr-TR')
+          .localeCompare((b.LanguageName || '').toLocaleLowerCase('tr-TR'), 'tr')
+      );
 
-    // 10. Notları yükle
-    _notes = (notesList || []).map(n => ({
-      NoteID: Number(n.NoteID),
-      NoteText: n.NoteText || '',
-      Photos: n.Photos || [],
-      IsDeleted: Number(n.IsDeleted || 0),
-      CreatedAt: n.CreatedAt,
-      UpdatedAt: n.UpdatedAt
-    }));
+      // 10. Notları yükle
+      _notes = (notesList || []).map(n => ({
+        NoteID: Number(n.NoteID),
+        NoteText: n.NoteText || '',
+        Photos: n.Photos || [],
+        IsDeleted: Number(n.IsDeleted || 0),
+        CreatedAt: n.CreatedAt,
+        UpdatedAt: n.UpdatedAt
+      }));
 
-    _loaded = true;
-    _notify();
+      _loaded = true;
+      _notify();
+    } catch (err) {
+      _loaded = false;
+      console.warn("Store yüklenirken hata oluştu (Oturum açılmamış olabilir):", err.message);
+      throw err;
+    }
   },
 
   // ── Sanatçı mutasyonları ─────────────────────────────────────────────────

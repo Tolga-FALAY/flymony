@@ -25,6 +25,12 @@ async function request(endpoint, method = 'GET', data = null) {
   }
   const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
   if (!response.ok) {
+    if ((response.status === 401 || response.status === 403) && !endpoint.startsWith('/auth')) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('flymony_token');
+        window.dispatchEvent(new CustomEvent('flymony-unauthorized'));
+      }
+    }
     const errData = await response.json().catch(() => ({}));
     throw new Error(errData.error || `HTTP hata kodu! Durum: ${response.status}`);
   }
