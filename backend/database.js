@@ -178,12 +178,13 @@ export const initializeDB = () => {
                     SELECT RequestID, GuestID FROM Requests WHERE GuestID IS NOT NULL;
                 `);
 
-                // Recreate Requests table without GuestID column
+                // Recreate Requests table without GuestID column (include UpdatedAt)
                 db.exec(`
                     CREATE TABLE IF NOT EXISTS Requests_new (
                         RequestID INTEGER PRIMARY KEY AUTOINCREMENT,
                         SongID INTEGER NOT NULL,
                         RequestDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                         Status TEXT DEFAULT 'Kayıtlı',
                         Link TEXT,
                         Vardi INTEGER DEFAULT 0,
@@ -192,8 +193,8 @@ export const initializeDB = () => {
                         FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE
                     );
 
-                    INSERT INTO Requests_new (RequestID, SongID, RequestDate)
-                    SELECT RequestID, SongID, RequestDate FROM Requests;
+                    INSERT INTO Requests_new (RequestID, SongID, RequestDate, UpdatedAt)
+                    SELECT RequestID, SongID, RequestDate, RequestDate FROM Requests;
 
                     DROP TABLE Requests;
                     ALTER TABLE Requests_new RENAME TO Requests;
@@ -252,15 +253,18 @@ export const initializeDB = () => {
         `);
     }
 
-    // Ensure Requests has UpdatedAt column
+    // Ensure Requests has UpdatedAt column (CRITICAL: must run after all table creation/migration above)
     try {
         const reqCols = db.prepare("PRAGMA table_info(Requests)").all();
-        if (reqCols.length > 0 && !reqCols.some(col => col.name === 'UpdatedAt')) {
-            db.exec("ALTER TABLE Requests ADD COLUMN UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP;");
+        const hasUpdatedAt = reqCols.some(col => col.name === 'UpdatedAt');
+        if (!hasUpdatedAt) {
+            console.log("[DB Migration] Adding UpdatedAt column to Requests table...");
+            db.exec("ALTER TABLE Requests ADD COLUMN UpdatedAt DATETIME;");
             db.exec("UPDATE Requests SET UpdatedAt = RequestDate WHERE UpdatedAt IS NULL;");
+            console.log("[DB Migration] UpdatedAt column added and backfilled successfully.");
         }
     } catch (e) {
-        console.warn("Requests UpdatedAt migration check error:", e);
+        console.error("[DB Migration] CRITICAL: Requests UpdatedAt migration failed:", e);
     }
 
     // Migration for adding new guest columns dynamically if they do not exist
