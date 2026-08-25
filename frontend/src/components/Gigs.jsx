@@ -55,6 +55,7 @@ export default function Gigs() {
 
   // Editor Autocomplete & Add lists search
   const [songSearchText, setSongSearchText] = useState('');
+  const [songInsertOrder, setSongInsertOrder] = useState('');
   const [guestSearchText, setGuestSearchText] = useState('');
   const [newVideoUrl, setNewVideoUrl] = useState('');
   
@@ -205,6 +206,7 @@ export default function Gigs() {
       })) : []
     });
     setSongSearchText('');
+    setSongInsertOrder('');
     setGuestSearchText('');
     setSelectedGroupGuests({});
     const initialTable = (gig.Guests && gig.Guests.length > 0 && gig.Guests[0].TableName) ? gig.Guests[0].TableName : 'Masa 1';
@@ -234,12 +236,17 @@ export default function Gigs() {
     const sortedCurrentSongs = [...formData.Songs].sort((a, b) => Number(a.SortOrder) - Number(b.SortOrder));
 
     sortedCurrentSongs.forEach(currentSong => {
+      // Geçen haftadan İstek olarak listeye girmiş olan şarkılar yeni sahneye taşınmaz
+      if (Number(currentSong.IsRequest) === 1) {
+        return;
+      }
+
       if (!currentSong.IsPlayed) {
         newSongs.push({
           SongID: currentSong.SongID,
           SortOrder: currentSong.SortOrder,
           IsPlayed: 0,
-          IsRequest: currentSong.IsRequest
+          IsRequest: 0
         });
       } else {
         if (dotSongId) {
@@ -271,7 +278,7 @@ export default function Gigs() {
       Guests: []
     });
     setSongSearchText('');
-    setGuestSearchText('');
+    setSongInsertOrder('');
     setSelectedGroupGuests({});
     setSelectedTargetTable('Masa 1');
     setIsModalOpen(true);
@@ -290,6 +297,7 @@ export default function Gigs() {
       Guests: []
     });
     setSongSearchText('');
+    setSongInsertOrder('');
     setGuestSearchText('');
     setSelectedGroupGuests({});
     setSelectedTargetTable('Masa 1');
@@ -355,17 +363,45 @@ export default function Gigs() {
       alert('Bu şarkı repertuvarda zaten ekli.');
       return;
     }
+
     const newSongEntry = {
       SongID: song.SongID,
-      SortOrder: formData.Songs.length + 1,
+      SortOrder: 0,
       IsPlayed: 0,
       IsRequest: 0
     };
+
+    const targetOrder = parseInt(songInsertOrder, 10);
+    let updatedSongs = [];
+
+    if (!isNaN(targetOrder) && targetOrder > 0) {
+      // Sıra numarasına göre dizilmiş mevcut listeyi al
+      const currentList = [...formData.Songs].sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
+      
+      // Belirtilen sıra numarasına yerleştir (1-tabanlı, örn: 7 -> index 6)
+      const insertIdx = Math.min(Math.max(0, targetOrder - 1), currentList.length);
+      currentList.splice(insertIdx, 0, newSongEntry);
+
+      // Listenin tamamının SortOrder'ını 1'den başlayarak yeniden güncelle
+      updatedSongs = currentList.map((s, idx) => ({
+        ...s,
+        SortOrder: idx + 1
+      }));
+    } else {
+      // Sıra belirtilmediyse en sona ekle
+      const nextOrder = formData.Songs.length > 0 
+        ? Math.max(...formData.Songs.map(s => Number(s.SortOrder) || 0)) + 1 
+        : 1;
+      newSongEntry.SortOrder = nextOrder;
+      updatedSongs = [...formData.Songs, newSongEntry];
+    }
+
     setFormData(prev => ({
       ...prev,
-      Songs: [...prev.Songs, newSongEntry]
+      Songs: updatedSongs
     }));
     setSongSearchText('');
+    setSongInsertOrder('');
   };
 
   const removeSongFromGig = (songId) => {
@@ -1500,15 +1536,35 @@ export default function Gigs() {
                             🎵 Şarkı Listesi ({formData.Songs.length})
                           </h3>
                           
-                          {/* Add song dropdown search */}
-                          <div className="form-group" style={{ position: 'relative', margin: 0 }}>
+                          {/* Add song dropdown search with custom insert order input */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
                             <input 
-                              type="text" 
-                              placeholder="Şarkı ara ve listeye ekle..." 
-                              value={songSearchText} 
-                              onChange={e => setSongSearchText(e.target.value)} 
-                              style={{ width: '100%', margin: 0, padding: '0.45rem 0.65rem', fontSize: '0.82rem' }}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              placeholder="No"
+                              title="Şarkı No (Boşsa en sona eklenir)"
+                              value={songInsertOrder}
+                              onChange={e => setSongInsertOrder(e.target.value.replace(/[^0-9]/g, ''))}
+                              style={{ 
+                                width: '42px', 
+                                minWidth: '42px',
+                                margin: 0, 
+                                padding: '0.45rem 0.25rem', 
+                                fontSize: '0.82rem',
+                                textAlign: 'center',
+                                fontWeight: 700,
+                                borderRadius: '6px'
+                              }}
                             />
+                            <div className="form-group" style={{ position: 'relative', margin: 0, flex: 1, minWidth: 0 }}>
+                              <input 
+                                type="text" 
+                                placeholder="Şarkı ara ve listeye ekle..." 
+                                value={songSearchText} 
+                                onChange={e => setSongSearchText(e.target.value)} 
+                                style={{ width: '100%', margin: 0, padding: '0.45rem 0.65rem', fontSize: '0.82rem' }}
+                              />
                             {songSearchText.trim() && (
                               <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '280px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                                 {songs
@@ -1556,6 +1612,7 @@ export default function Gigs() {
                                 }
                               </div>
                             )}
+                            </div>
                           </div>
                         </div>
 
