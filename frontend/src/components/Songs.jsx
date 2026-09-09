@@ -1457,9 +1457,14 @@ export default function Songs() {
                   }}
                 />
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
-                <button type="submit" className="btn btn-primary">Kaydet</button>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'left' }}>
+                  {editingSong && editingSong.CreatedAt ? `Kayıt Tarihi: ${new Date(editingSong.CreatedAt).toLocaleString('tr-TR')}` : ''}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
+                  <button type="submit" className="btn btn-primary">Kaydet</button>
+                </div>
               </div>
             </form>
           </div>
