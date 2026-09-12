@@ -231,44 +231,15 @@ export default function Gigs() {
   };
 
   const handleNextWeek = () => {
-    // Bulunabilen "..." şarkısını al
-    const dotSong = songs.find(s => s.SongTitle === '...' && (s.ArtistNames === 'Tolga FALAY' || s.ArtistNames?.includes('Tolga FALAY')));
-    const finalDotSong = dotSong || songs.find(s => s.SongTitle === '...');
-    const dotSongId = finalDotSong ? finalDotSong.SongID : null;
+    const sortedCurrentSongs = [...formData.Songs].sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
 
-    const sortedCurrentSongs = [...formData.Songs]
-      .filter(s => Number(s.IsRequest) !== 1) // Geçen haftadan İstek olarak listeye girmiş olan şarkılar yeni sahneye taşınmaz
-      .sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
-
-    const newSongs = [];
-
-    sortedCurrentSongs.forEach((currentSong, idx) => {
-      const uid = 'nw_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).slice(2);
-      if (!currentSong.IsPlayed) {
-        newSongs.push({
-          _uid: uid,
-          SongID: currentSong.SongID,
-          SortOrder: idx + 1,
-          IsPlayed: 0,
-          IsRequest: 0
-        });
-      } else {
-        if (dotSongId) {
-          newSongs.push({
-            _uid: uid,
-            SongID: dotSongId,
-            SortOrder: idx + 1,
-            IsPlayed: 0,
-            IsRequest: 0
-          });
-        }
-      }
-    });
-
-    // Kesintisiz 1..N sıralama garantisi
-    const cleanNewSongs = newSongs.map((s, idx) => ({
-      ...s,
-      SortOrder: idx + 1
+    // Tüm şarkıları (istekler ve çalınanlar dahil) aynı sırayla yeni sahneye aktar
+    const cleanNewSongs = sortedCurrentSongs.map((currentSong, idx) => ({
+      _uid: 'nw_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).slice(2),
+      SongID: currentSong.SongID,
+      SortOrder: idx + 1,
+      IsPlayed: 0,
+      IsRequest: currentSong.IsRequest
     }));
 
     setEditingGig(null);
