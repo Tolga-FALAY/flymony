@@ -233,12 +233,12 @@ export default function Gigs() {
   const handleNextWeek = () => {
     const sortedCurrentSongs = [...formData.Songs].sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0));
 
-    // Tüm şarkıları (istekler ve çalınanlar dahil) aynı sırayla yeni sahneye aktar
+    // Tüm şarkıları (istekler ve çalınanlar dahil) aynı sırayla ve durumlarıyla yeni sahneye aktar
     const cleanNewSongs = sortedCurrentSongs.map((currentSong, idx) => ({
       _uid: 'nw_' + Date.now() + '_' + idx + '_' + Math.random().toString(36).slice(2),
       SongID: currentSong.SongID,
       SortOrder: idx + 1,
-      IsPlayed: 0,
+      IsPlayed: currentSong.IsPlayed,
       IsRequest: currentSong.IsRequest
     }));
 
