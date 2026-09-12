@@ -1760,7 +1760,12 @@ export default function Gigs() {
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                     <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1rem' }}>
-                      👥 Misafirler ({formData.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0)})
+                      {(() => {
+                        const totalG = formData.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0);
+                        const regG = formData.Guests.filter(g => !Number(g.IsAnonymous)).reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0);
+                        const unregG = totalG - regG;
+                        return `👥 Misafirler ${totalG > 0 ? `(${totalG}) - (${regG}/${unregG})` : '(0)'}`;
+                      })()}
                     </h3>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                       <button type="button" className="btn btn-sm btn-outline" onClick={addAnonymousGuestPerson} style={{ fontSize: '0.75rem', padding: '2px 8px', height: '24px', lineHeight: 1, whiteSpace: 'nowrap' }}>➕ Kişi</button>
