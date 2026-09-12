@@ -1365,7 +1365,7 @@ export default function Gigs() {
                     <span style={{ fontWeight: '600' }}>{playedCount}</span> / {songsCount}
                   </td>
                   <td data-label="Misafir Sayısı" style={{ textAlign: 'center' }}>
-                    {guestsCount > 0 ? `${guestsCount} (${registeredGuestsCount}/${unregisteredGuestsCount})` : '0'}
+                    {guestsCount > 0 ? <><span style={{ fontWeight: 'bold' }}>{guestsCount}</span> ({registeredGuestsCount}/{unregisteredGuestsCount})</> : '0'}
                   </td>
                   <td data-label="İşlemler">
                     <div className="action-btns">
