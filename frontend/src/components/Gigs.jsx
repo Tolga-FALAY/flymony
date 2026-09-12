@@ -1354,6 +1354,8 @@ export default function Gigs() {
               const songsCount = gig.Songs ? gig.Songs.length : 0;
               const playedCount = gig.Songs ? gig.Songs.filter(s => s.IsPlayed).length : 0;
               const guestsCount = gig.Guests ? gig.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
+              const registeredGuestsCount = gig.Guests ? gig.Guests.filter(g => !Number(g.IsAnonymous)).reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
+              const unregisteredGuestsCount = guestsCount - registeredGuestsCount;
 
               return (
                 <tr key={gig.GigID}>
@@ -1362,7 +1364,9 @@ export default function Gigs() {
                   <td data-label="Şarkı Sayısı" style={{ textAlign: 'center' }}>
                     <span style={{ fontWeight: '600' }}>{playedCount}</span> / {songsCount}
                   </td>
-                  <td data-label="Misafir Sayısı" style={{ textAlign: 'center' }}>{guestsCount}</td>
+                  <td data-label="Misafir Sayısı" style={{ textAlign: 'center' }}>
+                    {guestsCount > 0 ? `${guestsCount} (${registeredGuestsCount}/${unregisteredGuestsCount})` : '0'}
+                  </td>
                   <td data-label="İşlemler">
                     <div className="action-btns">
                       {String(gig.Notes || '').trim().length > 0 && (
