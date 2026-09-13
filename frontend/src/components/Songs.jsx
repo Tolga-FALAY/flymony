@@ -716,7 +716,14 @@ export default function Songs() {
   return (
     <div>
       <div className="section-header">
-        <h2>Şarkılar ({filteredSongs.length})</h2>
+        <h2>
+          {(() => {
+            const totalCount = filteredSongs.length;
+            const chordCount = filteredSongs.filter(song => Boolean((song.ChordImagePath && song.ChordImagePath.trim()) || (Array.isArray(song.ChordImages) && song.ChordImages.length > 0) || hasLyricsContent(song.Lyrics))).length;
+            const noChordCount = totalCount - chordCount;
+            return `Şarkılar (${totalCount}) - (${chordCount}/${noChordCount})`;
+          })()}
+        </h2>
         <button className="btn btn-primary" onClick={() => openModal()}>
           + Yeni Şarkı
         </button>
