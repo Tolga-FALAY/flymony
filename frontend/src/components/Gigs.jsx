@@ -1996,7 +1996,7 @@ export default function Gigs() {
                           src={photo} 
                           alt={`Sahne Fotoğrafı ${index + 1}`} 
                           style={{ cursor: 'pointer' }}
-                          onClick={() => setFullscreenImage(photo)}
+                          onClick={() => setFullscreenImage(index)}
                         />
                         <button type="button" className="gallery-preview-delete-badge" onClick={() => removePhoto(index)} title="Fotoğrafı Sil">&times;</button>
                       </div>
@@ -2837,7 +2837,7 @@ export default function Gigs() {
       )}
 
       {/* FULLSCREEN IMAGE MODAL */}
-      {fullscreenImage && createPortal(
+      {fullscreenImage !== null && formData.Photos && formData.Photos[fullscreenImage] && createPortal(
         <div 
           className="modal-overlay" 
           style={{ 
@@ -2860,6 +2860,18 @@ export default function Gigs() {
               justifyContent: 'center'
             }}
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              window._galTouchX = e.targetTouches[0].clientX;
+            }}
+            onTouchEnd={(e) => {
+              if (window._galTouchX == null) return;
+              const diffX = window._galTouchX - e.changedTouches[0].clientX;
+              if (Math.abs(diffX) > 40 && formData.Photos.length > 1) {
+                if (diffX > 0) setFullscreenImage(prev => (prev < formData.Photos.length - 1 ? prev + 1 : 0));
+                else setFullscreenImage(prev => (prev > 0 ? prev - 1 : formData.Photos.length - 1));
+              }
+              window._galTouchX = null;
+            }}
           >
             <button 
               type="button"
@@ -2885,17 +2897,41 @@ export default function Gigs() {
             >
               &times;
             </button>
-            <img 
-              src={fullscreenImage} 
-              alt="Tam Ekran Görünüm" 
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '85vh', 
-                objectFit: 'contain',
-                borderRadius: '12px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-              }} 
-            />
+            
+            <div 
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: formData.Photos.length > 1 ? 'pointer' : 'default' }}
+              onClick={(e) => {
+                if (!formData.Photos || formData.Photos.length <= 1) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const ratio = (e.clientX - rect.left) / rect.width;
+                if (ratio < 0.33) setFullscreenImage(prev => (prev > 0 ? prev - 1 : formData.Photos.length - 1));
+                else if (ratio > 0.66) setFullscreenImage(prev => (prev < formData.Photos.length - 1 ? prev + 1 : 0));
+              }}
+            >
+              <img 
+                src={formData.Photos[fullscreenImage]} 
+                alt={`Tam Ekran Görünüm ${fullscreenImage + 1}`} 
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '85vh', 
+                  objectFit: 'contain',
+                  borderRadius: '12px',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none'
+                }} 
+                draggable="false"
+              />
+              
+              {formData.Photos.length > 1 && (
+                <>
+                  <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontSize: '1.2rem' }}>❮</div>
+                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontSize: '1.2rem' }}>❯</div>
+                  <div style={{ position: 'absolute', bottom: '-25px', color: 'white', fontSize: '0.9rem', pointerEvents: 'none', left: '50%', transform: 'translateX(-50%)' }}>{fullscreenImage + 1} / {formData.Photos.length}</div>
+                </>
+              )}
+            </div>
           </div>
         </div>,
         document.body
