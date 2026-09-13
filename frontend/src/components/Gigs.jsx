@@ -1165,12 +1165,23 @@ export default function Gigs() {
 
   // --- Filtering & Sorting Gigs ---
   const filteredGigs = gigs.filter(gig => {
-    // 1. Serbest Arama (Mekân, Notlar, vb.)
+    // 1. Serbest Arama (Mekân, Notlar, Misafirler vb.)
     if (filterSearch) {
       const query = filterSearch.toLocaleLowerCase('tr-TR');
       const venueMatch = (gig.VenueName || '').toLocaleLowerCase('tr-TR').includes(query);
       const notesMatch = (gig.Notes || '').toLocaleLowerCase('tr-TR').includes(query);
-      if (!venueMatch && !notesMatch) return false;
+      
+      let guestMatch = false;
+      if (gig.Guests && gig.Guests.length > 0) {
+        guestMatch = gig.Guests.some(g => {
+          const tableName = (g.TableName || '').toLocaleLowerCase('tr-TR');
+          const fullName = (g.FullName || '').toLocaleLowerCase('tr-TR');
+          const description = (g.Description || '').toLocaleLowerCase('tr-TR');
+          return tableName.includes(query) || fullName.includes(query) || description.includes(query);
+        });
+      }
+
+      if (!venueMatch && !notesMatch && !guestMatch) return false;
     }
 
     // 2. Mekân Filtresi
