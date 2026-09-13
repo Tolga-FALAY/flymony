@@ -969,7 +969,7 @@ export default function Songs() {
                   {renderSortArrow('ArtistNames')}
                 </span>
               </th>
-              <th onClick={() => handleSort('SongYear')} style={{ cursor: 'pointer', userSelect: 'none', width: '8%', textAlign: 'center' }}>
+              <th onClick={() => handleSort('SongYear')} style={{ cursor: 'pointer', userSelect: 'none', width: '8%', textAlign: 'left', paddingLeft: '0.5rem' }}>
                 Yıl
                 <span style={{ fontSize: '0.8rem', color: sortConfig.key === 'SongYear' ? 'inherit' : 'var(--text-muted)' }}>
                   {renderSortArrow('SongYear')}
@@ -1009,7 +1009,7 @@ export default function Songs() {
                 <td data-label="Sanatçılar" style={{ width: '38%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={song.ArtistNames}>
                   {song.ArtistNames || '-'}
                 </td>
-                <td data-label="Yıl" style={{ width: '8%', textAlign: 'center', whiteSpace: 'nowrap' }}>{song.SongYear || '-'}</td>
+                <td data-label="Yıl" style={{ width: '8%', textAlign: 'left', paddingLeft: '0.5rem', whiteSpace: 'nowrap' }}>{song.SongYear || '-'}</td>
                 <td data-label="KAYIT TARİHİ" style={{ width: '28%', textAlign: 'right', paddingRight: '0.75rem' }}>
                   <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', alignItems: 'center', flexWrap: 'nowrap' }}>
                     {String(song.Notes || '').trim().length > 0 && (
