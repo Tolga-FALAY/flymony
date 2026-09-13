@@ -523,9 +523,14 @@ export const initializeDB = () => {
         const hasCreatedAt = songTableInfo.some(col => col.name === 'CreatedAt');
         if (!hasCreatedAt) {
             console.log("Migrating Songs table: Adding CreatedAt column...");
+            // NOTE: SQLite ALTER TABLE cannot set DEFAULT CURRENT_TIMESTAMP retroactively.
+            // We add the column and then fill existing rows explicitly.
             db.exec("ALTER TABLE Songs ADD COLUMN CreatedAt DATETIME;");
             db.exec("UPDATE Songs SET CreatedAt = datetime('now') WHERE CreatedAt IS NULL;");
             console.log("Songs table migration complete: CreatedAt added.");
+        } else {
+            // Column exists but may have NULLs (if was added without DEFAULT)
+            db.exec("UPDATE Songs SET CreatedAt = datetime('now') WHERE CreatedAt IS NULL;");
         }
     } catch (e) {
         console.error("Migration error while updating Songs table:", e);

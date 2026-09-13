@@ -649,7 +649,7 @@ app.post('/api/songs', (req, res) => {
 
         const chordImagePathToSave = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
 
-        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID, Notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID, Notes, CreatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(\'now\'))');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
         const insertGenre    = db.prepare('INSERT OR IGNORE INTO Song_Genres (SongID, GenreID) VALUES (?, ?)');
         const insertCategory = db.prepare('INSERT OR IGNORE INTO Song_Categories (SongID, CategoryID) VALUES (?, ?)');
