@@ -190,7 +190,7 @@ const store = {
           LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
           LanguageName: s.LanguageName || '',
           Notes: s.Notes || '',
-          CreatedAt: s.CreatedAt || new Date().toISOString(),
+          CreatedAt: s.CreatedAt || '1970-01-01T00:00:00.000Z',
           GenreIDs: (s.GenreIDs || []).map(Number),
           CategoryIDs: (s.CategoryIDs || []).map(Number),
           EmotionIDs: (s.EmotionIDs || []).map(Number)

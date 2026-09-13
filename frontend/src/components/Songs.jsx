@@ -677,11 +677,14 @@ export default function Songs() {
       const bVal = Number(b.SongYear) || 0;
       res = aVal - bVal;
     } else if (sortConfig.key === 'CreatedAt') {
+      // CreatedAt değerleri aynı olabileceği için SongID ile sırala
+      // Yeni eklenen şarkılar her zaman daha büyük SongID alır
       const timeA = a.CreatedAt ? new Date(a.CreatedAt).getTime() : 0;
       const timeB = b.CreatedAt ? new Date(b.CreatedAt).getTime() : 0;
-      if (timeA && timeB && !isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+      if (timeA !== timeB && !isNaN(timeA) && !isNaN(timeB) && timeA !== 0 && timeB !== 0) {
         res = timeA - timeB;
       } else {
+        // Tarihler aynıysa SongID ile sırala (büyük ID = daha yeni kayıt)
         res = (Number(a.SongID) || 0) - (Number(b.SongID) || 0);
       }
     }
