@@ -546,9 +546,11 @@ export default function Parameters() {
                 </tr>
               </thead>
               <tbody>
-                {statuses.map(s => (
+                {statuses.map(s => {
+                  const usageCount = store.requests.filter(r => r.StatusID === s.StatusID).length;
+                  return (
                   <tr key={s.StatusID}>
-                    <td data-label="Durum Adı" style={{ fontWeight: 600 }}>{s.StatusName}</td>
+                    <td data-label="Durum Adı" style={{ fontWeight: 600 }}>{s.StatusName} <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>({usageCount})</span></td>
                     <td data-label="Görünüm Önizleme">
                       <span style={getStatusBadgeStyle(s.Color)}>{s.StatusName}</span>
                     </td>
@@ -562,7 +564,8 @@ export default function Parameters() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {statuses.length === 0 && (
                   <tr><td colSpan="4" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
@@ -598,9 +601,11 @@ export default function Parameters() {
                 </tr>
               </thead>
               <tbody>
-                {venues.map(v => (
+                {venues.map(v => {
+                  const usageCount = store.gigs.filter(g => g.VenueID === v.VenueID).length;
+                  return (
                   <tr key={v.VenueID}>
-                    <td data-label="MEKAN ADI" style={{ fontWeight: 600 }}>{v.VenueName}</td>
+                    <td data-label="MEKAN ADI" style={{ fontWeight: 600 }}>{v.VenueName} <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>({usageCount})</span></td>
                     <td data-label="ŞEHİR" style={{ fontWeight: 500 }}>{v.CityName || '-'}</td>
                     <td data-label="İRTİBAT">{v.ContactPerson || '-'}</td>
                     <td data-label="CEP NO" style={{ textAlign: 'center' }}>
@@ -670,7 +675,8 @@ export default function Parameters() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {venues.length === 0 && (
                   <tr><td colSpan="7" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
@@ -701,9 +707,11 @@ export default function Parameters() {
                 </tr>
               </thead>
               <tbody>
-                {cities.map(c => (
+                {cities.map(c => {
+                  const usageCount = store.venues.filter(v => v.CityID === c.CityID).length;
+                  return (
                   <tr key={c.CityID}>
-                    <td data-label="Şehir Adı" style={{ fontWeight: 600 }}>{c.CityName}</td>
+                    <td data-label="Şehir Adı" style={{ fontWeight: 600 }}>{c.CityName} <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>({usageCount})</span></td>
                     <td data-label="İşlemler">
                       <div className="action-btns">
                         <button className="btn btn-sm btn-outline" onClick={() => openCityModal(c)}>Düzenle</button>
@@ -711,7 +719,8 @@ export default function Parameters() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {cities.length === 0 && (
                   <tr><td colSpan="2" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
@@ -742,9 +751,11 @@ export default function Parameters() {
                 </tr>
               </thead>
               <tbody>
-                {languages.map(l => (
+                {languages.map(l => {
+                  const usageCount = store.songs.filter(s => s.LanguageID === l.LanguageID).length;
+                  return (
                   <tr key={l.LanguageID}>
-                    <td data-label="Dil Adı" style={{ fontWeight: 600 }}>{l.LanguageName}</td>
+                    <td data-label="Dil Adı" style={{ fontWeight: 600 }}>{l.LanguageName} <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>({usageCount})</span></td>
                     <td data-label="İşlemler">
                       <div className="action-btns">
                         <button className="btn btn-sm btn-outline" onClick={() => openLanguageModal(l)}>Düzenle</button>
@@ -752,7 +763,8 @@ export default function Parameters() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {languages.length === 0 && (
                   <tr><td colSpan="2" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
                 )}
@@ -1106,9 +1118,14 @@ export default function Parameters() {
               </button>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {items.map(item => (
+              {items.map(item => {
+                let usageCount = 0;
+                if (isGenre) usageCount = store.songs.filter(s => (s.GenreIDs || []).includes(item.GenreID)).length;
+                else if (isCat) usageCount = store.songs.filter(s => (s.CategoryIDs || []).includes(item.CategoryID)).length;
+                else usageCount = store.songs.filter(s => (s.EmotionIDs || []).includes(item.EmotionID)).length;
+                return (
                 <div key={item[idField]} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '20px', padding: '0.35rem 0.75rem', fontSize: '0.9rem' }}>
-                  <span>{emoji} {item[nameField]}</span>
+                  <span>{emoji} {item[nameField]} <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>({usageCount})</span></span>
                   <button
                     type="button"
                     onClick={() => openSimpleParam(type, item)}
@@ -1122,7 +1139,8 @@ export default function Parameters() {
                     title="Sil"
                   >×</button>
                 </div>
-              ))}
+                );
+              })}
               {items.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Henüz kayıt yok.</p>}
             </div>
           </div>
