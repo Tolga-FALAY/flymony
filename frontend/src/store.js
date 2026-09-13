@@ -18,6 +18,9 @@ let _gigs    = [];
 let _cities  = [];
 let _languages = [];
 let _notes   = [];
+let _songGenres = [];
+let _songCategories = [];
+let _songEmotions = [];
 let _loaded  = false;
 
 // ─── Yardımcı: sanatçı adlarını listeden çöz ────────────────────────────────
@@ -62,7 +65,10 @@ function _notify() {
       gigs: _gigs,
       cities: _cities,
       languages: _languages,
-      notes: _notes
+      notes: _notes,
+      songGenres: _songGenres,
+      songCategories: _songCategories,
+      songEmotions: _songEmotions
     };
     localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
     localStorage.setItem(cacheTimeKey, Date.now().toString());
@@ -91,6 +97,9 @@ const store = {
   get notes()    { return _notes; },
   get activeNotes() { return _notes.filter(n => !n.IsDeleted); },
   get deletedNotes() { return _notes.filter(n => !!n.IsDeleted); },
+  get songGenres()     { return _songGenres; },
+  get songCategories() { return _songCategories; },
+  get songEmotions()   { return _songEmotions; },
   get isLoaded() { return _loaded; },
 
   // ── Tek seferlik yükleme ─────────────────────────────────────────────────
@@ -125,6 +134,9 @@ const store = {
             _cities = parsed.cities || [];
             _languages = parsed.languages || [];
             _notes = parsed.notes || [];
+            _songGenres = parsed.songGenres || [];
+            _songCategories = parsed.songCategories || [];
+            _songEmotions = parsed.songEmotions || [];
             _loaded = true;
             _notify();
             return;
@@ -136,7 +148,7 @@ const store = {
     }
 
     try {
-      const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList, languagesList, notesList] = await Promise.all([
+      const [artistsList, songsList, guestsList, requestsList, statusesList, venuesList, gigsList, citiesList, languagesList, notesList, songGenresList, songCategoriesList, songEmotionsList] = await Promise.all([
         api.getArtists(),
         api.getSongs(),
         api.getGuests(),
@@ -146,7 +158,10 @@ const store = {
         api.getGigs(),
         api.getCities(),
         api.getLanguages(),
-        api.getNotes()
+        api.getNotes(),
+        api.getSongGenres(),
+        api.getSongCategories(),
+        api.getSongEmotions()
       ]);
 
       // 1. Sanatçıları yükle
@@ -175,7 +190,10 @@ const store = {
           LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
           LanguageName: s.LanguageName || '',
           Notes: s.Notes || '',
-          CreatedAt: s.CreatedAt || new Date().toISOString()
+          CreatedAt: s.CreatedAt || new Date().toISOString(),
+          GenreIDs: (s.GenreIDs || []).map(Number),
+          CategoryIDs: (s.CategoryIDs || []).map(Number),
+          EmotionIDs: (s.EmotionIDs || []).map(Number)
         };
       });
 
@@ -313,6 +331,16 @@ const store = {
         CreatedAt: n.CreatedAt,
         UpdatedAt: n.UpdatedAt
       }));
+
+      // 11. Şarkı Türleri, Kategorileri ve Duygularını yükle
+      _songGenres = songGenresList.map(g => ({ GenreID: Number(g.GenreID), GenreName: g.GenreName }));
+      _songGenres.sort((a, b) => (a.GenreName || '').toLocaleLowerCase('tr-TR').localeCompare((b.GenreName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+
+      _songCategories = songCategoriesList.map(c => ({ CategoryID: Number(c.CategoryID), CategoryName: c.CategoryName }));
+      _songCategories.sort((a, b) => (a.CategoryName || '').toLocaleLowerCase('tr-TR').localeCompare((b.CategoryName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+
+      _songEmotions = songEmotionsList.map(e => ({ EmotionID: Number(e.EmotionID), EmotionName: e.EmotionName }));
+      _songEmotions.sort((a, b) => (a.EmotionName || '').toLocaleLowerCase('tr-TR').localeCompare((b.EmotionName || '').toLocaleLowerCase('tr-TR'), 'tr'));
 
       _loaded = true;
       _notify();
@@ -652,7 +680,46 @@ const store = {
   permanentDeleteNote(id) {
     _notes = _notes.filter(n => n.NoteID !== id);
     _notify();
-  }
+  },
+
+  // ── Şarkı Türü mutasyonları ──────────────────────────────────────────────
+  addSongGenre(genre) {
+    _songGenres.push(genre);
+    _songGenres.sort((a, b) => (a.GenreName || '').toLocaleLowerCase('tr-TR').localeCompare((b.GenreName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+    _notify();
+  },
+  updateSongGenre(id, data) {
+    const idx = _songGenres.findIndex(g => g.GenreID === id);
+    if (idx !== -1) { _songGenres[idx] = { ..._songGenres[idx], ...data }; _songGenres.sort((a, b) => (a.GenreName || '').toLocaleLowerCase('tr-TR').localeCompare((b.GenreName || '').toLocaleLowerCase('tr-TR'), 'tr')); }
+    _notify();
+  },
+  removeSongGenre(id) { _songGenres = _songGenres.filter(g => g.GenreID !== id); _notify(); },
+
+  // ── Şarkı Kategorisi mutasyonları ───────────────────────────────────────
+  addSongCategory(cat) {
+    _songCategories.push(cat);
+    _songCategories.sort((a, b) => (a.CategoryName || '').toLocaleLowerCase('tr-TR').localeCompare((b.CategoryName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+    _notify();
+  },
+  updateSongCategory(id, data) {
+    const idx = _songCategories.findIndex(c => c.CategoryID === id);
+    if (idx !== -1) { _songCategories[idx] = { ..._songCategories[idx], ...data }; _songCategories.sort((a, b) => (a.CategoryName || '').toLocaleLowerCase('tr-TR').localeCompare((b.CategoryName || '').toLocaleLowerCase('tr-TR'), 'tr')); }
+    _notify();
+  },
+  removeSongCategory(id) { _songCategories = _songCategories.filter(c => c.CategoryID !== id); _notify(); },
+
+  // ── Şarkı Duygusu mutasyonları ──────────────────────────────────────────
+  addSongEmotion(em) {
+    _songEmotions.push(em);
+    _songEmotions.sort((a, b) => (a.EmotionName || '').toLocaleLowerCase('tr-TR').localeCompare((b.EmotionName || '').toLocaleLowerCase('tr-TR'), 'tr'));
+    _notify();
+  },
+  updateSongEmotion(id, data) {
+    const idx = _songEmotions.findIndex(e => e.EmotionID === id);
+    if (idx !== -1) { _songEmotions[idx] = { ..._songEmotions[idx], ...data }; _songEmotions.sort((a, b) => (a.EmotionName || '').toLocaleLowerCase('tr-TR').localeCompare((b.EmotionName || '').toLocaleLowerCase('tr-TR'), 'tr')); }
+    _notify();
+  },
+  removeSongEmotion(id) { _songEmotions = _songEmotions.filter(e => e.EmotionID !== id); _notify(); }
 };
 
 // ─── Özel yardımcı: misafir listesini Türkçe adına göre sırala ──────────────

@@ -484,14 +484,22 @@ app.get('/api/songs', (req, res) => {
         // Fetch songs with their associated artists
         const songs = db.prepare(`
             SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath, s.LanguageID, s.Notes, s.CreatedAt, l.LanguageName,
-                   GROUP_CONCAT(a.ArtistID) as ArtistIDs,
-                   GROUP_CONCAT(a.ArtistName, ', ') as ArtistNames
+                   GROUP_CONCAT(DISTINCT a.ArtistID) as ArtistIDs,
+                   GROUP_CONCAT(DISTINCT a.ArtistName) as ArtistNames
             FROM Songs s
             LEFT JOIN Languages l ON s.LanguageID = l.LanguageID
             LEFT JOIN Song_Artists sa ON s.SongID = sa.SongID
             LEFT JOIN Artists a ON sa.ArtistID = a.ArtistID
             GROUP BY s.SongID
         `).all();
+
+        // Preload genre/category/emotion junction data
+        const allGenres = db.prepare('SELECT SongID, GenreID FROM Song_Genres').all();
+        const allCats   = db.prepare('SELECT SongID, CategoryID FROM Song_Categories').all();
+        const allEmots  = db.prepare('SELECT SongID, EmotionID FROM Song_Emotions').all();
+        const genreMap = {}; allGenres.forEach(r => { if (!genreMap[r.SongID]) genreMap[r.SongID] = []; genreMap[r.SongID].push(r.GenreID); });
+        const catMap   = {}; allCats.forEach(r   => { if (!catMap[r.SongID])   catMap[r.SongID] = [];   catMap[r.SongID].push(r.CategoryID); });
+        const emotMap  = {}; allEmots.forEach(r  => { if (!emotMap[r.SongID])  emotMap[r.SongID] = [];  emotMap[r.SongID].push(r.EmotionID); });
 
         // Parse ArtistIDs to an array of numbers and parse ChordImages
         const formattedSongs = songs.map(s => {
@@ -508,7 +516,10 @@ app.get('/api/songs', (req, res) => {
                 LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
                 LanguageName: s.LanguageName || '',
                 Notes: s.Notes || '',
-                CreatedAt: s.CreatedAt || ''
+                CreatedAt: s.CreatedAt || '',
+                GenreIDs: genreMap[s.SongID] || [],
+                CategoryIDs: catMap[s.SongID] || [],
+                EmotionIDs: emotMap[s.SongID] || []
             };
         });
 
@@ -584,7 +595,7 @@ function saveChordImageFile(imageData) {
 }
 
 app.post('/api/songs', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs } = req.body;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
     }
@@ -640,19 +651,29 @@ app.post('/api/songs', (req, res) => {
 
         const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID, Notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
+        const insertGenre    = db.prepare('INSERT OR IGNORE INTO Song_Genres (SongID, GenreID) VALUES (?, ?)');
+        const insertCategory = db.prepare('INSERT OR IGNORE INTO Song_Categories (SongID, CategoryID) VALUES (?, ?)');
+        const insertEmotion  = db.prepare('INSERT OR IGNORE INTO Song_Emotions (SongID, EmotionID) VALUES (?, ?)');
 
-        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds) => {
+        const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds, genreIds, categoryIds, emotionIds) => {
             const info = insertSong.run(songTitle, duration || null, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null, notes || null);
             const songId = info.lastInsertRowid;
             if (artistIds && artistIds.length > 0) {
-                for (const artistId of artistIds) {
-                    insertSongArtist.run(songId, artistId);
-                }
+                for (const artistId of artistIds) { insertSongArtist.run(songId, artistId); }
+            }
+            if (genreIds && genreIds.length > 0) {
+                for (const id of genreIds) { insertGenre.run(songId, id); }
+            }
+            if (categoryIds && categoryIds.length > 0) {
+                for (const id of categoryIds) { insertCategory.run(songId, id); }
+            }
+            if (emotionIds && emotionIds.length > 0) {
+                for (const id of emotionIds) { insertEmotion.run(songId, id); }
             }
             return songId;
         });
 
-        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, chordImagePathToSave, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || []);
+        const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, chordImagePathToSave, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || [], (GenreIDs || []).map(Number), (CategoryIDs || []).map(Number), (EmotionIDs || []).map(Number));
         res.status(201).json({ id: songId, message: 'Song created successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -660,7 +681,7 @@ app.post('/api/songs', (req, res) => {
 });
 
 app.put('/api/songs/:id', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs } = req.body;
     const songId = req.params.id;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
@@ -692,7 +713,6 @@ app.put('/api/songs/:id', (req, res) => {
         const oldChordImages = parseChordImages(existingSong ? existingSong.ChordImagePath : null);
 
         if (AudioData) {
-            // Delete old file if exists
             if (finalAudioPath) {
                 const oldFilePath = path.join(__dirname, '..', finalAudioPath);
                 if (fs.existsSync(oldFilePath)) {
@@ -701,7 +721,6 @@ app.put('/api/songs/:id', (req, res) => {
             }
             finalAudioPath = saveAudioFile(AudioData);
         } else if (AudioPath === '' || AudioPath === null) {
-            // User explicitly cleared the audio
             if (finalAudioPath) {
                 const oldFilePath = path.join(__dirname, '..', finalAudioPath);
                 if (fs.existsSync(oldFilePath)) {
@@ -711,7 +730,6 @@ app.put('/api/songs/:id', (req, res) => {
             finalAudioPath = null;
         }
 
-        // Process multiple or single chord images
         let finalChordImages = [];
         if (Array.isArray(ChordImages)) {
             for (const item of ChordImages) {
@@ -723,7 +741,6 @@ app.put('/api/songs/:id', (req, res) => {
                     finalChordImages.push(item);
                 }
             }
-            // Delete removed old files from disk
             for (const oldPath of oldChordImages) {
                 if (!finalChordImages.includes(oldPath)) {
                     const oldFilePath = path.join(__dirname, '..', oldPath);
@@ -733,7 +750,6 @@ app.put('/api/songs/:id', (req, res) => {
                 }
             }
         } else if (ChordImageData) {
-            // Delete all old chord images
             for (const oldPath of oldChordImages) {
                 const oldFilePath = path.join(__dirname, '..', oldPath);
                 if (fs.existsSync(oldFilePath)) {
@@ -743,7 +759,6 @@ app.put('/api/songs/:id', (req, res) => {
             const saved = saveChordImageFile(ChordImageData);
             if (saved) finalChordImages.push(saved);
         } else if (ChordImagePath === '' || ChordImagePath === null) {
-            // User explicitly cleared chord images
             for (const oldPath of oldChordImages) {
                 const oldFilePath = path.join(__dirname, '..', oldPath);
                 if (fs.existsSync(oldFilePath)) {
@@ -757,21 +772,31 @@ app.put('/api/songs/:id', (req, res) => {
 
         const finalChordImagePath = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
 
-        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ?, LanguageID = ?, Notes = ? WHERE SongID = ?');
+        const updateSong        = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ?, LanguageID = ?, Notes = ? WHERE SongID = ?');
         const deleteSongArtists = db.prepare('DELETE FROM Song_Artists WHERE SongID = ?');
-        const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
+        const insertSongArtist  = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
+        const deleteGenres      = db.prepare('DELETE FROM Song_Genres WHERE SongID = ?');
+        const deleteCategories  = db.prepare('DELETE FROM Song_Categories WHERE SongID = ?');
+        const deleteEmotions    = db.prepare('DELETE FROM Song_Emotions WHERE SongID = ?');
+        const insertGenre       = db.prepare('INSERT OR IGNORE INTO Song_Genres (SongID, GenreID) VALUES (?, ?)');
+        const insertCategory    = db.prepare('INSERT OR IGNORE INTO Song_Categories (SongID, CategoryID) VALUES (?, ?)');
+        const insertEmotion     = db.prepare('INSERT OR IGNORE INTO Song_Emotions (SongID, EmotionID) VALUES (?, ?)');
 
-        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds) => {
+        const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds, genreIds, categoryIds, emotionIds) => {
             updateSong.run(title, duration || null, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null, notes || null, id);
             deleteSongArtists.run(id);
             if (artistIds && artistIds.length > 0) {
-                for (const artistId of artistIds) {
-                    insertSongArtist.run(id, artistId);
-                }
+                for (const artistId of artistIds) { insertSongArtist.run(id, artistId); }
             }
+            deleteGenres.run(id);
+            for (const gid of genreIds) { insertGenre.run(id, gid); }
+            deleteCategories.run(id);
+            for (const cid of categoryIds) { insertCategory.run(id, cid); }
+            deleteEmotions.run(id);
+            for (const eid of emotionIds) { insertEmotion.run(id, eid); }
         });
 
-        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, finalChordImagePath, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || []);
+        transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, finalChordImagePath, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || [], (GenreIDs || []).map(Number), (CategoryIDs || []).map(Number), (EmotionIDs || []).map(Number));
         res.json({ message: 'Song updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -805,6 +830,96 @@ app.delete('/api/songs/:id', (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// ========================
+// SONG GENRE PARAMS API
+// ========================
+app.get('/api/song-genres', (req, res) => {
+    try { res.json(db.prepare('SELECT * FROM Song_Genre_Params ORDER BY GenreName').all()); }
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/song-genres', (req, res) => {
+    try {
+        const { GenreName } = req.body;
+        if (!GenreName || !GenreName.trim()) return res.status(400).json({ error: 'Tür adı boş olamaz!' });
+        const info = db.prepare('INSERT INTO Song_Genre_Params (GenreName) VALUES (?)').run(GenreName.trim());
+        res.status(201).json({ GenreID: info.lastInsertRowid, GenreName: GenreName.trim() });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/song-genres/:id', (req, res) => {
+    try {
+        const { GenreName } = req.body;
+        if (!GenreName || !GenreName.trim()) return res.status(400).json({ error: 'Tür adı boş olamaz!' });
+        db.prepare('UPDATE Song_Genre_Params SET GenreName = ? WHERE GenreID = ?').run(GenreName.trim(), req.params.id);
+        res.json({ message: 'Updated' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/song-genres/:id', (req, res) => {
+    try {
+        db.prepare('DELETE FROM Song_Genre_Params WHERE GenreID = ?').run(req.params.id);
+        res.json({ message: 'Deleted' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ========================
+// SONG CATEGORY PARAMS API
+// ========================
+app.get('/api/song-categories', (req, res) => {
+    try { res.json(db.prepare('SELECT * FROM Song_Category_Params ORDER BY CategoryName').all()); }
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/song-categories', (req, res) => {
+    try {
+        const { CategoryName } = req.body;
+        if (!CategoryName || !CategoryName.trim()) return res.status(400).json({ error: 'Kategori adı boş olamaz!' });
+        const info = db.prepare('INSERT INTO Song_Category_Params (CategoryName) VALUES (?)').run(CategoryName.trim());
+        res.status(201).json({ CategoryID: info.lastInsertRowid, CategoryName: CategoryName.trim() });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/song-categories/:id', (req, res) => {
+    try {
+        const { CategoryName } = req.body;
+        if (!CategoryName || !CategoryName.trim()) return res.status(400).json({ error: 'Kategori adı boş olamaz!' });
+        db.prepare('UPDATE Song_Category_Params SET CategoryName = ? WHERE CategoryID = ?').run(CategoryName.trim(), req.params.id);
+        res.json({ message: 'Updated' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/song-categories/:id', (req, res) => {
+    try {
+        db.prepare('DELETE FROM Song_Category_Params WHERE CategoryID = ?').run(req.params.id);
+        res.json({ message: 'Deleted' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ========================
+// SONG EMOTION PARAMS API
+// ========================
+app.get('/api/song-emotions', (req, res) => {
+    try { res.json(db.prepare('SELECT * FROM Song_Emotion_Params ORDER BY EmotionName').all()); }
+    catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.post('/api/song-emotions', (req, res) => {
+    try {
+        const { EmotionName } = req.body;
+        if (!EmotionName || !EmotionName.trim()) return res.status(400).json({ error: 'Duygu adı boş olamaz!' });
+        const info = db.prepare('INSERT INTO Song_Emotion_Params (EmotionName) VALUES (?)').run(EmotionName.trim());
+        res.status(201).json({ EmotionID: info.lastInsertRowid, EmotionName: EmotionName.trim() });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.put('/api/song-emotions/:id', (req, res) => {
+    try {
+        const { EmotionName } = req.body;
+        if (!EmotionName || !EmotionName.trim()) return res.status(400).json({ error: 'Duygu adı boş olamaz!' });
+        db.prepare('UPDATE Song_Emotion_Params SET EmotionName = ? WHERE EmotionID = ?').run(EmotionName.trim(), req.params.id);
+        res.json({ message: 'Updated' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/song-emotions/:id', (req, res) => {
+    try {
+        db.prepare('DELETE FROM Song_Emotion_Params WHERE EmotionID = ?').run(req.params.id);
+        res.json({ message: 'Deleted' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ========================

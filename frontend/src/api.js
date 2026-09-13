@@ -83,7 +83,10 @@ export const api = {
       LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
       LanguageName: s.LanguageName || '',
       Notes: s.Notes || '',
-      CreatedAt: s.CreatedAt || ''
+      CreatedAt: s.CreatedAt || '',
+      GenreIDs: (s.GenreIDs || []).map(Number),
+      CategoryIDs: (s.CategoryIDs || []).map(Number),
+      EmotionIDs: (s.EmotionIDs || []).map(Number)
     }));
   },
 
@@ -99,6 +102,48 @@ export const api = {
   deleteSong: async (id) => {
     return request(`/songs/${id}`, 'DELETE');
   },
+
+  // ========================
+  // SONG GENRE PARAMS API
+  // ========================
+  getSongGenres: async () => {
+    const list = await request('/song-genres');
+    return list.map(g => ({ GenreID: Number(g.GenreID), GenreName: g.GenreName }));
+  },
+  createSongGenre: async (data) => {
+    const result = await request('/song-genres', 'POST', data);
+    return { GenreID: Number(result.GenreID), GenreName: result.GenreName };
+  },
+  updateSongGenre: async (id, data) => request(`/song-genres/${id}`, 'PUT', data),
+  deleteSongGenre: async (id) => request(`/song-genres/${id}`, 'DELETE'),
+
+  // ========================
+  // SONG CATEGORY PARAMS API
+  // ========================
+  getSongCategories: async () => {
+    const list = await request('/song-categories');
+    return list.map(c => ({ CategoryID: Number(c.CategoryID), CategoryName: c.CategoryName }));
+  },
+  createSongCategory: async (data) => {
+    const result = await request('/song-categories', 'POST', data);
+    return { CategoryID: Number(result.CategoryID), CategoryName: result.CategoryName };
+  },
+  updateSongCategory: async (id, data) => request(`/song-categories/${id}`, 'PUT', data),
+  deleteSongCategory: async (id) => request(`/song-categories/${id}`, 'DELETE'),
+
+  // ========================
+  // SONG EMOTION PARAMS API
+  // ========================
+  getSongEmotions: async () => {
+    const list = await request('/song-emotions');
+    return list.map(e => ({ EmotionID: Number(e.EmotionID), EmotionName: e.EmotionName }));
+  },
+  createSongEmotion: async (data) => {
+    const result = await request('/song-emotions', 'POST', data);
+    return { EmotionID: Number(result.EmotionID), EmotionName: result.EmotionName };
+  },
+  updateSongEmotion: async (id, data) => request(`/song-emotions/${id}`, 'PUT', data),
+  deleteSongEmotion: async (id) => request(`/song-emotions/${id}`, 'DELETE'),
 
   // ========================
   // GUESTS API

@@ -61,16 +61,21 @@ const COLOR_PRESETS = [
 ];
 
 export default function Parameters() {
-  const [subTab, setSubTab] = useState('statuses'); // 'statuses', 'venues', 'cities', or 'languages'
+  const [subTab, setSubTab] = useState('statuses'); // 'statuses', 'venues', 'cities', 'languages', 'songGenres', 'songCategories', 'songEmotions'
   const [statuses, setStatuses] = useState([]);
   const [venues, setVenues] = useState([]);
   const [cities, setCities] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [songGenres, setSongGenres] = useState([]);
+  const [songCategories, setSongCategories] = useState([]);
+  const [songEmotions, setSongEmotions] = useState([]);
   const [copiedVenueId, setCopiedVenueId] = useState(null);
   const [contactVenue, setContactVenue] = useState(null);
   const [noteModalVenue, setNoteModalVenue] = useState(null);
 
-  // Modal states
+  // Simple param modal state (shared by genres, categories, emotions)
+  const [simpleParamModal, setSimpleParamModal] = useState(null); // { type: 'genre'|'category'|'emotion', editing: item|null, value: '' }
+
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [editingStatus, setEditingStatus] = useState(null);
   const [statusForm, setStatusForm] = useState({ StatusName: '', Color: '#0ea5e9' });
@@ -101,6 +106,9 @@ export default function Parameters() {
       setVenues([...store.venues]);
       setCities([...store.cities]);
       setLanguages([...store.languages]);
+      setSongGenres([...store.songGenres]);
+      setSongCategories([...store.songCategories]);
+      setSongEmotions([...store.songEmotions]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -400,6 +408,62 @@ export default function Parameters() {
     };
   };
 
+  // ── Simple Param (Genre/Category/Emotion) handlers ──────────────────────────
+  const openSimpleParam = (type, item = null) => {
+    const nameField = type === 'genre' ? 'GenreName' : type === 'category' ? 'CategoryName' : 'EmotionName';
+    setSimpleParamModal({ type, editing: item, value: item ? item[nameField] : '' });
+  };
+  const closeSimpleParam = () => setSimpleParamModal(null);
+
+  const handleSimpleParamSubmit = async (e) => {
+    e.preventDefault();
+    if (!simpleParamModal) return;
+    const { type, editing, value } = simpleParamModal;
+    const trimmed = value.trim();
+    if (!trimmed) { alert('Alan boş bırakılamaz.'); return; }
+    try {
+      if (type === 'genre') {
+        if (editing) {
+          await api.updateSongGenre(editing.GenreID, { GenreName: trimmed });
+          store.updateSongGenre(editing.GenreID, { GenreName: trimmed });
+        } else {
+          const res = await api.createSongGenre({ GenreName: trimmed });
+          store.addSongGenre(res);
+        }
+      } else if (type === 'category') {
+        if (editing) {
+          await api.updateSongCategory(editing.CategoryID, { CategoryName: trimmed });
+          store.updateSongCategory(editing.CategoryID, { CategoryName: trimmed });
+        } else {
+          const res = await api.createSongCategory({ CategoryName: trimmed });
+          store.addSongCategory(res);
+        }
+      } else {
+        if (editing) {
+          await api.updateSongEmotion(editing.EmotionID, { EmotionName: trimmed });
+          store.updateSongEmotion(editing.EmotionID, { EmotionName: trimmed });
+        } else {
+          const res = await api.createSongEmotion({ EmotionName: trimmed });
+          store.addSongEmotion(res);
+        }
+      }
+      closeSimpleParam();
+    } catch (err) { alert(err.message); }
+  };
+
+  const handleSimpleParamDelete = async (type, item) => {
+    const nameField = type === 'genre' ? 'GenreName' : type === 'category' ? 'CategoryName' : 'EmotionName';
+    const idField = type === 'genre' ? 'GenreID' : type === 'category' ? 'CategoryID' : 'EmotionID';
+    const label = type === 'genre' ? 'şarkı türünü' : type === 'category' ? 'kategoriyi' : 'duyguyu';
+    if (window.confirm(`"${item[nameField]}" ${label} silmek istediğinize emin misiniz?`)) {
+      try {
+        if (type === 'genre') { await api.deleteSongGenre(item[idField]); store.removeSongGenre(item[idField]); }
+        else if (type === 'category') { await api.deleteSongCategory(item[idField]); store.removeSongCategory(item[idField]); }
+        else { await api.deleteSongEmotion(item[idField]); store.removeSongEmotion(item[idField]); }
+      } catch (err) { alert(err.message); }
+    }
+  };
+
   return (
     <div className="tab-content active" style={{ animation: 'fadeIn 0.4s ease-out' }}>
       <div className="section-header">
@@ -413,28 +477,49 @@ export default function Parameters() {
           onClick={() => setSubTab('statuses')}
           style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
         >
-          🚦 Durum Tanımları
+          🚦 Durumlar
         </button>
         <button
           className={`btn ${subTab === 'venues' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setSubTab('venues')}
           style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
         >
-          📍 Mekan Tanımları
+          📍 Mekanlar
         </button>
         <button
           className={`btn ${subTab === 'cities' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setSubTab('cities')}
           style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
         >
-          🏙️ Şehir Tanımları
+          🏙️ Şehirler
         </button>
         <button
           className={`btn ${subTab === 'languages' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setSubTab('languages')}
           style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
         >
-          🌐 Dil Tanımları
+          🌐 Diller
+        </button>
+        <button
+          className={`btn ${subTab === 'songGenres' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setSubTab('songGenres')}
+          style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
+        >
+          🎵 Şarkı Türleri
+        </button>
+        <button
+          className={`btn ${subTab === 'songCategories' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setSubTab('songCategories')}
+          style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
+        >
+          🗂️ Kategoriler
+        </button>
+        <button
+          className={`btn ${subTab === 'songEmotions' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setSubTab('songEmotions')}
+          style={{ padding: '0.5rem 1.25rem', borderRadius: '10px', fontSize: '0.9rem' }}
+        >
+          💜 Duygular
         </button>
       </div>
 
@@ -999,6 +1084,82 @@ export default function Parameters() {
           document.body
         );
       })()}
+
+      {/* --- SONG GENRES VIEW --- */}
+      {(subTab === 'songGenres' || subTab === 'songCategories' || subTab === 'songEmotions') && (() => {
+        const isGenre = subTab === 'songGenres';
+        const isCat   = subTab === 'songCategories';
+        const type    = isGenre ? 'genre' : isCat ? 'category' : 'emotion';
+        const items   = isGenre ? songGenres : isCat ? songCategories : songEmotions;
+        const nameField = isGenre ? 'GenreName' : isCat ? 'CategoryName' : 'EmotionName';
+        const idField   = isGenre ? 'GenreID'   : isCat ? 'CategoryID'   : 'EmotionID';
+        const label     = isGenre ? 'Şarkı Türü' : isCat ? 'Kategori' : 'Duygu';
+        const emoji     = isGenre ? '🎵' : isCat ? '🗂️' : '💜';
+        return (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-muted)' }}>
+                {isGenre ? 'Şarkılar için kullanılabilecek müzik türlerini yönetin.' : isCat ? 'Şarkılar için kullanılabilecek kategorileri yönetin.' : 'Şarkılar için kullanılabilecek duygu etiketlerini yönetin.'}
+              </p>
+              <button className="btn btn-primary btn-sm" onClick={() => openSimpleParam(type)}>
+                + Yeni {label}
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {items.map(item => (
+                <div key={item[idField]} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '20px', padding: '0.35rem 0.75rem', fontSize: '0.9rem' }}>
+                  <span>{emoji} {item[nameField]}</span>
+                  <button
+                    type="button"
+                    onClick={() => openSimpleParam(type, item)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--primary-color)', padding: '0 2px' }}
+                    title="Düzenle"
+                  >✏️</button>
+                  <button
+                    type="button"
+                    onClick={() => handleSimpleParamDelete(type, item)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--danger)', padding: '0 2px' }}
+                    title="Sil"
+                  >×</button>
+                </div>
+              ))}
+              {items.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Henüz kayıt yok.</p>}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Simple Param Modal (Genre/Category/Emotion) */}
+      {simpleParamModal && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={closeSimpleParam}>
+          <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>
+                {simpleParamModal.editing ? 'Düzenle' : 'Yeni'} {simpleParamModal.type === 'genre' ? 'Şarkı Türü' : simpleParamModal.type === 'category' ? 'Kategori' : 'Duygu'}
+              </h2>
+              <button className="close-btn" onClick={closeSimpleParam}>&times;</button>
+            </div>
+            <form onSubmit={handleSimpleParamSubmit}>
+              <div style={{ padding: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Ad</label>
+                <input
+                  type="text"
+                  value={simpleParamModal.value}
+                  onChange={e => setSimpleParamModal(prev => ({ ...prev, value: e.target.value }))}
+                  style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border-strong)', borderRadius: '8px', background: 'var(--surface)', color: 'var(--text)' }}
+                  autoFocus
+                  placeholder="Adı girin..."
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={closeSimpleParam}>İptal</button>
+                <button type="submit" className="btn btn-primary">{simpleParamModal.editing ? 'Güncelle' : 'Kaydet'}</button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* VENUE NOTE POPUP MODAL */}
       {noteModalVenue && createPortal(

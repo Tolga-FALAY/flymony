@@ -9,6 +9,9 @@ export default function Songs() {
   const [songs, setSongs] = useState([]);
   const [artists, setArtists] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [songGenres, setSongGenres] = useState([]);
+  const [songCategories, setSongCategories] = useState([]);
+  const [songEmotions, setSongEmotions] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState(null);
   const [noteModalSong, setNoteModalSong] = useState(null);
@@ -24,6 +27,9 @@ export default function Songs() {
   const [filterMaxYear, setFilterMaxYear] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('');
   const [filterChordStatus, setFilterChordStatus] = useState(''); // '' (Tümü), 'has_chord', 'no_chord'
+  const [filterGenreIDs, setFilterGenreIDs] = useState([]);     // multi-select
+  const [filterCategoryIDs, setFilterCategoryIDs] = useState([]); // multi-select
+  const [filterEmotionIDs, setFilterEmotionIDs] = useState([]);  // multi-select
 
   // Audio Preview & Live Recording States
   const [audioPreviewUrl, setAudioPreviewUrl] = useState('');
@@ -50,6 +56,9 @@ export default function Songs() {
     setFilterMaxYear('');
     setFilterLanguage('');
     setFilterChordStatus('');
+    setFilterGenreIDs([]);
+    setFilterCategoryIDs([]);
+    setFilterEmotionIDs([]);
   };
 
   const [formData, setFormData] = useState({
@@ -64,7 +73,10 @@ export default function Songs() {
     ChordImageData: '',
     ArtistIDs: [],
     LanguageID: '',
-    Notes: ''
+    Notes: '',
+    GenreIDs: [],
+    CategoryIDs: [],
+    EmotionIDs: []
   });
 
   const [artistSearch, setArtistSearch] = useState('');
@@ -77,6 +89,9 @@ export default function Songs() {
       setSongs([...store.songs]);
       setArtists([...store.artists]);
       setLanguages([...store.languages]);
+      setSongGenres([...store.songGenres]);
+      setSongCategories([...store.songCategories]);
+      setSongEmotions([...store.songEmotions]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -203,7 +218,10 @@ export default function Songs() {
         ChordImageData: '',
         ArtistIDs: (song.ArtistIDs || []).map(String),
         LanguageID: song.LanguageID ? String(song.LanguageID) : '',
-        Notes: song.Notes || ''
+        Notes: song.Notes || '',
+        GenreIDs: (song.GenreIDs || []).map(Number),
+        CategoryIDs: (song.CategoryIDs || []).map(Number),
+        EmotionIDs: (song.EmotionIDs || []).map(Number)
       });
       if (song.AudioPath) {
         setAudioPreviewUrl(getUploadsUrl(song.AudioPath));
@@ -227,7 +245,7 @@ export default function Songs() {
       setEditingSong(null);
       const turkishLang = store.languages.find(l => l.LanguageName === 'Türkçe');
       const defaultLangId = turkishLang ? String(turkishLang.LanguageID) : '';
-      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId, Notes: '' });
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId, Notes: '', GenreIDs: [], CategoryIDs: [], EmotionIDs: [] });
       setAudioPreviewUrl('');
       setChordImagesList([]);
       setTimeout(() => {
@@ -592,7 +610,10 @@ export default function Songs() {
       ChordImageData: '',
       ArtistIDs: formData.ArtistIDs.map(Number),
       LanguageID: formData.LanguageID ? Number(formData.LanguageID) : null,
-      Notes: formData.Notes || ''
+      Notes: formData.Notes || '',
+      GenreIDs: (formData.GenreIDs || []).map(Number),
+      CategoryIDs: (formData.CategoryIDs || []).map(Number),
+      EmotionIDs: (formData.EmotionIDs || []).map(Number)
     };
 
     try {
@@ -690,6 +711,18 @@ export default function Songs() {
       const hasChord = Boolean((song.ChordImagePath && song.ChordImagePath.trim()) || (Array.isArray(song.ChordImages) && song.ChordImages.length > 0) || hasLyricsContent(song.Lyrics));
       if (filterChordStatus === 'has_chord' && !hasChord) return false;
       if (filterChordStatus === 'no_chord' && hasChord) return false;
+    }
+    if (filterGenreIDs.length > 0) {
+      const songGIDs = song.GenreIDs || [];
+      if (!filterGenreIDs.some(gid => songGIDs.includes(gid))) return false;
+    }
+    if (filterCategoryIDs.length > 0) {
+      const songCIDs = song.CategoryIDs || [];
+      if (!filterCategoryIDs.some(cid => songCIDs.includes(cid))) return false;
+    }
+    if (filterEmotionIDs.length > 0) {
+      const songEIDs = song.EmotionIDs || [];
+      if (!filterEmotionIDs.some(eid => songEIDs.includes(eid))) return false;
     }
     const songYearNum = song.SongYear ? parseInt(song.SongYear) : null;
     if (filterMinYear || filterMaxYear) {
@@ -843,6 +876,79 @@ export default function Songs() {
             >
               Temizle
             </button>
+          </div>
+        </div>
+
+        {/* Row 3: Tür, Kategori, Duygu multi-select filters */}
+        <div className="filter-group-row" style={{ display: 'flex', gap: '0.75rem', width: '100%', flexWrap: 'wrap' }}>
+          {/* Tür filter */}
+          <div className="filter-item" style={{ flex: '1 1 200px' }}>
+            <label>Şarkı Türü</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', padding: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: '8px', background: 'var(--surface)', minHeight: '42px' }}>
+              {songGenres.map(g => (
+                <span
+                  key={g.GenreID}
+                  onClick={() => setFilterGenreIDs(prev =>
+                    prev.includes(g.GenreID) ? prev.filter(x => x !== g.GenreID) : [...prev, g.GenreID]
+                  )}
+                  style={{
+                    cursor: 'pointer', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.82rem', fontWeight: 600,
+                    background: filterGenreIDs.includes(g.GenreID) ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
+                    color: filterGenreIDs.includes(g.GenreID) ? '#fff' : 'var(--text-muted)',
+                    border: filterGenreIDs.includes(g.GenreID) ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
+                    transition: 'all 0.15s ease',
+                    userSelect: 'none'
+                  }}
+                >{g.GenreName}</span>
+              ))}
+              {songGenres.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Henüz tür tanımlanmamış</span>}
+            </div>
+          </div>
+          {/* Kategori filter */}
+          <div className="filter-item" style={{ flex: '1 1 200px' }}>
+            <label>Kategori</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', padding: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: '8px', background: 'var(--surface)', minHeight: '42px' }}>
+              {songCategories.map(c => (
+                <span
+                  key={c.CategoryID}
+                  onClick={() => setFilterCategoryIDs(prev =>
+                    prev.includes(c.CategoryID) ? prev.filter(x => x !== c.CategoryID) : [...prev, c.CategoryID]
+                  )}
+                  style={{
+                    cursor: 'pointer', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.82rem', fontWeight: 600,
+                    background: filterCategoryIDs.includes(c.CategoryID) ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
+                    color: filterCategoryIDs.includes(c.CategoryID) ? '#fff' : 'var(--text-muted)',
+                    border: filterCategoryIDs.includes(c.CategoryID) ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
+                    transition: 'all 0.15s ease',
+                    userSelect: 'none'
+                  }}
+                >{c.CategoryName}</span>
+              ))}
+              {songCategories.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Henüz kategori tanımlanmamış</span>}
+            </div>
+          </div>
+          {/* Duygu filter */}
+          <div className="filter-item" style={{ flex: '1 1 200px' }}>
+            <label>Duygu</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', padding: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: '8px', background: 'var(--surface)', minHeight: '42px' }}>
+              {songEmotions.map(e => (
+                <span
+                  key={e.EmotionID}
+                  onClick={() => setFilterEmotionIDs(prev =>
+                    prev.includes(e.EmotionID) ? prev.filter(x => x !== e.EmotionID) : [...prev, e.EmotionID]
+                  )}
+                  style={{
+                    cursor: 'pointer', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.82rem', fontWeight: 600,
+                    background: filterEmotionIDs.includes(e.EmotionID) ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
+                    color: filterEmotionIDs.includes(e.EmotionID) ? '#fff' : 'var(--text-muted)',
+                    border: filterEmotionIDs.includes(e.EmotionID) ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
+                    transition: 'all 0.15s ease',
+                    userSelect: 'none'
+                  }}
+                >{e.EmotionName}</span>
+              ))}
+              {songEmotions.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Henüz duygu tanımlanmamış</span>}
+            </div>
           </div>
         </div>
       </div>
@@ -1228,6 +1334,87 @@ export default function Songs() {
                     <option key={l.LanguageID} value={String(l.LanguageID)}>{l.LanguageName}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Şarkı Türü */}
+              <div className="form-group">
+                <label>Şarkı Türü</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: '8px', background: 'var(--surface)', minHeight: '44px' }}>
+                  {songGenres.map(g => (
+                    <span
+                      key={g.GenreID}
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        GenreIDs: prev.GenreIDs.includes(g.GenreID)
+                          ? prev.GenreIDs.filter(x => x !== g.GenreID)
+                          : [...prev.GenreIDs, g.GenreID]
+                      }))}
+                      style={{
+                        cursor: 'pointer', padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.83rem', fontWeight: 600,
+                        background: formData.GenreIDs.includes(g.GenreID) ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
+                        color: formData.GenreIDs.includes(g.GenreID) ? '#fff' : 'var(--text-muted)',
+                        border: formData.GenreIDs.includes(g.GenreID) ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
+                        transition: 'all 0.15s ease',
+                        userSelect: 'none'
+                      }}
+                    >{g.GenreName}</span>
+                  ))}
+                  {songGenres.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Parametreler ekranından tür ekleyin.</span>}
+                </div>
+              </div>
+
+              {/* Kategori */}
+              <div className="form-group">
+                <label>Kategori</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: '8px', background: 'var(--surface)', minHeight: '44px' }}>
+                  {songCategories.map(c => (
+                    <span
+                      key={c.CategoryID}
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        CategoryIDs: prev.CategoryIDs.includes(c.CategoryID)
+                          ? prev.CategoryIDs.filter(x => x !== c.CategoryID)
+                          : [...prev.CategoryIDs, c.CategoryID]
+                      }))}
+                      style={{
+                        cursor: 'pointer', padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.83rem', fontWeight: 600,
+                        background: formData.CategoryIDs.includes(c.CategoryID) ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
+                        color: formData.CategoryIDs.includes(c.CategoryID) ? '#fff' : 'var(--text-muted)',
+                        border: formData.CategoryIDs.includes(c.CategoryID) ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
+                        transition: 'all 0.15s ease',
+                        userSelect: 'none'
+                      }}
+                    >{c.CategoryName}</span>
+                  ))}
+                  {songCategories.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Parametreler ekranından kategori ekleyin.</span>}
+                </div>
+              </div>
+
+              {/* Duygu */}
+              <div className="form-group">
+                <label>Duygu</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: '8px', background: 'var(--surface)', minHeight: '44px' }}>
+                  {songEmotions.map(em => (
+                    <span
+                      key={em.EmotionID}
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        EmotionIDs: prev.EmotionIDs.includes(em.EmotionID)
+                          ? prev.EmotionIDs.filter(x => x !== em.EmotionID)
+                          : [...prev.EmotionIDs, em.EmotionID]
+                      }))}
+                      style={{
+                        cursor: 'pointer', padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.83rem', fontWeight: 600,
+                        background: formData.EmotionIDs.includes(em.EmotionID) ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
+                        color: formData.EmotionIDs.includes(em.EmotionID) ? '#fff' : 'var(--text-muted)',
+                        border: formData.EmotionIDs.includes(em.EmotionID) ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
+                        transition: 'all 0.15s ease',
+                        userSelect: 'none'
+                      }}
+                    >{em.EmotionName}</span>
+                  ))}
+                  {songEmotions.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Parametreler ekranından duygu ekleyin.</span>}
+                </div>
               </div>
               <div className="form-group">
                 <label>Akorlar, Sözler ve Sahne Notları</label>

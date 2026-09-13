@@ -1730,6 +1730,81 @@ export const initializeDB = () => {
         console.error("Migration error while seeding FLY songs:", e);
     }
 
+    // ----------------------------------------------------
+    // SONG GENRES, CATEGORIES, EMOTIONS TABLES
+    // ----------------------------------------------------
+    try {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS Song_Genre_Params (
+                GenreID INTEGER PRIMARY KEY AUTOINCREMENT,
+                GenreName TEXT NOT NULL UNIQUE
+            );
+
+            CREATE TABLE IF NOT EXISTS Song_Category_Params (
+                CategoryID INTEGER PRIMARY KEY AUTOINCREMENT,
+                CategoryName TEXT NOT NULL UNIQUE
+            );
+
+            CREATE TABLE IF NOT EXISTS Song_Emotion_Params (
+                EmotionID INTEGER PRIMARY KEY AUTOINCREMENT,
+                EmotionName TEXT NOT NULL UNIQUE
+            );
+
+            CREATE TABLE IF NOT EXISTS Song_Genres (
+                SongID INTEGER NOT NULL,
+                GenreID INTEGER NOT NULL,
+                PRIMARY KEY (SongID, GenreID),
+                FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE,
+                FOREIGN KEY (GenreID) REFERENCES Song_Genre_Params(GenreID) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS Song_Categories (
+                SongID INTEGER NOT NULL,
+                CategoryID INTEGER NOT NULL,
+                PRIMARY KEY (SongID, CategoryID),
+                FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE,
+                FOREIGN KEY (CategoryID) REFERENCES Song_Category_Params(CategoryID) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS Song_Emotions (
+                SongID INTEGER NOT NULL,
+                EmotionID INTEGER NOT NULL,
+                PRIMARY KEY (SongID, EmotionID),
+                FOREIGN KEY (SongID) REFERENCES Songs(SongID) ON DELETE CASCADE,
+                FOREIGN KEY (EmotionID) REFERENCES Song_Emotion_Params(EmotionID) ON DELETE CASCADE
+            );
+        `);
+
+        // Seed default genres if empty
+        const genreCount = db.prepare("SELECT COUNT(*) as count FROM Song_Genre_Params").get().count;
+        if (genreCount === 0) {
+            const defaults = ['Pop', 'Rock', 'Jazz', 'Blues', 'Klasik', 'Türkü', 'Sanat Müziği', 'Arabesk', 'Rap / Hip-Hop', 'R&B', 'Folk', 'Elektro', 'Reggae', 'Metal', 'Country', 'Flamenco', 'Bossa Nova', 'Latin'];
+            const ins = db.prepare("INSERT OR IGNORE INTO Song_Genre_Params (GenreName) VALUES (?)");
+            const t = db.transaction(() => { defaults.forEach(d => ins.run(d)); });
+            t();
+        }
+
+        // Seed default categories if empty
+        const catCount = db.prepare("SELECT COUNT(*) as count FROM Song_Category_Params").get().count;
+        if (catCount === 0) {
+            const defaults = ['80\'ler', '90\'lar', '2000\'ler', '2010\'lar', 'Oyun Havası', 'Halay', 'Oryantal', 'Dans Müziği', 'Slow', 'Hareketli', 'Romantik', 'Nostalji', 'Doğum Günü', 'Düğün', 'Kına', 'Kadınlar Günü', 'Yılbaşı', 'Cumhuriyet'];
+            const ins = db.prepare("INSERT OR IGNORE INTO Song_Category_Params (CategoryName) VALUES (?)");
+            const t = db.transaction(() => { defaults.forEach(d => ins.run(d)); });
+            t();
+        }
+
+        // Seed default emotions if empty
+        const emCount = db.prepare("SELECT COUNT(*) as count FROM Song_Emotion_Params").get().count;
+        if (emCount === 0) {
+            const defaults = ['Aşk', 'Özlem', 'İhanet', 'Kıskançlık', 'Sevinç', 'Hüzün', 'Ölüm', 'Umut', 'Isyan', 'Anne', 'Baba', 'Evlat', 'Arkadaşlık', 'Doğa', 'Yurt Sevgisi', 'Gurbet', 'Eğlence'];
+            const ins = db.prepare("INSERT OR IGNORE INTO Song_Emotion_Params (EmotionName) VALUES (?)");
+            const t = db.transaction(() => { defaults.forEach(d => ins.run(d)); });
+            t();
+        }
+    } catch (e) {
+        console.error("Migration error for Song_Genre/Category/Emotion tables:", e);
+    }
+
     console.log("Database tables initialized.");
 };
 
