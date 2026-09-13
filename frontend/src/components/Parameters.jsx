@@ -547,7 +547,7 @@ export default function Parameters() {
               </thead>
               <tbody>
                 {statuses.map(s => {
-                  const usageCount = store.requests.filter(r => r.StatusID === s.StatusID).length;
+                  const usageCount = store.requests.filter(r => r.Status === s.StatusName).length;
                   return (
                   <tr key={s.StatusID}>
                     <td data-label="Durum Adı" style={{ fontWeight: 600 }}>{s.StatusName} <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>({usageCount})</span></td>
