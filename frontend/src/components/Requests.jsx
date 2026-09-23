@@ -1003,9 +1003,19 @@ export default function Requests() {
                   style={{ fontSize: '0.85rem', resize: 'vertical', minHeight: '60px', padding: '0.5rem 0.75rem' }}
                 />
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
-                <button type="submit" className="btn btn-primary">Kaydet</button>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '1.5rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
+                  {editingRequest && editingRequest.RequestDate && (
+                    <div>Kayıt: {formatDate(editingRequest.RequestDate)}</div>
+                  )}
+                  {editingRequest && editingRequest.UpdatedAt && formatDate(editingRequest.UpdatedAt) !== formatDate(editingRequest.RequestDate) && (
+                    <div>Düzenleme: {formatDate(editingRequest.UpdatedAt)}</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-outline" onClick={closeModal}>İptal</button>
+                  <button type="submit" className="btn btn-primary">Kaydet</button>
+                </div>
               </div>
             </form>
           </div>
