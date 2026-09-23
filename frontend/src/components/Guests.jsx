@@ -37,10 +37,16 @@ const formatGigRelativeTime = (gigDateStr) => {
   gigDate.setHours(0, 0, 0, 0);
 
   const diffTime = today - gigDate;
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-  if (diffDays <= 0) {
+  if (diffDays === 0) {
     return ' (Bugün)';
+  } else if (diffDays === -1) {
+    return ' (Yarın)';
+  } else if (diffDays < -1) {
+    return ' (Gelecek)';
+  } else if (diffDays === 1) {
+    return ' (Dün)';
   } else if (diffDays < 60) {
     return ` (${diffDays} Gün)`;
   } else if (diffDays < 365) {
@@ -1723,7 +1729,13 @@ export default function Guests() {
               ) : (
                 getGuestAttendedGigs(gigsModalGuest.GuestID || gigsModalGuest.id).map(gig => {
                   const rawDate = gig.GigDate || gig.gigDate;
-                  const dateFormatted = rawDate ? new Date(rawDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+                  let dateFormatted = '-';
+                  if (rawDate) {
+                    const dateObj = new Date(rawDate);
+                    const dStr = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+                    const wStr = dateObj.toLocaleDateString('tr-TR', { weekday: 'long' });
+                    dateFormatted = `${dStr}, ${wStr}`;
+                  }
                   const relativeTime = formatGigRelativeTime(rawDate);
                   const venueName = gig.VenueName || gig.venueName || 'Bilinmeyen Mekân';
                   const cityName = gig.CityName || gig.cityName;
