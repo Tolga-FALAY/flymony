@@ -20,6 +20,7 @@ export default function Gigs() {
   const [editingGig, setEditingGig] = useState(null);
   const [noteModalGig, setNoteModalGig] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [fullscreenGuestProfilePic, setFullscreenGuestProfilePic] = useState(null);
 
   const gigCameraInputRef = useRef(null);
   const gigBrowseInputRef = useRef(null);
@@ -456,7 +457,8 @@ export default function Gigs() {
       TableName: selectedTargetTable || 'Masa 1',
       Description: '',
       GuestCount: 1,
-      FullName: guest.FullName
+      FullName: guest.FullName,
+      ProfilePicture: guest.ProfilePicture || null
     };
     setFormData(prev => ({
       ...prev,
@@ -1801,10 +1803,15 @@ export default function Gigs() {
                             <div 
                               key={g.GuestID} 
                               onClick={() => addGuestToGig(g)}
-                              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-soft)', fontSize: '0.85rem' }}
+                              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-soft)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                               className="autocomplete-item-hover"
                             >
-                              {g.FullName}
+                              {g.ProfilePicture ? (
+                                <img src={g.ProfilePicture} alt={g.FullName} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                              ) : (
+                                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', flexShrink: 0 }}>👤</span>
+                              )}
+                              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.FullName}</span>
                             </div>
                           ))
                         }
@@ -1844,6 +1851,8 @@ export default function Gigs() {
                           {guestsByTable[tName].map(gEntry => {
                             const isAnonymous = Boolean(gEntry.IsAnonymous || !gEntry.GuestID);
                             const isGroup = isAnonymous && (Number(gEntry.GuestCount || 1) > 1 || gEntry.FullName === 'Tanımsız Grup');
+                            const targetGuest = guests.find(g => Number(g.GuestID || g.id) === Number(gEntry.GuestID));
+                            const displayProfilePicture = targetGuest ? targetGuest.ProfilePicture : (gEntry.ProfilePicture || null);
 
                             return (
                               <div key={gEntry._idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.35rem 0', borderBottom: '1px dashed #e2e8f0', fontSize: '0.85rem' }}>
@@ -1883,6 +1892,15 @@ export default function Gigs() {
                                         onChange={() => toggleGroupGuestSelect(tName, gEntry.GuestID)}
                                         style={{ margin: 0 }}
                                       />
+                                      {displayProfilePicture && (
+                                        <img 
+                                          src={displayProfilePicture} 
+                                          alt="Profil" 
+                                          style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', flexShrink: 0 }} 
+                                          onClick={() => setFullscreenGuestProfilePic(displayProfilePicture)} 
+                                          title="Büyük Görseli Aç"
+                                        />
+                                      )}
                                       <span 
                                         onClick={() => {
                                           setIsModalOpen(false);
@@ -2943,6 +2961,44 @@ export default function Gigs() {
                 </>
               )}
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Guest Profile Picture Fullscreen Modal */}
+      {fullscreenGuestProfilePic && createPortal(
+        <div 
+          className="fullscreen-modal"
+          onClick={() => setFullscreenGuestProfilePic(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)', zIndex: 99999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div 
+            style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              type="button"
+              onClick={() => setFullscreenGuestProfilePic(null)}
+              style={{
+                position: 'absolute', top: '-40px', right: '0px',
+                background: 'rgba(255, 255, 255, 0.15)', border: 'none', color: '#fff',
+                fontSize: '1.75rem', width: '40px', height: '40px', borderRadius: '50%',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
+              }}
+            >
+              &times;
+            </button>
+            <img 
+              src={fullscreenGuestProfilePic} 
+              alt="Profil Büyük Görünüm" 
+              style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }} 
+            />
           </div>
         </div>,
         document.body
