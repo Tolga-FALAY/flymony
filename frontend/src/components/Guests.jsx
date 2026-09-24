@@ -1163,7 +1163,34 @@ export default function Guests() {
               
               <div className="form-group">
                 <label>Instagram Linki</label>
-                <input type="url" name="InstagramLink" value={formData.InstagramLink} onChange={handleChange} placeholder="https://instagram.com/..." />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    type="url" 
+                    name="InstagramLink" 
+                    value={formData.InstagramLink} 
+                    onChange={handleChange} 
+                    placeholder="https://instagram.com/..." 
+                    style={{ flex: 1, margin: 0 }} 
+                  />
+                  <button 
+                    type="button" 
+                    className="btn btn-outline"
+                    disabled={!formData.InstagramLink}
+                    onClick={() => {
+                      if (formData.InstagramLink) {
+                        let url = formData.InstagramLink.trim();
+                        if (!/^https?:\/\//i.test(url)) {
+                          url = 'https://' + url;
+                        }
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    style={{ padding: '0.5rem 1rem' }}
+                    title="Profili yeni sekmede aç"
+                  >
+                    Git
+                  </button>
+                </div>
               </div>
 
               {/* Birth Date Section */}
