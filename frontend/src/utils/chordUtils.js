@@ -159,10 +159,14 @@ export function hasLyricsContent(html) {
 }
 
 export const getUploadsUrl = (path) => {
-  if (!path) return '';
+  if (!path || typeof path !== 'string') return '';
+  if (path.startsWith('data:') || path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
   const apiBase = typeof window !== 'undefined' && window.location.port === '5173'
     ? 'http://localhost:5000/api'
     : (import.meta.env.VITE_API_URL || '/api');
   const base = apiBase.replace('/api', '');
-  return `${base}${path}`;
+  return `${base}${cleanPath}`;
 };

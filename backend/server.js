@@ -565,23 +565,31 @@ function saveAudioFile(audioData) {
     return `/uploads/${fileName}`;
 }
 
-// Helper to save base64 chord image data to disk
-function saveChordImageFile(imageData) {
-    if (!imageData) return null;
+// Generic Helper to save base64 image data to disk
+function saveUploadedImageFile(imageData, prefix = 'photo') {
+    if (!imageData || typeof imageData !== 'string') return null;
+    if (imageData.startsWith('/uploads/') || imageData.startsWith('http://') || imageData.startsWith('https://')) {
+        return imageData;
+    }
+    if (!imageData.startsWith('data:image/')) {
+        return imageData;
+    }
+    
     let mimeType = 'image/jpeg';
     let base64Content = imageData;
     let extension = 'jpg';
     
-    if (imageData.startsWith('data:')) {
-        const parts = imageData.split(';base64,');
+    const parts = imageData.split(';base64,');
+    if (parts.length === 2) {
         const meta = parts[0];
         base64Content = parts[1];
-        mimeType = meta.split(':')[1].split(';')[0];
+        mimeType = meta.split(':')[1]?.split(';')[0] || 'image/jpeg';
         
         if (mimeType.includes('png')) extension = 'png';
-        else if (mimeType.includes('gif')) extension = 'gif';
         else if (mimeType.includes('webp')) extension = 'webp';
-        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+        else if (mimeType.includes('gif')) extension = 'gif';
+        else if (mimeType.includes('svg')) extension = 'svg';
+        else extension = 'jpg';
     }
     
     const buffer = Buffer.from(base64Content, 'base64');
@@ -589,9 +597,43 @@ function saveChordImageFile(imageData) {
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
-    const fileName = `chord_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
+    const fileName = `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
     fs.writeFileSync(path.join(uploadDir, fileName), buffer);
     return `/uploads/${fileName}`;
+}
+
+function processUploadedImages(images, prefix = 'photo') {
+    if (!images) return [];
+    const list = Array.isArray(images) ? images : [images];
+    return list.map((item, idx) => {
+        if (typeof item === 'string' && item.startsWith('data:image/')) {
+            const saved = saveUploadedImageFile(item, `${prefix}_${idx}`);
+            return saved || item;
+        }
+        return item;
+    }).filter(Boolean);
+}
+
+function deleteUploadedFiles(filePaths) {
+    if (!filePaths) return;
+    const paths = Array.isArray(filePaths) ? filePaths : [filePaths];
+    const uploadDir = path.join(__dirname, '../uploads');
+    paths.forEach(p => {
+        if (typeof p === 'string' && p.startsWith('/uploads/')) {
+            const fileName = path.basename(p);
+            if (!fileName.includes('..') && fileName.length > 0) {
+                const fullPath = path.join(uploadDir, fileName);
+                if (fs.existsSync(fullPath)) {
+                    try { fs.unlinkSync(fullPath); } catch (e) {}
+                }
+            }
+        }
+    });
+}
+
+// Helper to save base64 chord image data to disk (delegates to saveUploadedImageFile)
+function saveChordImageFile(imageData) {
+    return saveUploadedImageFile(imageData, 'chord');
 }
 
 app.post('/api/songs', (req, res) => {
@@ -964,6 +1006,9 @@ app.post('/api/guests', (req, res) => {
             return res.status(400).json({ error: 'Bu misafir zaten kayıtlı!' });
         }
 
+        const finalProfilePic = saveUploadedImageFile(ProfilePicture, 'guest_avatar') || (ProfilePicture || "");
+        const finalPhotos = processUploadedImages(Photos, 'guest');
+
         const insertGuestTransaction = db.transaction(() => {
             const info = db.prepare(`
                 INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, City, CityTR, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, IsMusician) 
@@ -976,11 +1021,11 @@ app.post('/api/guests', (req, res) => {
                 Notes || "", 
                 City || "",
                 CityTR || "",
-                ProfilePicture || "", 
+                finalProfilePic || "", 
                 BirthDateDay ? Number(BirthDateDay) : null, 
                 BirthDateMonth ? Number(BirthDateMonth) : null, 
                 BirthDateYear ? Number(BirthDateYear) : null, 
-                Photos ? JSON.stringify(Photos) : '[]',
+                JSON.stringify(finalPhotos),
                 IsMusician ? 1 : 0
             );
             const guestId = info.lastInsertRowid;
@@ -996,7 +1041,7 @@ app.post('/api/guests', (req, res) => {
         });
 
         const guestId = insertGuestTransaction();
-        res.status(201).json({ id: guestId });
+        res.status(201).json({ id: guestId, ProfilePicture: finalProfilePic, Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1014,6 +1059,9 @@ app.put('/api/guests/:id', (req, res) => {
             return res.status(400).json({ error: 'Bu isimde başka bir misafir zaten kayıtlı!' });
         }
 
+        const finalProfilePic = saveUploadedImageFile(ProfilePicture, 'guest_avatar') || (ProfilePicture || "");
+        const finalPhotos = processUploadedImages(Photos, 'guest');
+
         const updateGuestTransaction = db.transaction(() => {
             db.prepare(`
                 UPDATE Guests 
@@ -1027,11 +1075,11 @@ app.put('/api/guests/:id', (req, res) => {
                 Notes || "", 
                 City || "",
                 CityTR || "",
-                ProfilePicture || "", 
+                finalProfilePic || "", 
                 BirthDateDay ? Number(BirthDateDay) : null, 
                 BirthDateMonth ? Number(BirthDateMonth) : null, 
                 BirthDateYear ? Number(BirthDateYear) : null, 
-                Photos ? JSON.stringify(Photos) : '[]',
+                JSON.stringify(finalPhotos),
                 IsMusician ? 1 : 0,
                 guestId
             );
@@ -1050,7 +1098,7 @@ app.put('/api/guests/:id', (req, res) => {
         });
 
         updateGuestTransaction();
-        res.json({ message: 'Guest updated' });
+        res.json({ message: 'Guest updated', ProfilePicture: finalProfilePic, Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1061,6 +1109,14 @@ app.delete('/api/guests/:id', (req, res) => {
         const isLinked = db.prepare('SELECT 1 FROM Request_Guests WHERE GuestID = ?').get(req.params.id);
         if (isLinked) {
             return res.status(400).json({ error: 'Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz' });
+        }
+
+        const oldGuest = db.prepare('SELECT ProfilePicture, Photos FROM Guests WHERE GuestID = ?').get(req.params.id);
+        if (oldGuest) {
+            if (oldGuest.ProfilePicture) deleteUploadedFiles(oldGuest.ProfilePicture);
+            if (oldGuest.Photos) {
+                try { deleteUploadedFiles(JSON.parse(oldGuest.Photos)); } catch (e) {}
+            }
         }
 
         const deleteGuestTransaction = db.transaction(() => {
@@ -1590,6 +1646,8 @@ app.post('/api/gigs', (req, res) => {
     }
 
     try {
+        const finalPhotos = processUploadedImages(Photos, 'gig');
+
         const createTransaction = db.transaction(() => {
             const gigInfo = db.prepare(`
                 INSERT INTO Gigs (VenueID, GigDate, Notes, Photos, Videos)
@@ -1598,7 +1656,7 @@ app.post('/api/gigs', (req, res) => {
                 Number(VenueID),
                 GigDate,
                 Notes || '',
-                Photos ? JSON.stringify(Photos) : '[]',
+                finalPhotos ? JSON.stringify(finalPhotos) : '[]',
                 Videos ? JSON.stringify(Videos) : '[]'
             );
             const gigId = gigInfo.lastInsertRowid;
@@ -1635,7 +1693,7 @@ app.post('/api/gigs', (req, res) => {
         });
 
         const gigId = createTransaction();
-        res.status(201).json({ id: gigId, message: 'Sahne kaydı oluşturuldu.' });
+        res.status(201).json({ id: gigId, message: 'Sahne kaydı oluşturuldu.', Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1649,6 +1707,8 @@ app.put('/api/gigs/:id', (req, res) => {
     }
 
     try {
+        const finalPhotos = processUploadedImages(Photos, 'gig');
+
         const updateTransaction = db.transaction(() => {
             db.prepare(`
                 UPDATE Gigs
@@ -1658,7 +1718,7 @@ app.put('/api/gigs/:id', (req, res) => {
                 Number(VenueID),
                 GigDate,
                 Notes || '',
-                Photos ? JSON.stringify(Photos) : '[]',
+                finalPhotos ? JSON.stringify(finalPhotos) : '[]',
                 Videos ? JSON.stringify(Videos) : '[]',
                 gigId
             );
@@ -1695,7 +1755,7 @@ app.put('/api/gigs/:id', (req, res) => {
         });
 
         updateTransaction();
-        res.json({ message: 'Sahne kaydı güncellendi.' });
+        res.json({ message: 'Sahne kaydı güncellendi.', Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1703,6 +1763,13 @@ app.put('/api/gigs/:id', (req, res) => {
 
 app.delete('/api/gigs/:id', (req, res) => {
     try {
+        const gig = db.prepare('SELECT Photos FROM Gigs WHERE GigID = ?').get(req.params.id);
+        if (gig && gig.Photos) {
+            try {
+                const oldPhotos = JSON.parse(gig.Photos);
+                deleteUploadedFiles(oldPhotos);
+            } catch (e) {}
+        }
         db.prepare('DELETE FROM Gigs WHERE GigID = ?').run(req.params.id);
         res.json({ message: 'Sahne kaydı silindi.' });
     } catch (err) {
@@ -1826,15 +1893,16 @@ app.get('/api/notes', (req, res) => {
 app.post('/api/notes', (req, res) => {
     const { NoteText, Photos } = req.body;
     try {
+        const finalPhotos = processUploadedImages(Photos, 'note');
         const insert = db.prepare(`
             INSERT INTO QuickNotes (NoteText, Photos, IsDeleted, CreatedAt, UpdatedAt)
             VALUES (?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
         const result = insert.run(
             NoteText || '',
-            Photos ? JSON.stringify(Photos) : '[]'
+            finalPhotos ? JSON.stringify(finalPhotos) : '[]'
         );
-        res.status(201).json({ id: Number(result.lastInsertRowid), message: 'Not eklendi.' });
+        res.status(201).json({ id: Number(result.lastInsertRowid), message: 'Not eklendi.', Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1844,16 +1912,17 @@ app.put('/api/notes/:id', (req, res) => {
     const noteId = req.params.id;
     const { NoteText, Photos } = req.body;
     try {
+        const finalPhotos = processUploadedImages(Photos, 'note');
         db.prepare(`
             UPDATE QuickNotes
             SET NoteText = ?, Photos = ?, UpdatedAt = CURRENT_TIMESTAMP
             WHERE NoteID = ?
         `).run(
             NoteText || '',
-            Photos ? JSON.stringify(Photos) : '[]',
+            finalPhotos ? JSON.stringify(finalPhotos) : '[]',
             noteId
         );
-        res.json({ message: 'Not güncellendi.' });
+        res.json({ message: 'Not güncellendi.', Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1885,6 +1954,13 @@ app.put('/api/notes/:id/restore', (req, res) => {
 app.delete('/api/notes/:id/permanent', (req, res) => {
     const noteId = req.params.id;
     try {
+        const oldNote = db.prepare('SELECT Photos FROM QuickNotes WHERE NoteID = ?').get(noteId);
+        if (oldNote && oldNote.Photos) {
+            try {
+                const oldPhotos = JSON.parse(oldNote.Photos);
+                deleteUploadedFiles(oldPhotos);
+            } catch (e) {}
+        }
         db.prepare('DELETE FROM QuickNotes WHERE NoteID = ?').run(noteId);
         res.json({ message: 'Not kalıcı olarak silindi.' });
     } catch (err) {
