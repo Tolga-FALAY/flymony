@@ -565,8 +565,44 @@ function saveAudioFile(audioData) {
     return `/uploads/${fileName}`;
 }
 
+function slugify(text) {
+    if (!text || typeof text !== 'string') return 'bilinmeyen';
+    const trMap = {
+        'ç': 'c', 'Ç': 'c', 'ğ': 'g', 'Ğ': 'g', 'ı': 'i', 'I': 'i', 'İ': 'i', 'i': 'i',
+        'ö': 'o', 'Ö': 'o', 'ş': 's', 'Ş': 's', 'ü': 'u', 'Ü': 'u'
+    };
+    return text
+        .normalize('NFC')
+        .split('')
+        .map(char => trMap[char] || char)
+        .join('')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '') || 'bilinmeyen';
+}
+
+function getArtistNameForSong(artistIds) {
+    if (!artistIds || !Array.isArray(artistIds) || artistIds.length === 0) return 'bilinmeyen';
+    try {
+        const row = db.prepare('SELECT ArtistName FROM Artists WHERE ArtistID = ?').get(artistIds[0]);
+        return row?.ArtistName || 'bilinmeyen';
+    } catch (e) {
+        return 'bilinmeyen';
+    }
+}
+
+function generateChordBaseName(artistName, songTitle, index = 0, total = 1) {
+    const aSlug = slugify(artistName || 'bilinmeyen');
+    const sSlug = slugify(songTitle || 'isimsiz');
+    if (total > 1) {
+        return `chord_fly_${aSlug}_${sSlug}_${index + 1}of${total}`;
+    }
+    return `chord_fly_${aSlug}_${sSlug}`;
+}
+
 // Generic Helper to save base64 image data to disk
-function saveUploadedImageFile(imageData, prefix = 'photo') {
+function saveUploadedImageFile(imageData, prefix = 'photo', customExactName = null) {
     if (!imageData || typeof imageData !== 'string') return null;
     if (imageData.startsWith('/uploads/') || imageData.startsWith('http://') || imageData.startsWith('https://')) {
         return imageData;
@@ -597,7 +633,9 @@ function saveUploadedImageFile(imageData, prefix = 'photo') {
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
-    const fileName = `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
+    const fileName = customExactName 
+        ? `${customExactName}.${extension}`
+        : `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
     fs.writeFileSync(path.join(uploadDir, fileName), buffer);
     return `/uploads/${fileName}`;
 }
@@ -632,8 +670,8 @@ function deleteUploadedFiles(filePaths) {
 }
 
 // Helper to save base64 chord image data to disk (delegates to saveUploadedImageFile)
-function saveChordImageFile(imageData) {
-    return saveUploadedImageFile(imageData, 'chord');
+function saveChordImageFile(imageData, customExactName = null) {
+    return saveUploadedImageFile(imageData, 'chord', customExactName);
 }
 
 app.post('/api/songs', (req, res) => {
@@ -670,20 +708,25 @@ app.post('/api/songs', (req, res) => {
             audioPathToSave = AudioPath;
         }
 
-        // Process multiple or single chord images
+        // Process multiple or single chord images with standardized naming: chord_fly_sanatci_sarki[_1of2]
+        const artistName = getArtistNameForSong(ArtistIDs);
         let finalChordImages = [];
-        if (Array.isArray(ChordImages)) {
-            for (const item of ChordImages) {
+        if (Array.isArray(ChordImages) && ChordImages.length > 0) {
+            const total = ChordImages.length;
+            for (let i = 0; i < total; i++) {
+                const item = ChordImages[i];
                 if (!item) continue;
+                const baseName = generateChordBaseName(artistName, SongTitle, i, total);
                 if (typeof item === 'string' && item.startsWith('data:')) {
-                    const saved = saveChordImageFile(item);
+                    const saved = saveChordImageFile(item, baseName);
                     if (saved) finalChordImages.push(saved);
                 } else if (typeof item === 'string' && item.startsWith('/uploads/')) {
                     finalChordImages.push(item);
                 }
             }
         } else if (ChordImageData) {
-            const saved = saveChordImageFile(ChordImageData);
+            const baseName = generateChordBaseName(artistName, SongTitle, 0, 1);
+            const saved = saveChordImageFile(ChordImageData, baseName);
             if (saved) finalChordImages.push(saved);
         } else if (ChordImagePath) {
             finalChordImages = parseChordImages(ChordImagePath);
@@ -772,12 +815,16 @@ app.put('/api/songs/:id', (req, res) => {
             finalAudioPath = null;
         }
 
+        const artistName = getArtistNameForSong(ArtistIDs);
         let finalChordImages = [];
-        if (Array.isArray(ChordImages)) {
-            for (const item of ChordImages) {
+        if (Array.isArray(ChordImages) && ChordImages.length > 0) {
+            const total = ChordImages.length;
+            for (let i = 0; i < total; i++) {
+                const item = ChordImages[i];
                 if (!item) continue;
+                const baseName = generateChordBaseName(artistName, SongTitle, i, total);
                 if (typeof item === 'string' && item.startsWith('data:')) {
-                    const saved = saveChordImageFile(item);
+                    const saved = saveChordImageFile(item, baseName);
                     if (saved) finalChordImages.push(saved);
                 } else if (typeof item === 'string' && item.startsWith('/uploads/')) {
                     finalChordImages.push(item);
@@ -798,7 +845,8 @@ app.put('/api/songs/:id', (req, res) => {
                     try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old chord image:", e); }
                 }
             }
-            const saved = saveChordImageFile(ChordImageData);
+            const baseName = generateChordBaseName(artistName, SongTitle, 0, 1);
+            const saved = saveChordImageFile(ChordImageData, baseName);
             if (saved) finalChordImages.push(saved);
         } else if (ChordImagePath === '' || ChordImagePath === null) {
             for (const oldPath of oldChordImages) {
