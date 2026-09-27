@@ -435,7 +435,27 @@ app.put('/api/artists/:id', (req, res) => {
         if (existing) {
             return res.status(400).json({ error: 'Bu isimde başka bir sanatçı zaten kayıtlı!' });
         }
-        db.prepare('UPDATE Artists SET ArtistName = ? WHERE ArtistID = ?').run(ArtistName, req.params.id);
+        const artistId = Number(req.params.id);
+        const cleanName = ArtistName.trim();
+        db.prepare('UPDATE Artists SET ArtistName = ? WHERE ArtistID = ?').run(cleanName, artistId);
+
+        // Sanatçı adı değiştiğinde bu sanatçıya ait tüm şarkıların akor görsellerini diskte ve DB'de senkronize et
+        const linkedSongs = db.prepare(`
+            SELECT s.SongID, s.SongTitle, s.ChordImagePath
+            FROM Songs s
+            JOIN Song_Artists sa ON s.SongID = sa.SongID
+            WHERE sa.ArtistID = ?
+        `).all(artistId);
+
+        const updateChord = db.prepare('UPDATE Songs SET ChordImagePath = ? WHERE SongID = ?');
+        for (const s of linkedSongs) {
+            const chords = parseChordImages(s.ChordImagePath);
+            if (chords.length > 0) {
+                const updatedChords = syncSongChordFiles(s.SongID, s.SongTitle, [artistId], chords);
+                updateChord.run(JSON.stringify(updatedChords), s.SongID);
+            }
+        }
+
         res.json({ message: 'Artist updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -601,6 +621,68 @@ function generateChordBaseName(artistName, songTitle, index = 0, total = 1) {
     return `chord_fly_${aSlug}_${sSlug}`;
 }
 
+// Şarkı veya sanatçı adı değiştiğinde diskteki akor dosyalarını güvenle yeni ada taşır
+function syncSongChordFiles(songId, songTitle, artistIds, chordImages = null) {
+    const artistName = getArtistNameForSong(artistIds);
+    const existing = songId ? db.prepare('SELECT ChordImagePath FROM Songs WHERE SongID = ?').get(songId) : null;
+    const currentList = chordImages !== null ? chordImages : parseChordImages(existing?.ChordImagePath);
+    if (!currentList || currentList.length === 0) return currentList || [];
+
+    const total = currentList.length;
+    const uploadDir = path.join(__dirname, '../uploads');
+    const result = [];
+    const renamePlan = [];
+
+    // Faz 1: Yeniden adlandırılması gerekenleri geçici isme taşı (çakışma ve silinmeleri önler)
+    for (let i = 0; i < total; i++) {
+        const item = currentList[i];
+        if (!item || typeof item !== 'string' || !item.startsWith('/uploads/')) {
+            result[i] = item;
+            continue;
+        }
+
+        const currentFileName = path.basename(item);
+        const ext = path.extname(currentFileName).toLowerCase() || '.jpg';
+        const targetBase = generateChordBaseName(artistName, songTitle, i, total);
+        const targetFileName = `${targetBase}${ext}`;
+        const targetPath = `/uploads/${targetFileName}`;
+
+        if (currentFileName === targetFileName) {
+            result[i] = item;
+        } else {
+            const currentDiskPath = path.join(uploadDir, currentFileName);
+            if (fs.existsSync(currentDiskPath)) {
+                const tempFileName = `${currentFileName}.tmp_${Date.now()}_${i}_${Math.random().toString(36).slice(2)}`;
+                const tempDiskPath = path.join(uploadDir, tempFileName);
+                try {
+                    fs.renameSync(currentDiskPath, tempDiskPath);
+                    renamePlan.push({ tempDiskPath, targetFileName, targetPath, idx: i });
+                } catch (e) {
+                    result[i] = item;
+                }
+            } else {
+                result[i] = targetPath;
+            }
+        }
+    }
+
+    // Faz 2: Geçici isimden hedef isme taşı
+    for (const plan of renamePlan) {
+        const targetDiskPath = path.join(uploadDir, plan.targetFileName);
+        try {
+            if (fs.existsSync(targetDiskPath)) {
+                fs.unlinkSync(targetDiskPath);
+            }
+            fs.renameSync(plan.tempDiskPath, targetDiskPath);
+            result[plan.idx] = plan.targetPath;
+        } catch (e) {
+            result[plan.idx] = plan.targetPath;
+        }
+    }
+
+    return result.filter(Boolean);
+}
+
 // Generic Helper to save base64 image data to disk
 function saveUploadedImageFile(imageData, prefix = 'photo', customExactName = null) {
     if (!imageData || typeof imageData !== 'string') return null;
@@ -749,45 +831,61 @@ function processGigPhotos(photos, venue, gigDate) {
     const list = Array.isArray(photos) ? photos : [photos];
     const uploadDir = path.join(__dirname, '../uploads');
     const result = [];
+    const renamePlan = [];
 
-    list.forEach((item, idx) => {
-        if (!item || typeof item !== 'string') return;
+    // Faz 1: Hedef isimleri belirle, yeni base64'leri kaydet, mevcutları çakışmayı önlemek için geçici isimlere al
+    for (let idx = 0; idx < list.length; idx++) {
+        const item = list[idx];
+        if (!item || typeof item !== 'string') continue;
         const targetBase = generateGigPhotoBaseName(venue, gigDate, idx);
 
         if (item.startsWith('data:image/')) {
             const saved = saveUploadedImageFile(item, 'gig', targetBase);
-            if (saved) result.push(saved);
+            if (saved) result[idx] = saved;
         } else if (item.startsWith('/uploads/')) {
             const currentFileName = path.basename(item);
             const ext = path.extname(currentFileName).toLowerCase() || '.jpg';
             const targetFileName = `${targetBase}${ext}`;
             const targetPath = `/uploads/${targetFileName}`;
 
-            if (currentFileName !== targetFileName) {
+            if (currentFileName === targetFileName) {
+                result[idx] = item;
+            } else {
                 const currentDiskPath = path.join(uploadDir, currentFileName);
-                const targetDiskPath = path.join(uploadDir, targetFileName);
                 if (fs.existsSync(currentDiskPath)) {
+                    const tempFileName = `${currentFileName}.tmp_${Date.now()}_${idx}_${Math.random().toString(36).slice(2)}`;
+                    const tempDiskPath = path.join(uploadDir, tempFileName);
                     try {
-                        if (fs.existsSync(targetDiskPath)) {
-                            fs.unlinkSync(targetDiskPath);
-                        }
-                        fs.renameSync(currentDiskPath, targetDiskPath);
-                        result.push(targetPath);
+                        fs.renameSync(currentDiskPath, tempDiskPath);
+                        renamePlan.push({ tempDiskPath, targetFileName, targetPath, idx });
                     } catch (e) {
-                        result.push(item);
+                        result[idx] = item;
                     }
                 } else {
-                    result.push(item);
+                    result[idx] = targetPath;
                 }
-            } else {
-                result.push(item);
             }
         } else {
-            result.push(item);
+            result[idx] = item;
         }
-    });
+    }
 
-    return result;
+    // Faz 2: Geçici isimlerden hedef isimlere taşı
+    for (const plan of renamePlan) {
+        const targetDiskPath = path.join(uploadDir, plan.targetFileName);
+        try {
+            if (fs.existsSync(targetDiskPath)) {
+                fs.unlinkSync(targetDiskPath);
+            }
+            fs.renameSync(plan.tempDiskPath, targetDiskPath);
+            result[plan.idx] = plan.targetPath;
+        } catch (e) {
+            console.error('Error in phase 2 gig photo rename:', e);
+            result[plan.idx] = `/uploads/${plan.targetFileName}`;
+        }
+    }
+
+    return result.filter(Boolean);
 }
 
 app.post('/api/songs', (req, res) => {
@@ -935,6 +1033,17 @@ app.put('/api/songs/:id', (req, res) => {
         let finalChordImages = [];
         if (Array.isArray(ChordImages) && ChordImages.length > 0) {
             const total = ChordImages.length;
+            // 1. Silinen eski fotoğrafları diskten temizle
+            for (const oldPath of oldChordImages) {
+                if (!ChordImages.includes(oldPath)) {
+                    const oldFilePath = path.join(__dirname, '..', oldPath);
+                    if (fs.existsSync(oldFilePath)) {
+                        try { fs.unlinkSync(oldFilePath); } catch (e) {}
+                    }
+                }
+            }
+
+            // 2. Base64 ve mevcut yolları topla
             for (let i = 0; i < total; i++) {
                 const item = ChordImages[i];
                 if (!item) continue;
@@ -946,14 +1055,9 @@ app.put('/api/songs/:id', (req, res) => {
                     finalChordImages.push(item);
                 }
             }
-            for (const oldPath of oldChordImages) {
-                if (!finalChordImages.includes(oldPath)) {
-                    const oldFilePath = path.join(__dirname, '..', oldPath);
-                    if (fs.existsSync(oldFilePath)) {
-                        try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old chord image:", e); }
-                    }
-                }
-            }
+
+            // 3. Şarkı adı veya sanatçı değiştiyse mevcut akor dosyalarını yeni isme senkronize et
+            finalChordImages = syncSongChordFiles(songId, SongTitle, ArtistIDs, finalChordImages);
         } else if (ChordImageData) {
             for (const oldPath of oldChordImages) {
                 const oldFilePath = path.join(__dirname, '..', oldPath);
@@ -973,7 +1077,8 @@ app.put('/api/songs/:id', (req, res) => {
             }
             finalChordImages = [];
         } else {
-            finalChordImages = oldChordImages;
+            // Akor alanı değiştirilmemiş olsa dahi, Şarkı Adı veya Sanatçısı değiştiyse dosyaları yeni ada senkronize et
+            finalChordImages = syncSongChordFiles(songId, SongTitle, ArtistIDs, oldChordImages);
         }
 
         const finalChordImagePath = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
@@ -1705,6 +1810,20 @@ app.put('/api/venues/:id', (req, res) => {
             SET VenueName = ?, CityID = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ?, Notes = ?, GoogleMapsLink = ?, Abbreviation = ? 
             WHERE VenueID = ?
         `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '', Abbreviation ? Abbreviation.trim() : '', venueId);
+
+        // Mekan adı veya kısaltması değiştiğinde bu mekana ait tüm geçmiş sahnelerin fotoğraflarını diskte ve DB'de güncelle
+        const venueGigs = db.prepare('SELECT GigID, GigDate, Photos FROM Gigs WHERE VenueID = ?').all(venueId);
+        const venueObj = { VenueName: VenueName.trim(), Abbreviation: Abbreviation ? Abbreviation.trim() : '' };
+        const updateGigPhotos = db.prepare('UPDATE Gigs SET Photos = ? WHERE GigID = ?');
+        for (const g of venueGigs) {
+            let photosList = [];
+            try { photosList = typeof g.Photos === 'string' ? JSON.parse(g.Photos) : g.Photos; } catch (e) {}
+            if (Array.isArray(photosList) && photosList.length > 0) {
+                const newPhotos = processGigPhotos(photosList, venueObj, g.GigDate);
+                updateGigPhotos.run(JSON.stringify(newPhotos), g.GigID);
+            }
+        }
+
         res.json({ message: 'Venue updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1873,21 +1992,24 @@ app.put('/api/gigs/:id', (req, res) => {
 
     try {
         const venue = db.prepare('SELECT VenueName, Abbreviation FROM Venues WHERE VenueID = ?').get(Number(VenueID));
-        const finalPhotos = processGigPhotos(Photos, venue, GigDate);
 
-        // Diskteki silinen fotoğrafları temizle
+        // 1. Silinen fotoğrafları önce tespit edip diskten temizle (indeks kaydırma çakışmalarını önler)
         const oldGig = db.prepare('SELECT Photos FROM Gigs WHERE GigID = ?').get(gigId);
         if (oldGig && oldGig.Photos) {
             try {
                 const oldPhotos = JSON.parse(oldGig.Photos);
                 if (Array.isArray(oldPhotos)) {
-                    const removed = oldPhotos.filter(p => !finalPhotos.includes(p));
+                    const incomingList = Array.isArray(Photos) ? Photos : [Photos];
+                    const removed = oldPhotos.filter(p => !incomingList.includes(p));
                     if (removed.length > 0) {
                         deleteUploadedFiles(removed);
                     }
                 }
             } catch (e) {}
         }
+
+        // 2. Kalan ve yeni fotoğrafları iki aşamalı olarak sıralı ve güvenli şekilde yeniden adlandır
+        const finalPhotos = processGigPhotos(Photos, venue, GigDate);
 
         const updateTransaction = db.transaction(() => {
             db.prepare(`
