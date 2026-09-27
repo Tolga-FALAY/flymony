@@ -57,8 +57,8 @@ app.use(cors({
 }));
 
 // 3. Body parsers & Cookie Parser
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET || 'flymony_cookie_secret_key_2026'));
 
 // 4. Rate Limiting

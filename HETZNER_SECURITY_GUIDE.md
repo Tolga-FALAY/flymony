@@ -131,7 +131,7 @@ server {
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
 
     # Maksimum Yükleme Boyutu (Fotoğraf ve Medyalar İçin)
-    client_max_body_size 50M;
+    client_max_body_size 500M;
 
     # 🚨 KRİTİK GÜVENLİK KURALI: Gizli Dosyaları ve Veritabanlarını Kesin Olarak Blokla
     location ~ /\.(git|env|ht|svn) {
