@@ -439,20 +439,27 @@ app.put('/api/artists/:id', (req, res) => {
         const cleanName = ArtistName.trim();
         db.prepare('UPDATE Artists SET ArtistName = ? WHERE ArtistID = ?').run(cleanName, artistId);
 
-        // Sanatçı adı değiştiğinde bu sanatçıya ait tüm şarkıların akor görsellerini diskte ve DB'de senkronize et
+        // Sanatçı adı değiştiğinde bu sanatçıya ait tüm şarkıların akor görsellerini ve ses kayıtlarını diskte ve DB'de senkronize et
         const linkedSongs = db.prepare(`
-            SELECT s.SongID, s.SongTitle, s.ChordImagePath
+            SELECT s.SongID, s.SongTitle, s.ChordImagePath, s.AudioPath
             FROM Songs s
             JOIN Song_Artists sa ON s.SongID = sa.SongID
             WHERE sa.ArtistID = ?
         `).all(artistId);
 
         const updateChord = db.prepare('UPDATE Songs SET ChordImagePath = ? WHERE SongID = ?');
+        const updateAudio = db.prepare('UPDATE Songs SET AudioPath = ? WHERE SongID = ?');
         for (const s of linkedSongs) {
             const chords = parseChordImages(s.ChordImagePath);
             if (chords.length > 0) {
                 const updatedChords = syncSongChordFiles(s.SongID, s.SongTitle, [artistId], chords);
                 updateChord.run(JSON.stringify(updatedChords), s.SongID);
+            }
+            if (s.AudioPath) {
+                const updatedAudio = syncSongAudioFile(s.AudioPath, cleanName, s.SongTitle);
+                if (updatedAudio && updatedAudio !== s.AudioPath) {
+                    updateAudio.run(updatedAudio, s.SongID);
+                }
             }
         }
 
@@ -555,7 +562,7 @@ app.get('/api/songs', (req, res) => {
 });
 
 // Helper to save base64 audio data to disk
-function saveAudioFile(audioData) {
+function saveAudioFile(audioData, customExactName = null) {
     if (!audioData) return null;
     let mimeType = 'audio/mpeg';
     let base64Content = audioData;
@@ -580,7 +587,9 @@ function saveAudioFile(audioData) {
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
-    const fileName = `audio_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
+    const fileName = customExactName
+        ? `${customExactName}.${extension}`
+        : `audio_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
     fs.writeFileSync(path.join(uploadDir, fileName), buffer);
     return `/uploads/${fileName}`;
 }
@@ -619,6 +628,49 @@ function generateChordBaseName(artistName, songTitle, index = 0, total = 1) {
         return `chord_fly_${aSlug}_${sSlug}_${index + 1}of${total}`;
     }
     return `chord_fly_${aSlug}_${sSlug}`;
+}
+
+function generateAudioBaseName(artistName, songTitle) {
+    const aSlug = slugify(artistName || 'bilinmeyen');
+    const sSlug = slugify(songTitle || 'isimsiz');
+    return `audio_${aSlug}_${sSlug}`;
+}
+
+// Şarkı veya sanatçı adı değiştiğinde diskteki ses kayıt dosyasını güvenle yeni ada taşır
+function syncSongAudioFile(currentAudioPath, artistName, songTitle) {
+    if (!currentAudioPath || typeof currentAudioPath !== 'string' || !currentAudioPath.startsWith('/uploads/')) {
+        return currentAudioPath;
+    }
+    const uploadDir = path.join(__dirname, '../uploads');
+    const currentFileName = path.basename(currentAudioPath);
+    const ext = path.extname(currentFileName).toLowerCase() || '.mp3';
+    const targetBase = generateAudioBaseName(artistName, songTitle);
+    const targetFileName = `${targetBase}${ext}`;
+    const targetPath = `/uploads/${targetFileName}`;
+
+    if (currentFileName === targetFileName) {
+        return currentAudioPath;
+    }
+
+    const currentDiskPath = path.join(uploadDir, currentFileName);
+    const targetDiskPath = path.join(uploadDir, targetFileName);
+
+    if (fs.existsSync(currentDiskPath)) {
+        try {
+            if (fs.existsSync(targetDiskPath) && currentDiskPath !== targetDiskPath) {
+                fs.unlinkSync(targetDiskPath);
+            }
+            fs.renameSync(currentDiskPath, targetDiskPath);
+            return targetPath;
+        } catch (e) {
+            console.error('Error renaming audio file:', e);
+            return currentAudioPath;
+        }
+    } else if (fs.existsSync(targetDiskPath)) {
+        return targetPath;
+    }
+
+    return targetPath;
 }
 
 // Şarkı veya sanatçı adı değiştiğinde diskteki akor dosyalarını güvenle yeni ada taşır
@@ -1070,15 +1122,17 @@ app.post('/api/songs', (req, res) => {
             return res.status(400).json({ error: 'Bu şarkı zaten kayıtlı!' });
         }
 
+        const artistName = getArtistNameForSong(ArtistIDs);
+        const audioBaseName = generateAudioBaseName(artistName, SongTitle);
+
         let audioPathToSave = null;
         if (AudioData) {
-            audioPathToSave = saveAudioFile(AudioData);
+            audioPathToSave = saveAudioFile(AudioData, audioBaseName);
         } else if (AudioPath) {
-            audioPathToSave = AudioPath;
+            audioPathToSave = syncSongAudioFile(AudioPath, artistName, SongTitle);
         }
 
         // Process multiple or single chord images with standardized naming: chord_fly_sanatci_sarki[_1of2]
-        const artistName = getArtistNameForSong(ArtistIDs);
         let finalChordImages = [];
         if (Array.isArray(ChordImages) && ChordImages.length > 0) {
             const total = ChordImages.length;
@@ -1165,6 +1219,8 @@ app.put('/api/songs/:id', (req, res) => {
         const existingSong = db.prepare('SELECT AudioPath, ChordImagePath FROM Songs WHERE SongID = ?').get(songId);
         let finalAudioPath = existingSong ? existingSong.AudioPath : null;
         const oldChordImages = parseChordImages(existingSong ? existingSong.ChordImagePath : null);
+        const artistName = getArtistNameForSong(ArtistIDs);
+        const audioBaseName = generateAudioBaseName(artistName, SongTitle);
 
         if (AudioData) {
             if (finalAudioPath) {
@@ -1173,7 +1229,7 @@ app.put('/api/songs/:id', (req, res) => {
                     try { fs.unlinkSync(oldFilePath); } catch (e) { console.error("Error deleting old file:", e); }
                 }
             }
-            finalAudioPath = saveAudioFile(AudioData);
+            finalAudioPath = saveAudioFile(AudioData, audioBaseName);
         } else if (AudioPath === '' || AudioPath === null) {
             if (finalAudioPath) {
                 const oldFilePath = path.join(__dirname, '..', finalAudioPath);
@@ -1182,9 +1238,10 @@ app.put('/api/songs/:id', (req, res) => {
                 }
             }
             finalAudioPath = null;
+        } else if (finalAudioPath || AudioPath) {
+            // Şarkı adı veya sanatçısı değiştiyse mevcut ses dosyasını yeni isme senkronize et
+            finalAudioPath = syncSongAudioFile(finalAudioPath || AudioPath, artistName, SongTitle);
         }
-
-        const artistName = getArtistNameForSong(ArtistIDs);
         let finalChordImages = [];
         if (Array.isArray(ChordImages) && ChordImages.length > 0) {
             const total = ChordImages.length;
