@@ -89,7 +89,8 @@ export default function Parameters() {
     ContactPhone: '',
     InstagramLink: '',
     Notes: '',
-    GoogleMapsLink: ''
+    GoogleMapsLink: '',
+    Abbreviation: ''
   });
 
   const [isCityModalOpen, setIsCityModalOpen] = useState(false);
@@ -183,7 +184,8 @@ export default function Parameters() {
         ContactPhone: venue.ContactPhone || '',
         InstagramLink: venue.InstagramLink || '',
         Notes: venue.Notes || '',
-        GoogleMapsLink: venue.GoogleMapsLink || ''
+        GoogleMapsLink: venue.GoogleMapsLink || '',
+        Abbreviation: venue.Abbreviation || ''
       });
     } else {
       setEditingVenue(null);
@@ -194,7 +196,8 @@ export default function Parameters() {
         ContactPhone: '',
         InstagramLink: '',
         Notes: '',
-        GoogleMapsLink: ''
+        GoogleMapsLink: '',
+        Abbreviation: ''
       });
     }
     setIsVenueModalOpen(true);
@@ -266,7 +269,8 @@ export default function Parameters() {
           ContactPhone: result.ContactPhone,
           InstagramLink: result.InstagramLink,
           Notes: result.Notes,
-          GoogleMapsLink: result.GoogleMapsLink
+          GoogleMapsLink: result.GoogleMapsLink,
+          Abbreviation: result.Abbreviation
         });
       }
       closeVenueModal();
@@ -873,6 +877,16 @@ export default function Parameters() {
                   onChange={e => setVenueForm({ ...venueForm, VenueName: e.target.value })}
                   placeholder="Mekan veya Sahne Adı..."
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Kısaltma</label>
+                <input
+                  type="text"
+                  value={venueForm.Abbreviation || ''}
+                  onChange={e => setVenueForm({ ...venueForm, Abbreviation: e.target.value })}
+                  placeholder="Mekan Kısaltması..."
                 />
               </div>
 

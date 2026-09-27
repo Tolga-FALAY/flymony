@@ -312,7 +312,8 @@ export const api = {
       ContactPhone: v.ContactPhone || '',
       InstagramLink: v.InstagramLink || '',
       Notes: v.Notes || '',
-      GoogleMapsLink: v.GoogleMapsLink || ''
+      GoogleMapsLink: v.GoogleMapsLink || '',
+      Abbreviation: v.Abbreviation || ''
     }));
   },
 
@@ -327,7 +328,8 @@ export const api = {
       ContactPhone: result.ContactPhone,
       InstagramLink: result.InstagramLink,
       Notes: result.Notes || '',
-      GoogleMapsLink: result.GoogleMapsLink || ''
+      GoogleMapsLink: result.GoogleMapsLink || '',
+      Abbreviation: result.Abbreviation || ''
     };
   },
 

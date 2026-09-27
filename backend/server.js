@@ -1421,7 +1421,8 @@ app.get('/api/venues', (req, res) => {
             ContactPhone: v.ContactPhone || '',
             InstagramLink: v.InstagramLink || '',
             Notes: v.Notes || '',
-            GoogleMapsLink: v.GoogleMapsLink || ''
+            GoogleMapsLink: v.GoogleMapsLink || '',
+            Abbreviation: v.Abbreviation || ''
         })));
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1430,7 +1431,7 @@ app.get('/api/venues', (req, res) => {
 
 app.post('/api/venues', (req, res) => {
     try {
-        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink } = req.body;
+        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink, Abbreviation } = req.body;
         if (!VenueName || !VenueName.trim()) {
             return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
         }
@@ -1442,9 +1443,9 @@ app.post('/api/venues', (req, res) => {
             return res.status(400).json({ error: 'Bu mekan zaten tanımlı!' });
         }
         const info = db.prepare(`
-            INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '');
+            INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink, Abbreviation) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '', Abbreviation ? Abbreviation.trim() : '');
         
         const cityName = db.prepare('SELECT CityName FROM Cities WHERE CityID = ?').get(CityID)?.CityName || '-';
         
@@ -1457,7 +1458,8 @@ app.post('/api/venues', (req, res) => {
             ContactPhone: ContactPhone ? ContactPhone.trim() : '', 
             InstagramLink: InstagramLink ? InstagramLink.trim() : '',
             Notes: Notes ? Notes.trim() : '',
-            GoogleMapsLink: GoogleMapsLink ? GoogleMapsLink.trim() : ''
+            GoogleMapsLink: GoogleMapsLink ? GoogleMapsLink.trim() : '',
+            Abbreviation: Abbreviation ? Abbreviation.trim() : ''
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1466,7 +1468,7 @@ app.post('/api/venues', (req, res) => {
 
 app.put('/api/venues/:id', (req, res) => {
     try {
-        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink } = req.body;
+        const { VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink, Abbreviation } = req.body;
         const venueId = req.params.id;
         if (!VenueName || !VenueName.trim()) {
             return res.status(400).json({ error: 'Mekan adı boş olamaz!' });
@@ -1480,9 +1482,9 @@ app.put('/api/venues/:id', (req, res) => {
         }
         db.prepare(`
             UPDATE Venues 
-            SET VenueName = ?, CityID = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ?, Notes = ?, GoogleMapsLink = ? 
+            SET VenueName = ?, CityID = ?, ContactPerson = ?, ContactPhone = ?, InstagramLink = ?, Notes = ?, GoogleMapsLink = ?, Abbreviation = ? 
             WHERE VenueID = ?
-        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '', venueId);
+        `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '', Abbreviation ? Abbreviation.trim() : '', venueId);
         res.json({ message: 'Venue updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -87,7 +87,8 @@ export const initializeDB = () => {
             ContactPhone TEXT,
             InstagramLink TEXT,
             Notes TEXT,
-            GoogleMapsLink TEXT
+            GoogleMapsLink TEXT,
+            Abbreviation TEXT
         );
 
         CREATE TABLE IF NOT EXISTS Gigs (
@@ -1808,6 +1809,21 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error for Song_Genre/Category/Emotion tables:", e);
+    }
+
+    // ----------------------------------------------------
+    // VENUES TABLE MIGRATION (Add Abbreviation)
+    // ----------------------------------------------------
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Venues)").all();
+        const hasAbbrev = tableInfo.some(col => col.name === 'Abbreviation');
+        if (!hasAbbrev) {
+            console.log("Migrating Venues table: Adding Abbreviation column...");
+            db.exec("ALTER TABLE Venues ADD COLUMN Abbreviation TEXT;");
+            console.log("Venues table migration complete (Abbreviation column added).");
+        }
+    } catch (e) {
+        console.error("Migration error while adding Abbreviation column to Venues table:", e);
     }
 
     console.log("Database tables initialized.");
