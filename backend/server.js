@@ -888,6 +888,84 @@ function processGigPhotos(photos, venue, gigDate) {
     return result.filter(Boolean);
 }
 
+// İsim ve soyisimdeki parantez ve özel karakterleri temizleyen yardımcı
+function cleanNamePart(text) {
+    if (!text || typeof text !== 'string') return '';
+    const trMap = {
+        'ç': 'c', 'Ç': 'c', 'ğ': 'g', 'Ğ': 'g', 'ı': 'i', 'I': 'i', 'İ': 'i', 'i': 'i',
+        'ö': 'o', 'Ö': 'o', 'ş': 's', 'Ş': 's', 'ü': 'u', 'Ü': 'u'
+    };
+    return text
+        .normalize('NFC')
+        .split('')
+        .map(char => trMap[char] || char)
+        .join('')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+}
+
+function generateGuestAvatarBaseName(firstName, lastName, guestId) {
+    const cleanFirst = cleanNamePart(firstName);
+    const cleanLast = cleanNamePart(lastName);
+    
+    const parts = ['guest_avatar'];
+    if (cleanFirst) parts.push(cleanFirst);
+    if (cleanLast) parts.push(cleanLast);
+    if (guestId) parts.push(String(guestId));
+    
+    return parts.join('_');
+}
+
+function processGuestAvatar(profilePicture, firstName, lastName, guestId, oldProfilePicture = null) {
+    const uploadDir = path.join(__dirname, '../uploads');
+    const targetBase = generateGuestAvatarBaseName(firstName, lastName, guestId);
+
+    if (!profilePicture || typeof profilePicture !== 'string' || profilePicture.trim() === '') {
+        if (oldProfilePicture && typeof oldProfilePicture === 'string' && oldProfilePicture.startsWith('/uploads/')) {
+            deleteUploadedFiles(oldProfilePicture);
+        }
+        return '';
+    }
+
+    if (profilePicture.startsWith('data:image/')) {
+        if (oldProfilePicture && typeof oldProfilePicture === 'string' && oldProfilePicture.startsWith('/uploads/')) {
+            deleteUploadedFiles(oldProfilePicture);
+        }
+        const saved = saveUploadedImageFile(profilePicture, 'guest_avatar', targetBase);
+        return saved || profilePicture;
+    }
+
+    if (profilePicture.startsWith('/uploads/')) {
+        const currentFileName = path.basename(profilePicture);
+        const ext = path.extname(currentFileName).toLowerCase() || '.jpg';
+        const targetFileName = `${targetBase}${ext}`;
+        const targetPath = `/uploads/${targetFileName}`;
+
+        if (currentFileName !== targetFileName) {
+            const currentDiskPath = path.join(uploadDir, currentFileName);
+            const targetDiskPath = path.join(uploadDir, targetFileName);
+            if (fs.existsSync(currentDiskPath)) {
+                try {
+                    if (fs.existsSync(targetDiskPath) && currentDiskPath !== targetDiskPath) {
+                        fs.unlinkSync(targetDiskPath);
+                    }
+                    fs.renameSync(currentDiskPath, targetDiskPath);
+                    return targetPath;
+                } catch (e) {
+                    return profilePicture;
+                }
+            } else {
+                return targetPath;
+            }
+        }
+        return profilePicture;
+    }
+
+    return profilePicture;
+}
+
 app.post('/api/songs', (req, res) => {
     const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs } = req.body;
     if (!SongTitle || !SongTitle.trim()) {
@@ -1275,7 +1353,6 @@ app.post('/api/guests', (req, res) => {
             return res.status(400).json({ error: 'Bu misafir zaten kayıtlı!' });
         }
 
-        const finalProfilePic = saveUploadedImageFile(ProfilePicture, 'guest_avatar') || (ProfilePicture || "");
         const finalPhotos = processUploadedImages(Photos, 'guest');
 
         const insertGuestTransaction = db.transaction(() => {
@@ -1290,7 +1367,7 @@ app.post('/api/guests', (req, res) => {
                 Notes || "", 
                 City || "",
                 CityTR || "",
-                finalProfilePic || "", 
+                "", 
                 BirthDateDay ? Number(BirthDateDay) : null, 
                 BirthDateMonth ? Number(BirthDateMonth) : null, 
                 BirthDateYear ? Number(BirthDateYear) : null, 
@@ -1298,6 +1375,12 @@ app.post('/api/guests', (req, res) => {
                 IsMusician ? 1 : 0
             );
             const guestId = info.lastInsertRowid;
+
+            let finalProfilePic = "";
+            if (ProfilePicture) {
+                finalProfilePic = processGuestAvatar(ProfilePicture, FirstName, LastName, guestId);
+                db.prepare('UPDATE Guests SET ProfilePicture = ? WHERE GuestID = ?').run(finalProfilePic, guestId);
+            }
             
             if (RelatedGuestIDs && Array.isArray(RelatedGuestIDs)) {
                 const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
@@ -1306,10 +1389,10 @@ app.post('/api/guests', (req, res) => {
                     insertRel.run(Number(rId), guestId); // bidirectional
                 }
             }
-            return guestId;
+            return { guestId, finalProfilePic };
         });
 
-        const guestId = insertGuestTransaction();
+        const { guestId, finalProfilePic } = insertGuestTransaction();
         res.status(201).json({ id: guestId, ProfilePicture: finalProfilePic, Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1328,7 +1411,10 @@ app.put('/api/guests/:id', (req, res) => {
             return res.status(400).json({ error: 'Bu isimde başka bir misafir zaten kayıtlı!' });
         }
 
-        const finalProfilePic = saveUploadedImageFile(ProfilePicture, 'guest_avatar') || (ProfilePicture || "");
+        const oldGuest = db.prepare('SELECT ProfilePicture FROM Guests WHERE GuestID = ?').get(guestId);
+        const oldProfilePic = oldGuest ? oldGuest.ProfilePicture : null;
+
+        const finalProfilePic = processGuestAvatar(ProfilePicture, FirstName, LastName, guestId, oldProfilePic);
         const finalPhotos = processUploadedImages(Photos, 'guest');
 
         const updateGuestTransaction = db.transaction(() => {

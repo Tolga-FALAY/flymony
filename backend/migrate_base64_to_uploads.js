@@ -125,6 +125,35 @@ function generateGigPhotoBaseName(venue, gigDate, photoIndex = 0) {
     return `gig_${yyyymmdd}_${dayName}_${venueAbbrev}_${numStr}`;
 }
 
+function cleanNamePart(text) {
+    if (!text || typeof text !== 'string') return '';
+    const trMap = {
+        'ç': 'c', 'Ç': 'c', 'ğ': 'g', 'Ğ': 'g', 'ı': 'i', 'I': 'i', 'İ': 'i', 'i': 'i',
+        'ö': 'o', 'Ö': 'o', 'ş': 's', 'Ş': 's', 'ü': 'u', 'Ü': 'u'
+    };
+    return text
+        .normalize('NFC')
+        .split('')
+        .map(char => trMap[char] || char)
+        .join('')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+}
+
+function generateGuestAvatarBaseName(firstName, lastName, guestId) {
+    const cleanFirst = cleanNamePart(firstName);
+    const cleanLast = cleanNamePart(lastName);
+    
+    const parts = ['guest_avatar'];
+    if (cleanFirst) parts.push(cleanFirst);
+    if (cleanLast) parts.push(cleanLast);
+    if (guestId) parts.push(String(guestId));
+    
+    return parts.join('_');
+}
+
 let totalMigratedFiles = 0;
 let totalBytesSaved = 0;
 
@@ -132,7 +161,7 @@ let totalBytesSaved = 0;
 // 3. GUESTS MİGRASYONU (ProfilePicture & Photos)
 // ==========================================
 console.log('\n⏳ Misafir (Guests) fotoğrafları taranıyor...');
-const guests = db.prepare('SELECT GuestID, ProfilePicture, Photos FROM Guests').all();
+const guests = db.prepare('SELECT GuestID, FirstName, LastName, ProfilePicture, Photos FROM Guests').all();
 const updateGuest = db.prepare('UPDATE Guests SET ProfilePicture = ?, Photos = ? WHERE GuestID = ?');
 
 const guestMigration = db.transaction(() => {
@@ -144,7 +173,8 @@ const guestMigration = db.transaction(() => {
 
         // Profil resmi kontrolü
         if (g.ProfilePicture && g.ProfilePicture.startsWith('data:image/')) {
-            const savedPath = saveBase64ToFile(g.ProfilePicture, `guest_avatar_${g.GuestID}`);
+            const baseName = generateGuestAvatarBaseName(g.FirstName, g.LastName, g.GuestID);
+            const savedPath = saveBase64ToFile(g.ProfilePicture, 'guest_avatar', baseName);
             if (savedPath) {
                 totalBytesSaved += g.ProfilePicture.length;
                 newProfilePic = savedPath;
