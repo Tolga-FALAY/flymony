@@ -966,6 +966,83 @@ function processGuestAvatar(profilePicture, firstName, lastName, guestId, oldPro
     return profilePicture;
 }
 
+function generateGuestPicBaseName(firstName, lastName, guestId, photoIndex = 0) {
+    const cleanFirst = cleanNamePart(firstName);
+    const cleanLast = cleanNamePart(lastName);
+    
+    const parts = ['guest_pics'];
+    if (cleanFirst) parts.push(cleanFirst);
+    if (cleanLast) parts.push(cleanLast);
+    if (guestId) parts.push(String(guestId));
+    
+    const numStr = String(photoIndex + 1).padStart(2, '0');
+    parts.push(numStr);
+    
+    return parts.join('_');
+}
+
+function processGuestPics(photos, firstName, lastName, guestId) {
+    if (!photos) return [];
+    const list = Array.isArray(photos) ? photos : [photos];
+    const uploadDir = path.join(__dirname, '../uploads');
+    const result = [];
+    const renamePlan = [];
+
+    // Faz 1: Hedef isimleri belirle, yeni base64'leri kaydet, mevcutları çakışmayı önlemek için geçici isimlere al
+    for (let idx = 0; idx < list.length; idx++) {
+        const item = list[idx];
+        if (!item || typeof item !== 'string') continue;
+        const targetBase = generateGuestPicBaseName(firstName, lastName, guestId, idx);
+
+        if (item.startsWith('data:image/')) {
+            const saved = saveUploadedImageFile(item, 'guest_pic', targetBase);
+            if (saved) result[idx] = saved;
+        } else if (item.startsWith('/uploads/')) {
+            const currentFileName = path.basename(item);
+            const ext = path.extname(currentFileName).toLowerCase() || '.jpg';
+            const targetFileName = `${targetBase}${ext}`;
+            const targetPath = `/uploads/${targetFileName}`;
+
+            if (currentFileName === targetFileName) {
+                result[idx] = item;
+            } else {
+                const currentDiskPath = path.join(uploadDir, currentFileName);
+                if (fs.existsSync(currentDiskPath)) {
+                    const tempFileName = `${currentFileName}.tmp_${Date.now()}_${idx}_${Math.random().toString(36).slice(2)}`;
+                    const tempDiskPath = path.join(uploadDir, tempFileName);
+                    try {
+                        fs.renameSync(currentDiskPath, tempDiskPath);
+                        renamePlan.push({ tempDiskPath, targetFileName, targetPath, idx });
+                    } catch (e) {
+                        result[idx] = item;
+                    }
+                } else {
+                    result[idx] = targetPath;
+                }
+            }
+        } else {
+            result[idx] = item;
+        }
+    }
+
+    // Faz 2: Geçici isimlerden hedef isimlere taşı
+    for (const plan of renamePlan) {
+        const targetDiskPath = path.join(uploadDir, plan.targetFileName);
+        try {
+            if (fs.existsSync(targetDiskPath)) {
+                fs.unlinkSync(targetDiskPath);
+            }
+            fs.renameSync(plan.tempDiskPath, targetDiskPath);
+            result[plan.idx] = plan.targetPath;
+        } catch (e) {
+            console.error('Error in phase 2 guest pic rename:', e);
+            result[plan.idx] = `/uploads/${plan.targetFileName}`;
+        }
+    }
+
+    return result.filter(Boolean);
+}
+
 app.post('/api/songs', (req, res) => {
     const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs } = req.body;
     if (!SongTitle || !SongTitle.trim()) {
@@ -1353,8 +1430,6 @@ app.post('/api/guests', (req, res) => {
             return res.status(400).json({ error: 'Bu misafir zaten kayıtlı!' });
         }
 
-        const finalPhotos = processUploadedImages(Photos, 'guest');
-
         const insertGuestTransaction = db.transaction(() => {
             const info = db.prepare(`
                 INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, City, CityTR, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, IsMusician) 
@@ -1371,7 +1446,7 @@ app.post('/api/guests', (req, res) => {
                 BirthDateDay ? Number(BirthDateDay) : null, 
                 BirthDateMonth ? Number(BirthDateMonth) : null, 
                 BirthDateYear ? Number(BirthDateYear) : null, 
-                JSON.stringify(finalPhotos),
+                "[]",
                 IsMusician ? 1 : 0
             );
             const guestId = info.lastInsertRowid;
@@ -1379,8 +1454,15 @@ app.post('/api/guests', (req, res) => {
             let finalProfilePic = "";
             if (ProfilePicture) {
                 finalProfilePic = processGuestAvatar(ProfilePicture, FirstName, LastName, guestId);
-                db.prepare('UPDATE Guests SET ProfilePicture = ? WHERE GuestID = ?').run(finalProfilePic, guestId);
             }
+
+            const finalPhotos = processGuestPics(Photos, FirstName, LastName, guestId);
+
+            db.prepare('UPDATE Guests SET ProfilePicture = ?, Photos = ? WHERE GuestID = ?').run(
+                finalProfilePic,
+                JSON.stringify(finalPhotos),
+                guestId
+            );
             
             if (RelatedGuestIDs && Array.isArray(RelatedGuestIDs)) {
                 const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
@@ -1389,10 +1471,10 @@ app.post('/api/guests', (req, res) => {
                     insertRel.run(Number(rId), guestId); // bidirectional
                 }
             }
-            return { guestId, finalProfilePic };
+            return { guestId, finalProfilePic, finalPhotos };
         });
 
-        const { guestId, finalProfilePic } = insertGuestTransaction();
+        const { guestId, finalProfilePic, finalPhotos } = insertGuestTransaction();
         res.status(201).json({ id: guestId, ProfilePicture: finalProfilePic, Photos: finalPhotos });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1411,11 +1493,26 @@ app.put('/api/guests/:id', (req, res) => {
             return res.status(400).json({ error: 'Bu isimde başka bir misafir zaten kayıtlı!' });
         }
 
-        const oldGuest = db.prepare('SELECT ProfilePicture FROM Guests WHERE GuestID = ?').get(guestId);
+        const oldGuest = db.prepare('SELECT ProfilePicture, Photos FROM Guests WHERE GuestID = ?').get(guestId);
         const oldProfilePic = oldGuest ? oldGuest.ProfilePicture : null;
 
+        // 1. Silinen albüm fotoğraflarını önce diskten temizle
+        if (oldGuest && oldGuest.Photos) {
+            try {
+                const oldPhotos = JSON.parse(oldGuest.Photos);
+                if (Array.isArray(oldPhotos)) {
+                    const incomingPhotos = Array.isArray(Photos) ? Photos : [Photos];
+                    const removed = oldPhotos.filter(p => !incomingPhotos.includes(p));
+                    if (removed.length > 0) {
+                        deleteUploadedFiles(removed);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // 2. Avatar ve albüm fotoğraflarını iki aşamalı olarak yeni ada senkronize et
         const finalProfilePic = processGuestAvatar(ProfilePicture, FirstName, LastName, guestId, oldProfilePic);
-        const finalPhotos = processUploadedImages(Photos, 'guest');
+        const finalPhotos = processGuestPics(Photos, FirstName, LastName, guestId);
 
         const updateGuestTransaction = db.transaction(() => {
             db.prepare(`
