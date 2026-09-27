@@ -43,7 +43,7 @@ console.log(`📊 Başlangıç veritabanı boyutu: ${(initialDbSize / (1024 * 10
 const db = new Database(dbPath);
 
 // Base64 string'i fiziksel dosyaya kaydetme yardımcısı
-function saveBase64ToFile(dataUri, filePrefix) {
+function saveBase64ToFile(dataUri, filePrefix, customExactName = null) {
     if (!dataUri || typeof dataUri !== 'string' || !dataUri.startsWith('data:image/')) {
         return null;
     }
@@ -63,7 +63,9 @@ function saveBase64ToFile(dataUri, filePrefix) {
         else if (mimeType.includes('svg')) ext = 'svg';
 
         const buffer = Buffer.from(base64Data, 'base64');
-        const fileName = `${filePrefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${ext}`;
+        const fileName = customExactName 
+            ? `${customExactName}.${ext}`
+            : `${filePrefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${ext}`;
         const filePath = path.join(uploadsDir, fileName);
 
         fs.writeFileSync(filePath, buffer);
@@ -72,6 +74,55 @@ function saveBase64ToFile(dataUri, filePrefix) {
         console.error('Fotoğraf kaydedilirken hata:', err.message);
         return null;
     }
+}
+
+// Tarihi YYYYAAGG ve gün adı (ASCII) olarak ayıklar
+function formatGigDateInfo(dateStr) {
+    if (!dateStr) return { yyyymmdd: '00000000', dayName: 'Bilinmeyen' };
+    const cleanDate = dateStr.split('T')[0].trim();
+    const parts = cleanDate.split('-').map(Number);
+    if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+        return { yyyymmdd: '00000000', dayName: 'Bilinmeyen' };
+    }
+    const [year, month, day] = parts;
+    const yyyymmdd = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+    const d = new Date(year, month - 1, day, 12, 0, 0);
+    const dayNames = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
+    const dayName = dayNames[d.getDay()] || 'Gun';
+    return { yyyymmdd, dayName };
+}
+
+function getVenueAbbreviation(venue) {
+    if (!venue) return 'GN';
+    const trMap = {
+        'ç': 'C', 'Ç': 'C', 'ğ': 'G', 'Ğ': 'G', 'ı': 'I', 'I': 'I', 'İ': 'I', 'i': 'I',
+        'ö': 'O', 'Ö': 'O', 'ş': 'S', 'Ş': 'S', 'ü': 'U', 'Ü': 'U'
+    };
+    if (venue.Abbreviation && venue.Abbreviation.trim()) {
+        const abbrevClean = venue.Abbreviation.trim()
+            .split('')
+            .map(c => trMap[c] || c)
+            .join('')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
+        if (abbrevClean) return abbrevClean;
+    }
+    const venueName = (venue.VenueName || '').trim();
+    if (!venueName) return 'GN';
+    const cleanName = venueName.split('').map(c => trMap[c] || c).join('');
+    const words = cleanName.split(/\s+/).filter(Boolean);
+    if (words.length > 1) {
+        return words.map(w => w[0]).join('').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    } else {
+        return cleanName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+}
+
+function generateGigPhotoBaseName(venue, gigDate, photoIndex = 0) {
+    const { yyyymmdd, dayName } = formatGigDateInfo(gigDate);
+    const venueAbbrev = getVenueAbbreviation(venue);
+    const numStr = String(photoIndex + 1).padStart(2, '0');
+    return `gig_${yyyymmdd}_${dayName}_${venueAbbrev}_${numStr}`;
 }
 
 let totalMigratedFiles = 0;
@@ -144,7 +195,11 @@ console.log(`✅ Misafir tablosu güncellendi: ${updatedGuestsCount} misafirin f
 // 4. GIGS MİGRASYONU (Sahne Fotoğrafları)
 // ==========================================
 console.log('\n⏳ Sahne Kayıtları (Gigs) fotoğrafları taranıyor...');
-const gigs = db.prepare('SELECT GigID, Photos FROM Gigs').all();
+const gigs = db.prepare(`
+    SELECT g.GigID, g.GigDate, g.Photos, v.VenueName, v.Abbreviation 
+    FROM Gigs g 
+    LEFT JOIN Venues v ON g.VenueID = v.VenueID
+`).all();
 const updateGig = db.prepare('UPDATE Gigs SET Photos = ? WHERE GigID = ?');
 
 const gigMigration = db.transaction(() => {
@@ -160,7 +215,8 @@ const gigMigration = db.transaction(() => {
                 for (let i = 0; i < photosArr.length; i++) {
                     const p = photosArr[i];
                     if (typeof p === 'string' && p.startsWith('data:image/')) {
-                        const savedPath = saveBase64ToFile(p, `gig_${gig.GigID}_${i}`);
+                        const baseName = generateGigPhotoBaseName(gig, gig.GigDate, i);
+                        const savedPath = saveBase64ToFile(p, 'gig', baseName);
                         if (savedPath) {
                             totalBytesSaved += p.length;
                             newPhotos.push(savedPath);

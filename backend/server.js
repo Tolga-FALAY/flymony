@@ -674,6 +674,122 @@ function saveChordImageFile(imageData, customExactName = null) {
     return saveUploadedImageFile(imageData, 'chord', customExactName);
 }
 
+// Tarihi YYYYAAGG ve gün adı (ASCII) olarak ayıklar
+function formatGigDateInfo(dateStr) {
+    if (!dateStr) return { yyyymmdd: '00000000', dayName: 'Bilinmeyen' };
+    const cleanDate = dateStr.split('T')[0].trim();
+    const parts = cleanDate.split('-').map(Number);
+    if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+        return { yyyymmdd: '00000000', dayName: 'Bilinmeyen' };
+    }
+    const [year, month, day] = parts;
+    const yyyymmdd = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+    
+    const d = new Date(year, month - 1, day, 12, 0, 0);
+    const dayIndex = d.getDay();
+    
+    const dayNames = [
+        'Pazar',      // 0
+        'Pazartesi',  // 1
+        'Sali',       // 2
+        'Carsamba',   // 3
+        'Persembe',   // 4
+        'Cuma',       // 5
+        'Cumartesi'   // 6
+    ];
+    
+    const dayName = dayNames[dayIndex] || 'Gun';
+    return { yyyymmdd, dayName };
+}
+
+// Mekan kısaltmasını belirler (Tanımlı ise Abbreviation, değilse kelime baş harfleri / tek kelime ise adı)
+function getVenueAbbreviation(venue) {
+    if (!venue) return 'GN';
+    
+    const trMap = {
+        'ç': 'C', 'Ç': 'C', 'ğ': 'G', 'Ğ': 'G', 'ı': 'I', 'I': 'I', 'İ': 'I', 'i': 'I',
+        'ö': 'O', 'Ö': 'O', 'ş': 'S', 'Ş': 'S', 'ü': 'U', 'Ü': 'U'
+    };
+    
+    if (venue.Abbreviation && venue.Abbreviation.trim()) {
+        const abbrevClean = venue.Abbreviation.trim()
+            .split('')
+            .map(c => trMap[c] || c)
+            .join('')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
+        if (abbrevClean) return abbrevClean;
+    }
+    
+    const venueName = (venue.VenueName || '').trim();
+    if (!venueName) return 'GN';
+    
+    const cleanName = venueName
+        .split('')
+        .map(c => trMap[c] || c)
+        .join('');
+    
+    const words = cleanName.split(/\s+/).filter(Boolean);
+    if (words.length > 1) {
+        return words.map(w => w[0]).join('').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    } else {
+        return cleanName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+}
+
+function generateGigPhotoBaseName(venue, gigDate, photoIndex = 0) {
+    const { yyyymmdd, dayName } = formatGigDateInfo(gigDate);
+    const venueAbbrev = getVenueAbbreviation(venue);
+    const numStr = String(photoIndex + 1).padStart(2, '0');
+    return `gig_${yyyymmdd}_${dayName}_${venueAbbrev}_${numStr}`;
+}
+
+function processGigPhotos(photos, venue, gigDate) {
+    if (!photos) return [];
+    const list = Array.isArray(photos) ? photos : [photos];
+    const uploadDir = path.join(__dirname, '../uploads');
+    const result = [];
+
+    list.forEach((item, idx) => {
+        if (!item || typeof item !== 'string') return;
+        const targetBase = generateGigPhotoBaseName(venue, gigDate, idx);
+
+        if (item.startsWith('data:image/')) {
+            const saved = saveUploadedImageFile(item, 'gig', targetBase);
+            if (saved) result.push(saved);
+        } else if (item.startsWith('/uploads/')) {
+            const currentFileName = path.basename(item);
+            const ext = path.extname(currentFileName).toLowerCase() || '.jpg';
+            const targetFileName = `${targetBase}${ext}`;
+            const targetPath = `/uploads/${targetFileName}`;
+
+            if (currentFileName !== targetFileName) {
+                const currentDiskPath = path.join(uploadDir, currentFileName);
+                const targetDiskPath = path.join(uploadDir, targetFileName);
+                if (fs.existsSync(currentDiskPath)) {
+                    try {
+                        if (fs.existsSync(targetDiskPath)) {
+                            fs.unlinkSync(targetDiskPath);
+                        }
+                        fs.renameSync(currentDiskPath, targetDiskPath);
+                        result.push(targetPath);
+                    } catch (e) {
+                        result.push(item);
+                    }
+                } else {
+                    result.push(item);
+                }
+            } else {
+                result.push(item);
+            }
+        } else {
+            result.push(item);
+        }
+    });
+
+    return result;
+}
+
 app.post('/api/songs', (req, res) => {
     const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs } = req.body;
     if (!SongTitle || !SongTitle.trim()) {
@@ -1694,7 +1810,8 @@ app.post('/api/gigs', (req, res) => {
     }
 
     try {
-        const finalPhotos = processUploadedImages(Photos, 'gig');
+        const venue = db.prepare('SELECT VenueName, Abbreviation FROM Venues WHERE VenueID = ?').get(Number(VenueID));
+        const finalPhotos = processGigPhotos(Photos, venue, GigDate);
 
         const createTransaction = db.transaction(() => {
             const gigInfo = db.prepare(`
@@ -1755,7 +1872,22 @@ app.put('/api/gigs/:id', (req, res) => {
     }
 
     try {
-        const finalPhotos = processUploadedImages(Photos, 'gig');
+        const venue = db.prepare('SELECT VenueName, Abbreviation FROM Venues WHERE VenueID = ?').get(Number(VenueID));
+        const finalPhotos = processGigPhotos(Photos, venue, GigDate);
+
+        // Diskteki silinen fotoğrafları temizle
+        const oldGig = db.prepare('SELECT Photos FROM Gigs WHERE GigID = ?').get(gigId);
+        if (oldGig && oldGig.Photos) {
+            try {
+                const oldPhotos = JSON.parse(oldGig.Photos);
+                if (Array.isArray(oldPhotos)) {
+                    const removed = oldPhotos.filter(p => !finalPhotos.includes(p));
+                    if (removed.length > 0) {
+                        deleteUploadedFiles(removed);
+                    }
+                }
+            } catch (e) {}
+        }
 
         const updateTransaction = db.transaction(() => {
             db.prepare(`
