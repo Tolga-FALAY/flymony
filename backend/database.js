@@ -7,8 +7,39 @@ import { initializeAuthDB } from './auth.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const dbPath = path.join(__dirname, 'song_requests.db');
+
+// Automatic Daily Database Snapshot on Startup
+try {
+    if (fs.existsSync(dbPath) && fs.statSync(dbPath).size > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const backupsDir = path.join(__dirname, 'backups');
+        if (!fs.existsSync(backupsDir)) {
+            fs.mkdirSync(backupsDir, { recursive: true });
+        }
+        const todayBackupPath = path.join(backupsDir, `song_requests_daily_${today}.db`);
+        if (!fs.existsSync(todayBackupPath)) {
+            fs.copyFileSync(dbPath, todayBackupPath);
+            console.log(`[Database Backup] Otomatik günlük yedek oluşturuldu: ${path.basename(todayBackupPath)}`);
+        }
+
+        // Keep last 30 daily backups
+        const backupFiles = fs.readdirSync(backupsDir)
+            .filter(f => f.startsWith('song_requests_daily_') && f.endsWith('.db'))
+            .sort();
+        while (backupFiles.length > 30) {
+            const oldest = backupFiles.shift();
+            try { fs.unlinkSync(path.join(backupsDir, oldest)); } catch (e) {}
+        }
+    }
+} catch (backupErr) {
+    console.warn('[Database Backup] Günlük yedek alma uyarısı:', backupErr.message);
+}
+
 // Connect to SQLite DB (creates file if not exists)
-const db = new Database(path.join(__dirname, 'song_requests.db'), { verbose: console.log });
+const db = new Database(dbPath, { verbose: console.log });
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
 // Initialize Tables
 export const initializeDB = () => {

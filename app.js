@@ -2979,7 +2979,8 @@ async function saveBulkPhotos() {
         BirthDateDay: guest.birthDateDay ? Number(guest.birthDateDay) : null,
         BirthDateMonth: guest.birthDateMonth ? Number(guest.birthDateMonth) : null,
         BirthDateYear: guest.birthDateYear ? Number(guest.birthDateYear) : null,
-        Photos: updatedPhotos
+        Photos: updatedPhotos,
+        RelatedGuestIDs: guest.relatedGuestIDs || []
       };
       return apiRequest(`/guests/${guestId}`, 'PUT', guestData);
     });
@@ -4829,29 +4830,7 @@ async function relateGroupGuestsVanilla(tableName) {
   }
 
   try {
-    for (const currentId of selectedIds) {
-      const guestObj = DB.guests.find(g => g.id === currentId);
-      if (!guestObj) continue;
-      const otherIds = selectedIds.filter(id => id !== currentId);
-      const existingRels = guestObj.relatedGuestIDs || [];
-      const newRels = Array.from(new Set([...existingRels, ...otherIds]));
-
-      await apiRequest(`/guests/${currentId}`, 'PUT', {
-        FirstName: guestObj.firstName,
-        LastName: guestObj.lastName,
-        PhoneNumber: guestObj.phone,
-        InstagramLink: guestObj.instagram,
-        Notes: guestObj.notes,
-        ProfilePicture: guestObj.profilePicture,
-        BirthDateDay: guestObj.birthDateDay,
-        BirthDateMonth: guestObj.birthDateMonth,
-        BirthDateYear: guestObj.birthDateYear,
-        Photos: guestObj.photos,
-        RelatedGuestIDs: newRels,
-        IsMusician: guestObj.isMusician ? 1 : 0
-      });
-    }
-
+    await apiRequest('/guests/bulk-relate', 'POST', { guestIds: selectedIds });
     await DB.loadFromFirestore(true);
     renderAllTables();
     alert('Seçilen misafirler birbiriyle kalıcı olarak ilişkilendirildi.');

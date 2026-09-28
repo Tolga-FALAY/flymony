@@ -181,6 +181,10 @@ export const api = {
     return request(`/guests/${id}`, 'PUT', data);
   },
 
+  bulkRelateGuests: async (guestIds) => {
+    return request('/guests/bulk-relate', 'POST', { guestIds });
+  },
+
   deleteGuest: async (id) => {
     return request(`/guests/${id}`, 'DELETE');
   },

@@ -1455,14 +1455,18 @@ app.get('/api/guests', (req, res) => {
         
         const relMap = {};
         relationships.forEach(r => {
-            if (!relMap[r.GuestID]) relMap[r.GuestID] = [];
-            relMap[r.GuestID].push(r.RelatedGuestID);
+            const g1 = Number(r.GuestID);
+            const g2 = Number(r.RelatedGuestID);
+            if (!relMap[g1]) relMap[g1] = [];
+            if (!relMap[g1].includes(g2)) relMap[g1].push(g2);
+            if (!relMap[g2]) relMap[g2] = [];
+            if (!relMap[g2].includes(g1)) relMap[g2].push(g1);
         });
 
         const parsedGuests = guests.map(g => ({
             ...g,
             Photos: g.Photos ? JSON.parse(g.Photos) : [],
-            RelatedGuestIDs: relMap[g.GuestID] || []
+            RelatedGuestIDs: relMap[Number(g.GuestID)] || []
         }));
         // Sort by FirstName and LastName (Turkish locale aware)
         parsedGuests.sort((a, b) => {
@@ -1524,8 +1528,11 @@ app.post('/api/guests', (req, res) => {
             if (RelatedGuestIDs && Array.isArray(RelatedGuestIDs)) {
                 const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
                 for (const rId of RelatedGuestIDs) {
-                    insertRel.run(guestId, Number(rId));
-                    insertRel.run(Number(rId), guestId); // bidirectional
+                    const targetId = Number(rId);
+                    if (!isNaN(targetId) && targetId > 0 && targetId !== Number(guestId)) {
+                        insertRel.run(Number(guestId), targetId);
+                        insertRel.run(targetId, Number(guestId)); // bidirectional
+                    }
                 }
             }
             return { guestId, finalProfilePic, finalPhotos };
@@ -1541,7 +1548,7 @@ app.post('/api/guests', (req, res) => {
 app.put('/api/guests/:id', (req, res) => {
     try {
         const { FirstName, LastName, PhoneNumber, InstagramLink, Notes, City, CityTR, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, RelatedGuestIDs, IsMusician } = req.body;
-        const guestId = req.params.id;
+        const guestId = Number(req.params.id);
         if (!FirstName || !FirstName.trim() || !LastName || !LastName.trim()) {
             return res.status(400).json({ error: 'Ad ve soyad alanları boş bırakılamaz!' });
         }
@@ -1593,21 +1600,63 @@ app.put('/api/guests/:id', (req, res) => {
                 guestId
             );
 
-            // Clean old relationships
-            db.prepare('DELETE FROM Guest_Relationships WHERE GuestID = ? OR RelatedGuestID = ?').run(guestId, guestId);
+            // Güvenli Farksal (Differential) İlişki Güncellemesi:
+            // SADECE ve SADECE RelatedGuestIDs dizisi açıkça gönderildiyse ilişkiler üzerinde işlem yapılır.
+            // Undefined gelirse mevcuttaki ilişkiler KESİNLİKLE silinmez ve aynen korunur.
+            if (RelatedGuestIDs !== undefined && Array.isArray(RelatedGuestIDs)) {
+                const targetRelIds = RelatedGuestIDs.map(Number).filter(id => !isNaN(id) && id > 0 && id !== guestId);
+                const currentRelRows = db.prepare('SELECT RelatedGuestID FROM Guest_Relationships WHERE GuestID = ?').all(guestId);
+                const currentRelIds = currentRelRows.map(r => Number(r.RelatedGuestID));
 
-            // Insert new ones
-            if (RelatedGuestIDs && Array.isArray(RelatedGuestIDs)) {
-                const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
-                for (const rId of RelatedGuestIDs) {
-                    insertRel.run(Number(guestId), Number(rId));
-                    insertRel.run(Number(rId), Number(guestId)); // bidirectional
+                const toRemove = currentRelIds.filter(rId => !targetRelIds.includes(rId));
+                const toAdd = targetRelIds.filter(rId => !currentRelIds.includes(rId));
+
+                // Sadece kaldırılan spesifik ilişkileri sil (toptan silme ASLA yapılmaz)
+                if (toRemove.length > 0) {
+                    const delRel = db.prepare('DELETE FROM Guest_Relationships WHERE (GuestID = ? AND RelatedGuestID = ?) OR (GuestID = ? AND RelatedGuestID = ?)');
+                    for (const rId of toRemove) {
+                        delRel.run(guestId, rId, rId, guestId);
+                    }
+                }
+
+                // Sadece yeni eklenen ilişkileri iki yönlü ekle
+                if (toAdd.length > 0) {
+                    const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
+                    for (const rId of toAdd) {
+                        insertRel.run(guestId, rId);
+                        insertRel.run(rId, guestId);
+                    }
                 }
             }
         });
 
         updateGuestTransaction();
         res.json({ message: 'Guest updated', ProfilePicture: finalProfilePic, Photos: finalPhotos });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Toplu Misafir İlişkilendirme (Sahne masaları vb. için güvenli ve atomik bağlantı)
+app.post('/api/guests/bulk-relate', (req, res) => {
+    try {
+        const { guestIds } = req.body;
+        if (!guestIds || !Array.isArray(guestIds) || guestIds.length < 2) {
+            return res.status(400).json({ error: 'İlişkilendirmek için en az 2 misafir ID gereklidir.' });
+        }
+        const numIds = guestIds.map(Number).filter(id => !isNaN(id) && id > 0);
+        const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
+        
+        db.transaction(() => {
+            for (let i = 0; i < numIds.length; i++) {
+                for (let j = i + 1; j < numIds.length; j++) {
+                    insertRel.run(numIds[i], numIds[j]);
+                    insertRel.run(numIds[j], numIds[i]);
+                }
+            }
+        })();
+        
+        res.json({ message: 'Misafirler başarıyla birbiriyle kalıcı olarak ilişkilendirildi.', count: numIds.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

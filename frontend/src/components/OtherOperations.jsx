@@ -195,7 +195,8 @@ export default function OtherOperations() {
           BirthDateDay:   guest.BirthDateDay,
           BirthDateMonth: guest.BirthDateMonth,
           BirthDateYear:  guest.BirthDateYear,
-          Photos:         updatedPhotos
+          Photos:         updatedPhotos,
+          RelatedGuestIDs: guest.RelatedGuestIDs || []
         }).then(() => {
           // Store'u güncelle — Firestore okuma YOK
           store.updateGuest(guestId, { ...guest, Photos: updatedPhotos });

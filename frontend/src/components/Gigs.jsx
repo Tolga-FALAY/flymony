@@ -644,31 +644,7 @@ export default function Gigs() {
     }
 
     try {
-      // Loop over each selected guest and update their relationships with all others
-      for (const currentId of selectedIds) {
-        const guestObj = guests.find(g => g.GuestID === currentId);
-        if (!guestObj) continue;
-        const otherIds = selectedIds.filter(id => id !== currentId);
-        const existingRels = guestObj.RelatedGuestIDs || [];
-        // Merge without duplicates
-        const newRels = Array.from(new Set([...existingRels, ...otherIds]));
-        
-        await api.updateGuest(currentId, {
-          FirstName: guestObj.FirstName,
-          LastName: guestObj.LastName,
-          PhoneNumber: guestObj.PhoneNumber,
-          InstagramLink: guestObj.InstagramLink,
-          Notes: guestObj.Notes,
-          ProfilePicture: guestObj.ProfilePicture,
-          BirthDateDay: guestObj.BirthDateDay,
-          BirthDateMonth: guestObj.BirthDateMonth,
-          BirthDateYear: guestObj.BirthDateYear,
-          Photos: guestObj.Photos,
-          RelatedGuestIDs: newRels,
-          IsMusician: guestObj.IsMusician
-        });
-      }
-      
+      await api.bulkRelateGuests(selectedIds);
       // Reload core data from API to refresh global store relationships
       await store.load(true);
       alert('Seçilen misafirler birbiriyle kalıcı olarak ilişkilendirildi.');
