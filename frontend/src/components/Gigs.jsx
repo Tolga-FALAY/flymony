@@ -19,6 +19,9 @@ export default function Gigs() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [noteModalGig, setNoteModalGig] = useState(null);
+  const [linksModalGig, setLinksModalGig] = useState(null);
+  const [photosModalGig, setPhotosModalGig] = useState(null);
+  const [previewPhotoIndex, setPreviewPhotoIndex] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [fullscreenGuestProfilePic, setFullscreenGuestProfilePic] = useState(null);
 
@@ -1305,7 +1308,7 @@ export default function Gigs() {
               <th onClick={() => handleSort('GuestCount')} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none' }}>
                 MİSAFİRLERİM {sortConfig.key === 'GuestCount' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '↕'}
               </th>
-              <th style={{ width: '300px', textAlign: 'right' }}>İşlemler</th>
+              <th style={{ width: '240px', textAlign: 'right' }}>İşlemler</th>
             </tr>
           </thead>
           <tbody>
@@ -1316,6 +1319,19 @@ export default function Gigs() {
               const guestsCount = gig.Guests ? gig.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
               const registeredGuestsCount = gig.Guests ? gig.Guests.filter(g => !Number(g.IsAnonymous)).reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
               const unregisteredGuestsCount = guestsCount - registeredGuestsCount;
+              const photosList = Array.isArray(gig.Photos) 
+                ? gig.Photos 
+                : (typeof gig.Photos === 'string' && gig.Photos.trim().length > 0 && gig.Photos !== '[]' 
+                    ? (() => { try { return JSON.parse(gig.Photos); } catch(e) { return [gig.Photos]; } })() 
+                    : []);
+              const photoCount = photosList.length;
+
+              const videosList = Array.isArray(gig.Videos) 
+                ? gig.Videos 
+                : (typeof gig.Videos === 'string' && gig.Videos.trim().length > 0 && gig.Videos !== '[]' 
+                    ? (() => { try { return JSON.parse(gig.Videos); } catch(e) { return [gig.Videos]; } })() 
+                    : []);
+              const linkCount = videosList.length;
 
               return (
                 <tr key={gig.GigID}>
@@ -1328,20 +1344,98 @@ export default function Gigs() {
                     {guestsCount > 0 ? <><span style={{ fontWeight: 'bold' }}>{guestsCount}</span> ({registeredGuestsCount}/{unregisteredGuestsCount})</> : '0'}
                   </td>
                   <td data-label="İşlemler">
-                    <div className="action-btns">
+                    <div className="action-btns gig-action-btns">
+                      {/* Linkler İkonu */}
+                      <button 
+                        type="button"
+                        className="btn btn-sm gig-icon-btn" 
+                        style={{ 
+                          background: 'rgba(14, 165, 233, 0.12)', 
+                          color: '#0284c7', 
+                          border: '1px solid rgba(14, 165, 233, 0.4)' 
+                        }}
+                        onClick={() => setLinksModalGig(gig)}
+                        title={`Sahne Linkleri (${linkCount})`}
+                      >
+                        <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>🔗</span>
+                        <span 
+                          className="gig-icon-badge" 
+                          style={{ background: linkCount > 0 ? '#0284c7' : '#94a3b8' }}
+                        >
+                          {linkCount}
+                        </span>
+                      </button>
+
+                      {/* Fotoğraflar İkonu */}
+                      <button 
+                        type="button"
+                        className="btn btn-sm gig-icon-btn" 
+                        style={{ 
+                          background: 'rgba(168, 85, 247, 0.12)', 
+                          color: '#9333ea', 
+                          border: '1px solid rgba(168, 85, 247, 0.4)' 
+                        }}
+                        onClick={() => {
+                          setPhotosModalGig(gig);
+                          setPreviewPhotoIndex(photoCount > 0 ? 0 : null);
+                        }}
+                        title={`Sahne Fotoğrafları (${photoCount})`}
+                      >
+                        <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>📷</span>
+                        <span 
+                          className="gig-icon-badge" 
+                          style={{ background: photoCount > 0 ? '#9333ea' : '#94a3b8' }}
+                        >
+                          {photoCount}
+                        </span>
+                      </button>
+
+                      {/* Notlar İkonu */}
                       {String(gig.Notes || '').trim().length > 0 && (
                         <button 
-                          className="btn btn-sm" 
-                          style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.35)', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', marginRight: '0.2rem' }}
+                          type="button"
+                          className="btn btn-sm gig-icon-btn" 
+                          style={{ 
+                            background: 'rgba(245, 158, 11, 0.15)', 
+                            color: '#d97706', 
+                            border: '1px solid rgba(245, 158, 11, 0.35)' 
+                          }}
                           onClick={() => setNoteModalGig(gig)}
                           title={gig.Notes}
                         >
-                          📝
+                          <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>📝</span>
                         </button>
                       )}
-                      <button className="btn btn-sm btn-outline btn-added-style" onClick={() => startLiveMode(gig)}>Sahnem 🎤</button>
-                      <button className="btn btn-sm btn-outline" onClick={() => handleEdit(gig)}>Düzenle</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(gig.GigID)}>Sil</button>
+
+                      {/* Sahnem Butonu (Yeşil, sadece mikrofon) */}
+                      <button 
+                        type="button"
+                        className="btn btn-sm btn-outline btn-added-style gig-icon-btn" 
+                        onClick={() => startLiveMode(gig)}
+                        title="Sahnem (Canlı Mod)"
+                      >
+                        <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>🎤</span>
+                      </button>
+
+                      {/* Düzenle Butonu (Kalem) */}
+                      <button 
+                        type="button"
+                        className="btn btn-sm btn-outline gig-icon-btn" 
+                        onClick={() => handleEdit(gig)}
+                        title="Düzenle"
+                      >
+                        <span style={{ fontSize: '1rem', lineHeight: 1 }}>✏️</span>
+                      </button>
+
+                      {/* Sil Butonu (Çöp Kutusu) */}
+                      <button 
+                        type="button"
+                        className="btn btn-sm btn-danger gig-icon-btn" 
+                        onClick={() => handleDelete(gig.GigID)}
+                        title="Sil"
+                      >
+                        <span style={{ fontSize: '1rem', lineHeight: 1 }}>🗑️</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -2835,6 +2929,202 @@ export default function Gigs() {
             </div>
             <div className="modal-actions" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
               <button type="button" className="btn btn-primary btn-sm" onClick={() => setNoteModalGig(null)}>Kapat</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* GIG LINKS POPUP MODAL */}
+      {linksModalGig && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setLinksModalGig(null)}>
+          <div className="modal-content" style={{ maxWidth: '520px', width: '92%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>🔗</span>
+                <span>{linksModalGig.VenueName} ({new Date(linksModalGig.GigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}) - Sahne Linkleri</span>
+              </h2>
+              <button className="close-btn" onClick={() => setLinksModalGig(null)}>&times;</button>
+            </div>
+
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.25rem 0' }}>
+              {(() => {
+                const links = Array.isArray(linksModalGig.Videos) 
+                  ? linksModalGig.Videos 
+                  : (typeof linksModalGig.Videos === 'string' && linksModalGig.Videos.trim().length > 0 && linksModalGig.Videos !== '[]'
+                      ? (() => { try { return JSON.parse(linksModalGig.Videos); } catch(e) { return [linksModalGig.Videos]; } })()
+                      : []);
+                if (links.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
+                      <div style={{ fontSize: '2.2rem', marginBottom: '0.5rem' }}>🔗</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Bu sahne için kayıtlı video veya web linki bulunmuyor.</div>
+                      <div style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Düzenle ekranından YouTube, Instagram veya video bağlantıları ekleyebilirsiniz.</div>
+                    </div>
+                  );
+                }
+                return links.map((url, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.75rem 1rem', background: 'var(--canvas)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: '1.25rem' }}>🎬</span>
+                      <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'underline' }} title={url}>
+                        {url}
+                      </a>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                      <button 
+                        type="button" 
+                        className="btn btn-sm btn-outline" 
+                        style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(url);
+                          alert("Link panoya kopyalandı!");
+                        }}
+                        title="Linki Kopyala"
+                      >
+                        📋 Kopyala
+                      </button>
+                      <a 
+                        href={url} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="btn btn-sm btn-primary"
+                        style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                      >
+                        ↗ Aç
+                      </a>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm" 
+                onClick={() => {
+                  const g = linksModalGig;
+                  setLinksModalGig(null);
+                  handleEdit(g);
+                }}
+              >
+                ✏️ Sahneyi Düzenle
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setLinksModalGig(null)}>
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* GIG PHOTOS GALLERY POPUP MODAL */}
+      {photosModalGig && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setPhotosModalGig(null); setPreviewPhotoIndex(null); }}>
+          <div className="modal-content" style={{ maxWidth: '720px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>📷</span>
+                <span>{photosModalGig.VenueName} ({new Date(photosModalGig.GigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}) - Fotoğraflar</span>
+              </h2>
+              <button className="close-btn" onClick={() => { setPhotosModalGig(null); setPreviewPhotoIndex(null); }}>&times;</button>
+            </div>
+
+            {(() => {
+              const photos = Array.isArray(photosModalGig.Photos) 
+                ? photosModalGig.Photos 
+                : (typeof photosModalGig.Photos === 'string' && photosModalGig.Photos.trim().length > 0 && photosModalGig.Photos !== '[]'
+                    ? (() => { try { return JSON.parse(photosModalGig.Photos); } catch(e) { return [photosModalGig.Photos]; } })()
+                    : []);
+              if (photos.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📷</div>
+                    <div style={{ fontWeight: 600, fontSize: '1rem' }}>Bu sahne için kayıtlı fotoğraf bulunmuyor.</div>
+                    <div style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Düzenle ekranından sahneye dair fotoğraflar yükleyebilirsiniz.</div>
+                  </div>
+                );
+              }
+
+              const activeIdx = previewPhotoIndex !== null && photos[previewPhotoIndex] ? previewPhotoIndex : 0;
+              const activePhoto = photos[activeIdx];
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ position: 'relative', background: '#0f172a', borderRadius: '12px', padding: '0.5rem', textAlign: 'center', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '240px' }}>
+                    <img 
+                      src={getUploadsUrl(activePhoto)} 
+                      alt={`Sahne Fotoğrafı ${activeIdx + 1}`} 
+                      style={{ maxHeight: '50vh', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} 
+                    />
+                    {photos.length > 1 && (
+                      <>
+                        <button 
+                          type="button"
+                          onClick={() => setPreviewPhotoIndex(activeIdx > 0 ? activeIdx - 1 : photos.length - 1)}
+                          style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                        >
+                          ❮
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setPreviewPhotoIndex(activeIdx < photos.length - 1 ? activeIdx + 1 : 0)}
+                          style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                        >
+                          ❯
+                        </button>
+                      </>
+                    )}
+                    <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.65)', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: 600 }}>
+                      {activeIdx + 1} / {photos.length}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(85px, 1fr))', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', padding: '2px' }}>
+                    {photos.map((photo, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => setPreviewPhotoIndex(idx)}
+                        style={{ 
+                          aspectRatio: '1', 
+                          borderRadius: '8px', 
+                          overflow: 'hidden', 
+                          cursor: 'pointer', 
+                          border: activeIdx === idx ? '3px solid var(--primary)' : '1px solid var(--border)',
+                          boxShadow: activeIdx === idx ? '0 0 0 2px rgba(14, 165, 233, 0.4)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <img 
+                          src={getUploadsUrl(photo)} 
+                          alt={`Küçük Resim ${idx + 1}`} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="modal-actions" style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm" 
+                onClick={() => {
+                  const g = photosModalGig;
+                  setPhotosModalGig(null);
+                  setPreviewPhotoIndex(null);
+                  handleEdit(g);
+                }}
+              >
+                ✏️ Sahneyi Düzenle
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => { setPhotosModalGig(null); setPreviewPhotoIndex(null); }}>
+                Kapat
+              </button>
             </div>
           </div>
         </div>,

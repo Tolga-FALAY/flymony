@@ -3905,6 +3905,8 @@ window.addGigVideoLink = addGigVideoLink;
 window.removeGigVideo = removeGigVideo;
 window.startLiveGig = startLiveGig;
 window.closeLiveGig = closeLiveGig;
+window.openGigLinksModal = openGigLinksModal;
+window.openGigPhotosModal = openGigPhotosModal;
 window.adjustLiveFontSize = adjustLiveFontSize;
 window.toggleLiveTheme = toggleLiveTheme;
 window.goToLivePrevSong = goToLivePrevSong;
@@ -3976,9 +3978,23 @@ function renderGigs() {
     const playedCount = gig.songs ? gig.songs.filter(s => s.isPlayed).length : 0;
     const guestsCount = gig.guests ? gig.guests.reduce((sum, g) => sum + (Number(g.guestCount || g.GuestCount) || 1), 0) : 0;
 
+    const photosArr = Array.isArray(gig.photos) 
+      ? gig.photos 
+      : (typeof gig.photos === 'string' && gig.photos.trim().length > 0 && gig.photos !== '[]' 
+          ? (() => { try { return JSON.parse(gig.photos); } catch(e) { return [gig.photos]; } })() 
+          : []);
+    const photoCount = photosArr.length;
+
+    const videosArr = Array.isArray(gig.videos) 
+      ? gig.videos 
+      : (typeof gig.videos === 'string' && gig.videos.trim().length > 0 && gig.videos !== '[]' 
+          ? (() => { try { return JSON.parse(gig.videos); } catch(e) { return [gig.videos]; } })() 
+          : []);
+    const linkCount = videosArr.length;
+
     const escapedGigNotes = String(gig.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const notesBtnHtml = String(gig.notes || '').trim().length > 0
-      ? `<button class="btn btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.35rem 0.55rem; border-radius: 6px; cursor: pointer; margin-right: 0.2rem;" onclick="openGigNoteModal(${gig.id})" title="${escapedGigNotes}">📝</button>`
+      ? `<button type="button" class="btn btn-sm gig-icon-btn" style="background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.35);" onclick="openGigNoteModal(${gig.id})" title="${escapedGigNotes}"><span style="font-size: 1.05rem; line-height: 1;">📝</span></button>`
       : '';
 
     tr.innerHTML = `
@@ -3987,11 +4003,25 @@ function renderGigs() {
       <td data-label="Şarkı Sayısı" style="text-align: center;"><span style="font-weight: 600;">${playedCount}</span> / ${songsCount}</td>
       <td data-label="Misafir Sayısı" style="text-align: center;">${guestsCount}</td>
       <td data-label="İşlemler">
-        <div class="action-btns">
+        <div class="action-btns gig-action-btns">
+          <button type="button" class="btn btn-sm gig-icon-btn" style="background: rgba(14, 165, 233, 0.12); color: #0284c7; border: 1px solid rgba(14, 165, 233, 0.4);" onclick="openGigLinksModal(${gig.id})" title="Sahne Linkleri (${linkCount})">
+            <span style="font-size: 1.05rem; line-height: 1;">🔗</span>
+            <span class="gig-icon-badge" style="background: ${linkCount > 0 ? '#0284c7' : '#94a3b8'};">${linkCount}</span>
+          </button>
+          <button type="button" class="btn btn-sm gig-icon-btn" style="background: rgba(168, 85, 247, 0.12); color: #9333ea; border: 1px solid rgba(168, 85, 247, 0.4);" onclick="openGigPhotosModal(${gig.id})" title="Sahne Fotoğrafları (${photoCount})">
+            <span style="font-size: 1.05rem; line-height: 1;">📷</span>
+            <span class="gig-icon-badge" style="background: ${photoCount > 0 ? '#9333ea' : '#94a3b8'};">${photoCount}</span>
+          </button>
           ${notesBtnHtml}
-          <button class="btn btn-sm btn-outline btn-added-style" onclick="startLiveGig(${gig.id})">Sahnem 🎤</button>
-          <button class="btn btn-sm btn-outline" onclick="openGigModal(${gig.id})">Düzenle</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteGig(${gig.id})">Sil</button>
+          <button type="button" class="btn btn-sm btn-outline btn-added-style gig-icon-btn" onclick="startLiveGig(${gig.id})" title="Sahnem (Canlı Mod)">
+            <span style="font-size: 1.1rem; line-height: 1;">🎤</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline gig-icon-btn" onclick="openGigModal(${gig.id})" title="Düzenle">
+            <span style="font-size: 1rem; line-height: 1;">✏️</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-danger gig-icon-btn" onclick="deleteGig(${gig.id})" title="Sil">
+            <span style="font-size: 1rem; line-height: 1;">🗑️</span>
+          </button>
         </div>
       </td>
     `;
@@ -4017,6 +4047,183 @@ function openGigNoteModal(gigId) {
   openModal('gigNoteModal');
 }
 window.openGigNoteModal = openGigNoteModal;
+
+function openGigLinksModal(gigId) {
+  const gig = DB.gigs.find(g => Number(g.id) === Number(gigId));
+  if (!gig) return;
+
+  const titleEl = document.getElementById('gigLinksModalTitle');
+  const bodyEl = document.getElementById('gigLinksModalBody');
+  const editBtn = document.getElementById('gigLinksEditBtn');
+  const formattedDate = new Date(gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  if (titleEl) {
+    titleEl.innerHTML = `<span>🔗</span> <span>${gig.venueName} (${formattedDate}) - Sahne Linkleri</span>`;
+  }
+
+  const videosArr = Array.isArray(gig.videos) 
+    ? gig.videos 
+    : (typeof gig.videos === 'string' && gig.videos.trim().length > 0 && gig.videos !== '[]' 
+        ? (() => { try { return JSON.parse(gig.videos); } catch(e) { return [gig.videos]; } })() 
+        : []);
+
+  if (bodyEl) {
+    if (videosArr.length === 0) {
+      bodyEl.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔗</div>
+          <div style="font-weight: 600; font-size: 0.95rem;">Bu sahne için kayıtlı video veya web linki bulunmuyor.</div>
+          <div style="font-size: 0.82rem; margin-top: 0.25rem;">Düzenle ekranından YouTube, Instagram veya video bağlantıları ekleyebilirsiniz.</div>
+        </div>
+      `;
+    } else {
+      bodyEl.innerHTML = videosArr.map((url) => `
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; background: var(--canvas, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 10px;">
+          <div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0; flex: 1;">
+            <span style="font-size: 1.25rem;">🎬</span>
+            <a href="${url}" target="_blank" rel="noreferrer" style="color: var(--primary, #0ea5e9); font-weight: 600; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline;" title="${url}">
+              ${url}
+            </a>
+          </div>
+          <div style="display: flex; gap: 0.4rem; flex-shrink: 0;">
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 0.78rem; padding: 0.3rem 0.6rem;" onclick="copyVanillaGigLink('${url.replace(/'/g, "\\'")}')" title="Linki Kopyala">
+              📋 Kopyala
+            </button>
+            <a href="${url}" target="_blank" rel="noreferrer" class="btn btn-sm btn-primary" style="font-size: 0.78rem; padding: 0.3rem 0.6rem; text-decoration: none; display: inline-flex; align-items: center;">
+              ↗ Aç
+            </a>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  if (editBtn) {
+    editBtn.onclick = () => {
+      closeModal('gigLinksModal');
+      openGigModal(gig.id);
+    };
+  }
+
+  openModal('gigLinksModal');
+}
+window.openGigLinksModal = openGigLinksModal;
+
+function copyVanillaGigLink(url) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      alert("Link panoya kopyalandı!");
+    }).catch(() => {
+      prompt("Linki kopyalayın:", url);
+    });
+  } else {
+    prompt("Linki kopyalayın:", url);
+  }
+}
+window.copyVanillaGigLink = copyVanillaGigLink;
+
+let currentPhotosModalGigId = null;
+let currentPhotosModalIndex = 0;
+
+function openGigPhotosModal(gigId, initialIndex = 0) {
+  const gig = DB.gigs.find(g => Number(g.id) === Number(gigId));
+  if (!gig) return;
+
+  currentPhotosModalGigId = gig.id;
+  currentPhotosModalIndex = initialIndex;
+
+  const titleEl = document.getElementById('gigPhotosModalTitle');
+  const bodyEl = document.getElementById('gigPhotosModalBody');
+  const editBtn = document.getElementById('gigPhotosEditBtn');
+  const formattedDate = new Date(gig.gigDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const photosArr = Array.isArray(gig.photos) 
+    ? gig.photos 
+    : (typeof gig.photos === 'string' && gig.photos.trim().length > 0 && gig.photos !== '[]' 
+        ? (() => { try { return JSON.parse(gig.photos); } catch(e) { return [gig.photos]; } })() 
+        : []);
+
+  if (titleEl) {
+    titleEl.innerHTML = `<span>📷</span> <span>${gig.venueName} (${formattedDate}) - Fotoğraflar (${photosArr.length})</span>`;
+  }
+
+  if (bodyEl) {
+    if (photosArr.length === 0) {
+      bodyEl.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
+          <div style="font-weight: 600; font-size: 1rem;">Bu sahne için kayıtlı fotoğraf bulunmuyor.</div>
+          <div style="font-size: 0.82rem; margin-top: 0.25rem;">Düzenle ekranından sahneye dair fotoğraflar yükleyebilirsiniz.</div>
+        </div>
+      `;
+    } else {
+      const activeIdx = Math.min(Math.max(0, currentPhotosModalIndex), photosArr.length - 1);
+      const activePhoto = photosArr[activeIdx];
+      const activePhotoSrc = activePhoto.startsWith('data:') || activePhoto.startsWith('/uploads/') ? activePhoto : `${UPLOADS_BASE_URL}${activePhoto}`;
+
+      let navButtons = '';
+      if (photosArr.length > 1) {
+        navButtons = `
+          <button type="button" onclick="navigateVanillaGigPhoto(-1)" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; z-index: 2;">❮</button>
+          <button type="button" onclick="navigateVanillaGigPhoto(1)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; z-index: 2;">❯</button>
+        `;
+      }
+
+      const thumbnailsHtml = photosArr.map((photo, idx) => {
+        const thumbSrc = photo.startsWith('data:') || photo.startsWith('/uploads/') ? photo : `${UPLOADS_BASE_URL}${photo}`;
+        const isSelected = idx === activeIdx;
+        return `
+          <div onclick="selectVanillaGigPhoto(${idx})" style="aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; border: ${isSelected ? '3px solid var(--primary, #0ea5e9)' : '1px solid var(--border, #cbd5e1)'}; box-shadow: ${isSelected ? '0 0 0 2px rgba(14, 165, 233, 0.4)' : 'none'}; transition: all 0.15s ease;">
+            <img src="${thumbSrc}" alt="Fotoğraf ${idx + 1}" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+        `;
+      }).join('');
+
+      bodyEl.innerHTML = `
+        <div style="position: relative; background: #0f172a; border-radius: 12px; padding: 0.5rem; text-align: center; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 240px;">
+          <img src="${activePhotoSrc}" alt="Sahne Fotoğrafı" style="max-height: 50vh; max-width: 100%; object-fit: contain; border-radius: 8px; cursor: pointer;" onclick="openVanillaFullscreenImage('${activePhotoSrc.replace(/'/g, "\\'")}')" title="Tam Ekran Görüntüle">
+          ${navButtons}
+          <div style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.65); color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 0.82rem; font-weight: 600;">
+            ${activeIdx + 1} / ${photosArr.length}
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 0.5rem; max-height: 180px; overflow-y: auto; padding: 2px;">
+          ${thumbnailsHtml}
+        </div>
+      `;
+    }
+  }
+
+  if (editBtn) {
+    editBtn.onclick = () => {
+      closeModal('gigPhotosModal');
+      openGigModal(gig.id);
+    };
+  }
+
+  openModal('gigPhotosModal');
+}
+window.openGigPhotosModal = openGigPhotosModal;
+
+function selectVanillaGigPhoto(idx) {
+  if (currentPhotosModalGigId !== null) {
+    openGigPhotosModal(currentPhotosModalGigId, idx);
+  }
+}
+window.selectVanillaGigPhoto = selectVanillaGigPhoto;
+
+function navigateVanillaGigPhoto(step) {
+  if (currentPhotosModalGigId === null) return;
+  const gig = DB.gigs.find(g => Number(g.id) === Number(currentPhotosModalGigId));
+  if (!gig) return;
+  const photosArr = Array.isArray(gig.photos) ? gig.photos : [];
+  if (photosArr.length <= 1) return;
+  let newIdx = currentPhotosModalIndex + step;
+  if (newIdx < 0) newIdx = photosArr.length - 1;
+  else if (newIdx >= photosArr.length) newIdx = 0;
+  openGigPhotosModal(currentPhotosModalGigId, newIdx);
+}
+window.navigateVanillaGigPhoto = navigateVanillaGigPhoto;
 
 function handleGigFilterChange() {
   gigFilterSearch = document.getElementById('filterGigSearch').value;

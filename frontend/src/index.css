@@ -479,6 +479,62 @@ tbody tr:hover td {
   justify-content: flex-end;
 }
 
+.gig-action-btns {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem !important;
+  flex-wrap: nowrap;
+}
+
+.gig-icon-btn {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 6px !important;
+  font-size: 1.05rem !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.12s ease, box-shadow 0.15s ease !important;
+  user-select: none !important;
+}
+
+.gig-icon-btn:hover {
+  transform: translateY(-1px);
+}
+
+.gig-icon-btn:active {
+  transform: translateY(0);
+}
+
+.gig-icon-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border-radius: 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  border: 1.5px solid #ffffff;
+  pointer-events: none;
+  font-family: inherit;
+}
+
 /* ==========================================================================
    MODALLAR
    ========================================================================== */
