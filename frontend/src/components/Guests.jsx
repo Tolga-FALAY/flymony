@@ -78,6 +78,7 @@ export default function Guests() {
   const [contactGuest, setContactGuest] = useState(null);
   const [gigsModalGuest, setGigsModalGuest] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [fullscreenGalleryIndex, setFullscreenGalleryIndex] = useState(null);
   const [noteModalGuest, setNoteModalGuest] = useState(null);
   const [showTRCity, setShowTRCity] = useState(false);
 
@@ -200,6 +201,26 @@ export default function Guests() {
     };
   }, [isModalOpen, activePasteSection]);
 
+  // Keyboard navigation for fullscreen guest gallery
+  useEffect(() => {
+    if (fullscreenGalleryIndex === null) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setFullscreenGalleryIndex(null);
+      } else if (e.key === 'ArrowLeft') {
+        if (formData.Photos && formData.Photos.length > 1) {
+          setFullscreenGalleryIndex(prev => (prev > 0 ? prev - 1 : formData.Photos.length - 1));
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (formData.Photos && formData.Photos.length > 1) {
+          setFullscreenGalleryIndex(prev => (prev < formData.Photos.length - 1 ? prev + 1 : 0));
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreenGalleryIndex, formData.Photos]);
+
   const openModal = (guest = null) => {
     setRelationSearch('');
     setSelectedRelationId('');
@@ -271,6 +292,7 @@ export default function Guests() {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setFullscreenGalleryIndex(null);
     setEditingGuest(null);
     setRelationSearch('');
     setSelectedRelationId('');
@@ -1298,7 +1320,7 @@ export default function Guests() {
                         src={photo} 
                         alt={`Galeri Önizleme ${index + 1}`} 
                         style={{ cursor: 'pointer' }}
-                        onClick={() => setFullscreenImage(photo)}
+                        onClick={() => setFullscreenGalleryIndex(index)}
                       />
                       <button type="button" className="gallery-preview-delete-badge" onClick={() => removeGalleryPhoto(index)} title="Fotoğrafı Sil">&times;</button>
                     </div>
@@ -1674,6 +1696,107 @@ export default function Guests() {
           </div>
         );
       })()}
+      {/* FULLSCREEN GUEST GALLERY IMAGE MODAL WITH 1/3 EDGE TAP & SWIPE */}
+      {fullscreenGalleryIndex !== null && formData.Photos && formData.Photos[fullscreenGalleryIndex] && createPortal(
+        <div 
+          className="modal-overlay" 
+          style={{ 
+            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+            zIndex: 2500, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(8px)'
+          }}
+          onClick={() => setFullscreenGalleryIndex(null)}
+        >
+          <div 
+            style={{ 
+              position: 'relative', 
+              maxWidth: '90vw', 
+              maxHeight: '90vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              window._guestGalTouchX = e.targetTouches[0].clientX;
+            }}
+            onTouchEnd={(e) => {
+              if (window._guestGalTouchX == null) return;
+              const diffX = window._guestGalTouchX - e.changedTouches[0].clientX;
+              if (Math.abs(diffX) > 40 && formData.Photos.length > 1) {
+                if (diffX > 0) setFullscreenGalleryIndex(prev => (prev < formData.Photos.length - 1 ? prev + 1 : 0));
+                else setFullscreenGalleryIndex(prev => (prev > 0 ? prev - 1 : formData.Photos.length - 1));
+              }
+              window._guestGalTouchX = null;
+            }}
+          >
+            <button 
+              type="button"
+              className="close-btn"
+              onClick={() => setFullscreenGalleryIndex(null)}
+              style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '0px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: 'none',
+                color: '#fff',
+                fontSize: '1.75rem',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1
+              }}
+            >
+              &times;
+            </button>
+            
+            <div 
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: formData.Photos.length > 1 ? 'pointer' : 'default' }}
+              onClick={(e) => {
+                if (!formData.Photos || formData.Photos.length <= 1) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const ratio = (e.clientX - rect.left) / rect.width;
+                if (ratio < 0.33) setFullscreenGalleryIndex(prev => (prev > 0 ? prev - 1 : formData.Photos.length - 1));
+                else if (ratio > 0.66) setFullscreenGalleryIndex(prev => (prev < formData.Photos.length - 1 ? prev + 1 : 0));
+              }}
+            >
+              <img 
+                src={formData.Photos[fullscreenGalleryIndex]} 
+                alt={`Tam Ekran Görünüm ${fullscreenGalleryIndex + 1}`} 
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '85vh', 
+                  objectFit: 'contain',
+                  borderRadius: '12px',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none'
+                }} 
+                draggable="false"
+              />
+              
+              {formData.Photos.length > 1 && (
+                <>
+                  <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontSize: '1.2rem' }}>❮</div>
+                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontSize: '1.2rem' }}>❯</div>
+                  <div style={{ position: 'absolute', bottom: '-25px', color: 'white', fontSize: '0.9rem', pointerEvents: 'none', left: '50%', transform: 'translateX(-50%)' }}>{fullscreenGalleryIndex + 1} / {formData.Photos.length}</div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {fullscreenImage && createPortal(
         <div 
           className="modal-overlay" 

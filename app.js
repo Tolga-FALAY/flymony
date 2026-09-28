@@ -1223,7 +1223,7 @@ function renderVanillaGalleryPreviews() {
   if (currentPhotos.length > 0) {
     container.innerHTML = currentPhotos.map((photo, index) => `
       <div class="gallery-preview-item">
-        <img src="${photo}" alt="Galeri Görsel ${index + 1}" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${photo}')">
+        <img src="${photo}" alt="Galeri Görsel ${index + 1}" style="cursor: pointer;" onclick="viewVanillaGalleryFullscreen(${index})">
         <button type="button" class="gallery-preview-delete-badge" onclick="removeVanillaGalleryPhoto(${index})" title="Sil">&times;</button>
       </div>
     `).join('');
@@ -4347,23 +4347,131 @@ function updateVanillaGigDateDisplay() {
 }
 window.updateVanillaGigDateDisplay = updateVanillaGigDateDisplay;
 
+let vanillaGalleryPhotos = [];
+let vanillaGalleryIndex = 0;
+let vanillaGalleryTouchX = null;
+
+function viewVanillaGalleryFullscreen(index) {
+  const photosInput = document.getElementById('guestPhotos');
+  let currentPhotos = [];
+  try {
+    currentPhotos = JSON.parse(photosInput.value || "[]");
+  } catch(e) {
+    currentPhotos = [];
+  }
+  if (!currentPhotos || currentPhotos.length === 0) return;
+
+  vanillaGalleryPhotos = currentPhotos;
+  vanillaGalleryIndex = Math.max(0, Math.min(index, currentPhotos.length - 1));
+  showVanillaFullscreenModal();
+}
+window.viewVanillaGalleryFullscreen = viewVanillaGalleryFullscreen;
+
+function viewVanillaFullscreenImage(src) {
+  if (!src) return;
+  vanillaGalleryPhotos = [src];
+  vanillaGalleryIndex = 0;
+  showVanillaFullscreenModal();
+}
+window.viewVanillaFullscreenImage = viewVanillaFullscreenImage;
+
 function openVanillaFullscreenImage(src) {
+  viewVanillaFullscreenImage(src);
+}
+window.openVanillaFullscreenImage = openVanillaFullscreenImage;
+
+function showVanillaFullscreenModal() {
   const modal = document.getElementById('vanillaImageFullscreenModal');
   const img = document.getElementById('vanillaFullscreenImageEl');
-  if (modal && img) {
-    img.src = src;
-    modal.style.display = 'flex';
+  const prevBtn = document.getElementById('vanillaFullscreenPrevBtn');
+  const nextBtn = document.getElementById('vanillaFullscreenNextBtn');
+  const counter = document.getElementById('vanillaFullscreenCounter');
+  const wrapper = document.getElementById('vanillaFullscreenImageWrapper');
+
+  if (!modal || !img) return;
+
+  const currentSrc = vanillaGalleryPhotos[vanillaGalleryIndex];
+  img.src = currentSrc;
+
+  const hasMultiple = vanillaGalleryPhotos.length > 1;
+  if (prevBtn) prevBtn.style.display = hasMultiple ? 'flex' : 'none';
+  if (nextBtn) nextBtn.style.display = hasMultiple ? 'flex' : 'none';
+  if (counter) {
+    counter.style.display = hasMultiple ? 'block' : 'none';
+    counter.innerText = `${vanillaGalleryIndex + 1} / ${vanillaGalleryPhotos.length}`;
+  }
+  if (wrapper) {
+    wrapper.style.cursor = hasMultiple ? 'pointer' : 'default';
+  }
+
+  modal.style.display = 'flex';
+}
+window.showVanillaFullscreenModal = showVanillaFullscreenModal;
+
+function handleVanillaFullscreenZoneClick(e) {
+  if (!vanillaGalleryPhotos || vanillaGalleryPhotos.length <= 1) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  if (!rect || !rect.width) return;
+  const ratio = (e.clientX - rect.left) / rect.width;
+  if (ratio < 0.33) {
+    navigateVanillaGallery(-1);
+  } else if (ratio > 0.66) {
+    navigateVanillaGallery(1);
   }
 }
+window.handleVanillaFullscreenZoneClick = handleVanillaFullscreenZoneClick;
+
+function navigateVanillaGallery(step) {
+  if (!vanillaGalleryPhotos || vanillaGalleryPhotos.length <= 1) return;
+  vanillaGalleryIndex += step;
+  if (vanillaGalleryIndex < 0) {
+    vanillaGalleryIndex = vanillaGalleryPhotos.length - 1;
+  } else if (vanillaGalleryIndex >= vanillaGalleryPhotos.length) {
+    vanillaGalleryIndex = 0;
+  }
+  showVanillaFullscreenModal();
+}
+window.navigateVanillaGallery = navigateVanillaGallery;
+
+function handleVanillaGalleryTouchStart(e) {
+  if (e.targetTouches && e.targetTouches.length > 0) {
+    vanillaGalleryTouchX = e.targetTouches[0].clientX;
+  }
+}
+window.handleVanillaGalleryTouchStart = handleVanillaGalleryTouchStart;
+
+function handleVanillaGalleryTouchEnd(e) {
+  if (vanillaGalleryTouchX == null || !e.changedTouches || e.changedTouches.length === 0) return;
+  const diffX = vanillaGalleryTouchX - e.changedTouches[0].clientX;
+  if (Math.abs(diffX) > 40 && vanillaGalleryPhotos && vanillaGalleryPhotos.length > 1) {
+    if (diffX > 0) navigateVanillaGallery(1);
+    else navigateVanillaGallery(-1);
+  }
+  vanillaGalleryTouchX = null;
+}
+window.handleVanillaGalleryTouchEnd = handleVanillaGalleryTouchEnd;
 
 function closeVanillaFullscreenImage() {
   const modal = document.getElementById('vanillaImageFullscreenModal');
   if (modal) {
     modal.style.display = 'none';
   }
+  vanillaGalleryPhotos = [];
+  vanillaGalleryIndex = 0;
 }
-window.openVanillaFullscreenImage = openVanillaFullscreenImage;
 window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
+
+document.addEventListener('keydown', (e) => {
+  const modal = document.getElementById('vanillaImageFullscreenModal');
+  if (!modal || modal.style.display === 'none') return;
+  if (e.key === 'Escape') {
+    closeVanillaFullscreenImage();
+  } else if (e.key === 'ArrowLeft') {
+    navigateVanillaGallery(-1);
+  } else if (e.key === 'ArrowRight') {
+    navigateVanillaGallery(1);
+  }
+});
 
 function toggleEditorGigSongPlayed(idx) {
   if (editorGigSongs[idx]) {
@@ -6420,21 +6528,7 @@ function copyVanillaVenueLink(buttonElement, link) {
   });
 }
 
-function viewVanillaFullscreenImage(src) {
-  const modal = document.getElementById('vanillaImageFullscreenModal');
-  const img = document.getElementById('vanillaFullscreenImageEl');
-  if (modal && img) {
-    img.src = src;
-    modal.style.display = 'flex';
-  }
-}
 
-function closeVanillaFullscreenImage() {
-  const modal = document.getElementById('vanillaImageFullscreenModal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-}
 
 async function refreshApp() {
   try {
