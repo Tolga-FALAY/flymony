@@ -85,8 +85,47 @@ export default function Gigs() {
 
   const [liveChordPageIndex, setLiveChordPageIndex] = useState(0);
   const [isExportingChords, setIsExportingChords] = useState(false);
+  const [isLiveAudioPlaying, setIsLiveAudioPlaying] = useState(false);
 
   const liveChordContentRef = useRef(null);
+  const liveAudioRef = useRef(null);
+
+  const toggleLiveAudio = (audioPath) => {
+    if (!audioPath) return;
+    const audio = liveAudioRef.current;
+    if (!audio) return;
+
+    const fullUrl = getUploadsUrl(audioPath);
+
+    if (isLiveAudioPlaying) {
+      audio.pause();
+      setIsLiveAudioPlaying(false);
+    } else {
+      if (!audio.src || (!audio.src.endsWith(audioPath) && audio.src !== fullUrl)) {
+        audio.src = fullUrl;
+      }
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsLiveAudioPlaying(true);
+          })
+          .catch((err) => {
+            console.warn('Live audio play error:', err);
+            setIsLiveAudioPlaying(false);
+          });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (liveAudioRef.current) {
+      liveAudioRef.current.pause();
+      liveAudioRef.current.currentTime = 0;
+      liveAudioRef.current.src = '';
+    }
+    setIsLiveAudioPlaying(false);
+  }, [liveSongIndex, isLiveMode]);
 
   useEffect(() => {
     const syncFromStore = () => {
@@ -878,6 +917,12 @@ export default function Gigs() {
   };
 
   const closeLiveMode = async () => {
+    if (liveAudioRef.current) {
+      liveAudioRef.current.pause();
+      liveAudioRef.current.currentTime = 0;
+      liveAudioRef.current.src = '';
+    }
+    setIsLiveAudioPlaying(false);
     setIsLiveMode(false);
     setIsLiveDrawerOpen(false);
     setLiveGig(null);
@@ -2153,7 +2198,21 @@ export default function Gigs() {
       {/* ACTIVE LIVE GIG MODE ("SAHNEM" fullscreen chord swiper) */}
       {isLiveMode && liveGig && createPortal(
         <div className={`fullscreen-viewer-overlay live-stage-overlay ${liveViewMode === 'image' ? 'theme-chord' : `theme-${liveTheme}`}`}>
-          
+          <audio
+            ref={liveAudioRef}
+            preload="auto"
+            playsInline
+            onEnded={() => {
+              setIsLiveAudioPlaying(false);
+              if (liveAudioRef.current) {
+                liveAudioRef.current.currentTime = 0;
+              }
+            }}
+            onPause={() => setIsLiveAudioPlaying(false)}
+            onPlay={() => setIsLiveAudioPlaying(true)}
+            style={{ display: 'none' }}
+          />
+
           {/* LEFT SLIDE-IN REPERTOIRE DRAWER */}
           {isLiveDrawerOpen && (
             <div className="live-stage-backdrop" onClick={() => setIsLiveDrawerOpen(false)} />
@@ -2410,7 +2469,7 @@ export default function Gigs() {
           >
             {liveSongIndex !== -1 && liveGig.Songs && liveGig.Songs[liveSongIndex] ? (() => {
               const gigSong = liveGig.Songs[liveSongIndex];
-              const fullSongObj = songs.find(s => s.SongID === gigSong.SongID) || gigSong;
+              const fullSongObj = (songs || []).find(s => Number(s.SongID) === Number(gigSong.SongID)) || (store.songs || []).find(s => Number(s.SongID) === Number(gigSong.SongID)) || gigSong;
 
               // Note Transposition logic
               const origKey = fullSongObj.OriginalKey || fullSongObj.originalKey;
@@ -2440,6 +2499,8 @@ export default function Gigs() {
               const standardScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
               const hasLyr = Boolean(fullSongObj && hasLyricsContent(fullSongObj.Lyrics));
               const hasChordImg = Boolean(fullSongObj && (fullSongObj.ChordImagePath || (Array.isArray(fullSongObj.ChordImages) && fullSongObj.ChordImages.length > 0)));
+              const currentAudioPath = (fullSongObj && fullSongObj.AudioPath) || (gigSong && gigSong.AudioPath) || '';
+              const hasAudio = Boolean(currentAudioPath && String(currentAudioPath).trim().length > 0);
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
@@ -2602,6 +2663,44 @@ export default function Gigs() {
                                 T
                               </button>
 
+                              {hasAudio && (
+                                <button 
+                                  type="button" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleLiveAudio(currentAudioPath);
+                                  }}
+                                  style={{
+                                    height: '38px',
+                                    width: '38px',
+                                    minWidth: '38px',
+                                    padding: 0,
+                                    borderRadius: '8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    border: '1px solid #10b981',
+                                    background: isLiveAudioPlaying ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
+                                    color: isLiveAudioPlaying ? '#ffffff' : '#10b981',
+                                    boxShadow: isLiveAudioPlaying ? '0 0 12px rgba(16, 185, 129, 0.6)' : 'none',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  title={isLiveAudioPlaying ? "Ses Kaydını Durdur" : "Ses Kaydını Çal (Kulaklık)"}
+                                >
+                                  {isLiveAudioPlaying ? (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                      <rect x="6" y="4" width="4" height="16" rx="1" />
+                                      <rect x="14" y="4" width="4" height="16" rx="1" />
+                                    </svg>
+                                  ) : (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
+                                      <polygon points="6 3 20 12 6 21 6 3" />
+                                    </svg>
+                                  )}
+                                </button>
+                              )}
+
                               <button 
                                 type="button" 
                                 onClick={closeLiveMode}
@@ -2757,6 +2856,44 @@ export default function Gigs() {
                             >
                               A
                             </button>
+
+                            {hasAudio && (
+                              <button 
+                                type="button" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleLiveAudio(currentAudioPath);
+                                }}
+                                style={{
+                                  height: '38px',
+                                  width: '38px',
+                                  minWidth: '38px',
+                                  padding: 0,
+                                  borderRadius: '8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  border: '1px solid #10b981',
+                                  background: isLiveAudioPlaying ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
+                                  color: isLiveAudioPlaying ? '#ffffff' : '#10b981',
+                                  boxShadow: isLiveAudioPlaying ? '0 0 12px rgba(16, 185, 129, 0.6)' : 'none',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title={isLiveAudioPlaying ? "Ses Kaydını Durdur" : "Ses Kaydını Çal (Kulaklık)"}
+                              >
+                                {isLiveAudioPlaying ? (
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                                  </svg>
+                                ) : (
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
+                                    <polygon points="6 3 20 12 6 21 6 3" />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
 
                             <button 
                               type="button" 

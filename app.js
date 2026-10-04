@@ -3096,6 +3096,7 @@ window.removeGuestFromGigListByIndex = removeGuestFromGigListByIndex;
 window.pasteVanillaGigPhoto = pasteVanillaGigPhoto;
 window.toggleLiveSongPlayed = toggleLiveSongPlayed;
 window.toggleLiveViewMode = toggleLiveViewMode;
+window.toggleLiveGigAudio = toggleLiveGigAudio;
 window.removeLiveGigSong = removeLiveGigSong;
 window.toggleVanillaSidebarCollapse = toggleVanillaSidebarCollapse;
 
@@ -5306,6 +5307,7 @@ function startLiveGig(gigId) {
 }
 
 function closeLiveGig() {
+  stopLiveGigAudio();
   document.getElementById('gigLiveModal').style.display = 'none';
   closeLiveDrawer();
   liveGigObj = null;
@@ -5337,6 +5339,103 @@ function closeLiveDrawer() {
   if (drawer) drawer.classList.remove('open');
   const backdrop = document.getElementById('gigLiveBackdrop');
   if (backdrop) backdrop.style.display = 'none';
+}
+
+let liveGigAudioPlayer = null;
+let isLiveGigAudioPlaying = false;
+let currentLiveGigAudioUrl = '';
+
+function stopLiveGigAudio() {
+  if (liveGigAudioPlayer) {
+    liveGigAudioPlayer.pause();
+    liveGigAudioPlayer.currentTime = 0;
+    liveGigAudioPlayer.src = '';
+  }
+  isLiveGigAudioPlaying = false;
+  currentLiveGigAudioUrl = '';
+  updateLiveGigAudioBtnState();
+}
+
+function updateLiveGigAudioBtnState() {
+  const audioBtn = document.getElementById('btnLiveSongAudio');
+  if (!audioBtn) return;
+  if (isLiveGigAudioPlaying) {
+    audioBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+      </svg>
+    `;
+    audioBtn.title = "Ses Kaydını Durdur";
+    audioBtn.style.background = '#10b981';
+    audioBtn.style.borderColor = '#10b981';
+    audioBtn.style.color = '#ffffff';
+    audioBtn.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.6)';
+  } else {
+    audioBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 2px;">
+        <polygon points="6 3 20 12 6 21 6 3"></polygon>
+      </svg>
+    `;
+    audioBtn.title = "Ses Kaydını Çal (Kulaklık)";
+    audioBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+    audioBtn.style.borderColor = '#10b981';
+    audioBtn.style.color = '#10b981';
+    audioBtn.style.boxShadow = 'none';
+  }
+}
+
+function toggleLiveGigAudio() {
+  if (liveGigSongIndex === -1 || !liveGigObj || !liveGigObj.songs || !liveGigObj.songs[liveGigSongIndex]) return;
+  const gigSong = liveGigObj.songs[liveGigSongIndex];
+  const fullSong = DB.songs.find(s => s.id === gigSong.songId);
+  const audioPath = fullSong ? (fullSong.audioPath || fullSong.AudioPath) : (gigSong.audioPath || gigSong.AudioPath);
+  if (!audioPath) return;
+
+  if (!liveGigAudioPlayer) {
+    liveGigAudioPlayer = new Audio();
+    liveGigAudioPlayer.preload = 'auto';
+    liveGigAudioPlayer.addEventListener('ended', () => {
+      isLiveGigAudioPlaying = false;
+      if (liveGigAudioPlayer) liveGigAudioPlayer.currentTime = 0;
+      updateLiveGigAudioBtnState();
+    });
+    liveGigAudioPlayer.addEventListener('pause', () => {
+      isLiveGigAudioPlaying = false;
+      updateLiveGigAudioBtnState();
+    });
+    liveGigAudioPlayer.addEventListener('play', () => {
+      isLiveGigAudioPlaying = true;
+      updateLiveGigAudioBtnState();
+    });
+  }
+
+  let fullUrl = audioPath;
+  if (!audioPath.startsWith('http://') && !audioPath.startsWith('https://') && !audioPath.startsWith('data:')) {
+    const clean = audioPath.startsWith('/') ? audioPath : `/${audioPath}`;
+    const isLocal = typeof window !== 'undefined' && (window.location.protocol === 'file:' || window.location.port === '5173');
+    const base = isLocal ? 'http://localhost:5000' : '';
+    fullUrl = `${base}${clean}`;
+  }
+
+  if (isLiveGigAudioPlaying) {
+    liveGigAudioPlayer.pause();
+    isLiveGigAudioPlaying = false;
+    updateLiveGigAudioBtnState();
+  } else {
+    if (currentLiveGigAudioUrl !== fullUrl || liveGigAudioPlayer.src !== fullUrl) {
+      liveGigAudioPlayer.src = fullUrl;
+      currentLiveGigAudioUrl = fullUrl;
+    }
+    liveGigAudioPlayer.play().then(() => {
+      isLiveGigAudioPlaying = true;
+      updateLiveGigAudioBtnState();
+    }).catch(err => {
+      console.warn("Live gig audio play error:", err);
+      isLiveGigAudioPlaying = false;
+      updateLiveGigAudioBtnState();
+    });
+  }
 }
 
 function toggleLiveViewMode() {
@@ -5560,6 +5659,7 @@ function renderLiveGigPlaylist() {
     item.appendChild(actionsDiv);
 
     item.onclick = () => {
+      stopLiveGigAudio();
       liveGigSongIndex = originalIdx;
       liveGigTransposeShift = 0;
       liveGigViewMode = 'image';
@@ -5695,6 +5795,21 @@ function renderLiveGigSong() {
       toggleViewBtn.innerText = 'A';
       toggleViewBtn.title = 'Akor Görseline Geç (A)';
       toggleViewBtn.className = `viewer-btn-float ${hasChordImg ? 'btn-status-success' : 'btn-status-danger'}`;
+    }
+  }
+
+  // Update Floating Play Audio Button (if song has audio recording)
+  const audioBtn = document.getElementById('btnLiveSongAudio');
+  const songAudioPath = fullSong ? (fullSong.audioPath || fullSong.AudioPath) : (gigSong.audioPath || gigSong.AudioPath);
+  const hasAudio = Boolean(songAudioPath && String(songAudioPath).trim().length > 0);
+
+  if (audioBtn) {
+    if (hasAudio) {
+      audioBtn.style.display = 'inline-flex';
+      updateLiveGigAudioBtnState();
+    } else {
+      audioBtn.style.display = 'none';
+      stopLiveGigAudio();
     }
   }
 
@@ -5929,6 +6044,7 @@ function triggerLiveAutoFit() {
 
 function goToLiveNextSong() {
   if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
+  stopLiveGigAudio();
   liveGigSongIndex = (liveGigSongIndex + 1) % liveGigObj.songs.length;
   liveGigTransposeShift = 0;
   // Always default/reset to chord image ('image') mode on song switch!
@@ -5940,6 +6056,7 @@ function goToLiveNextSong() {
 
 function goToLivePrevSong() {
   if (!liveGigObj || !liveGigObj.songs || liveGigObj.songs.length === 0) return;
+  stopLiveGigAudio();
   liveGigSongIndex = (liveGigSongIndex - 1 + liveGigObj.songs.length) % liveGigObj.songs.length;
   liveGigTransposeShift = 0;
   // Always default/reset to chord image ('image') mode on song switch!

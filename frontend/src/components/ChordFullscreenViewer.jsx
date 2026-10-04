@@ -14,6 +14,7 @@ export default function ChordFullscreenViewer() {
   const [song, setSong] = useState(null);
   const [mode, setMode] = useState('chord'); // 'chord' or 'transpose'
   const [chordPageIndex, setChordPageIndex] = useState(0);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
 
   // Transpose settings
   const [transposeShift, setTransposeShift] = useState(0);
@@ -22,6 +23,44 @@ export default function ChordFullscreenViewer() {
   const [isSingleScreen, setIsSingleScreen] = useState(false);
 
   const chordViewerContentRef = useRef(null);
+  const audioRef = useRef(null);
+
+  const toggleAudio = () => {
+    if (!song || !song.AudioPath) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const fullUrl = getUploadsUrl(song.AudioPath);
+
+    if (isAudioPlaying) {
+      audio.pause();
+      setIsAudioPlaying(false);
+    } else {
+      if (!audio.src || (!audio.src.endsWith(song.AudioPath) && audio.src !== fullUrl)) {
+        audio.src = fullUrl;
+      }
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsAudioPlaying(true);
+          })
+          .catch((err) => {
+            console.warn('Fullscreen chord audio play error:', err);
+            setIsAudioPlaying(false);
+          });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = '';
+    }
+    setIsAudioPlaying(false);
+  }, [song, isOpen]);
 
   // Auto-fit function for Single Screen mode
   const triggerAutoFit = () => {
@@ -89,6 +128,12 @@ export default function ChordFullscreenViewer() {
 
   // Toggle helpers
   const handleClose = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = '';
+    }
+    setIsAudioPlaying(false);
     setIsOpen(false);
     setSong(null);
     setChordPageIndex(0);
@@ -147,6 +192,20 @@ export default function ChordFullscreenViewer() {
 
   return createPortal(
     <div className={`fullscreen-viewer-overlay ${mode === 'transpose' ? `theme-${viewerTheme}` : 'theme-chord'}`}>
+      <audio
+        ref={audioRef}
+        preload="auto"
+        playsInline
+        onEnded={() => {
+          setIsAudioPlaying(false);
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+          }
+        }}
+        onPause={() => setIsAudioPlaying(false)}
+        onPlay={() => setIsAudioPlaying(true)}
+        style={{ display: 'none' }}
+      />
       
       {/* Multi-page Indicator in Chord Mode */}
       {mode === 'chord' && hasMultiplePages && (
@@ -196,6 +255,34 @@ export default function ChordFullscreenViewer() {
             title="Akor Görseline Geç (A)"
           >
             A
+          </button>
+        )}
+        {song.AudioPath && (
+          <button 
+            type="button" 
+            className="viewer-btn-float btn-audio-toggle" 
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleAudio();
+            }}
+            style={{
+              background: isAudioPlaying ? '#10b981' : 'rgba(16, 185, 129, 0.2)',
+              border: '1px solid #10b981',
+              color: isAudioPlaying ? '#ffffff' : '#10b981',
+              boxShadow: isAudioPlaying ? '0 0 12px rgba(16, 185, 129, 0.6)' : 'none'
+            }}
+            title={isAudioPlaying ? "Ses Kaydını Durdur" : "Ses Kaydını Çal (Kulaklık)"}
+          >
+            {isAudioPlaying ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}>
+                <polygon points="6 3 20 12 6 21 6 3" />
+              </svg>
+            )}
           </button>
         )}
         <button 
