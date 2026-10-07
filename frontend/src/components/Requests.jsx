@@ -298,22 +298,50 @@ export default function Requests() {
 
   // Filter Requests dynamically based on filter states
   const filteredRequests = sortedRequests.filter(req => {
-    // 1. Guest filter
-    if (filterGuest && !req.GuestIDs.includes(Number(filterGuest))) {
-      return false;
+    // 1. Guest filter (Free text)
+    if (filterGuest) {
+      const searchGuest = filterGuest.toLocaleLowerCase('tr-TR').trim();
+      const guestNames = (req.FullNames || '').toLocaleLowerCase('tr-TR');
+      let guestMatch = guestNames.includes(searchGuest);
+      if (!guestMatch && Array.isArray(req.GuestIDs) && req.GuestIDs.length > 0) {
+        guestMatch = req.GuestIDs.some(gid => {
+          const g = guests.find(guest => guest.GuestID === gid);
+          return g && (g.FullName || `${g.FirstName || ''} ${g.LastName || ''}`).toLocaleLowerCase('tr-TR').includes(searchGuest);
+        });
+      }
+      if (!guestMatch) {
+        return false;
+      }
     }
 
     // Get the song details for this request to match Song/Artist
     const song = songs.find(s => s.SongID === req.SongID);
 
-    // 2. Song filter
-    if (filterSong && req.SongID !== Number(filterSong)) {
-      return false;
+    // 2. Song filter (Free text)
+    if (filterSong) {
+      const searchSong = filterSong.toLocaleLowerCase('tr-TR').trim();
+      const songTitle = (song?.SongTitle || req.SongTitle || '').toLocaleLowerCase('tr-TR');
+      if (!songTitle.includes(searchSong)) {
+        return false;
+      }
     }
 
-    // 3. Artist filter
+    // 3. Artist filter (Free text)
     if (filterArtist) {
-      if (!song || !song.ArtistIDs.includes(Number(filterArtist))) {
+      const searchArtist = filterArtist.toLocaleLowerCase('tr-TR').trim();
+      let artistMatch = false;
+      if (song) {
+        artistMatch = (song.ArtistNames || '').toLocaleLowerCase('tr-TR').includes(searchArtist);
+        if (!artistMatch && Array.isArray(song.ArtistIDs) && song.ArtistIDs.length > 0) {
+          artistMatch = song.ArtistIDs.some(aid => {
+            const a = artists.find(artist => artist.ArtistID === aid);
+            return a && (a.ArtistName || '').toLocaleLowerCase('tr-TR').includes(searchArtist);
+          });
+        }
+      } else if (req.SongTitle) {
+        artistMatch = req.SongTitle.toLocaleLowerCase('tr-TR').includes(searchArtist);
+      }
+      if (!artistMatch) {
         return false;
       }
     }
@@ -371,15 +399,6 @@ export default function Requests() {
     return aTitle.localeCompare(bTitle, 'tr');
   });
 
-  // Sort lists for filters
-  const sortedFilterGuests = [...guests].sort((a, b) => {
-    return (a.FullName || '').toLocaleLowerCase('tr-TR').localeCompare((b.FullName || '').toLocaleLowerCase('tr-TR'), 'tr');
-  });
-
-  const sortedFilterArtists = [...artists].sort((a, b) => {
-    return (a.ArtistName || '').toLocaleLowerCase('tr-TR').localeCompare((b.ArtistName || '').toLocaleLowerCase('tr-TR'), 'tr');
-  });
-
   return (
     <div>
       <div className="section-header">
@@ -403,42 +422,33 @@ export default function Requests() {
           </div>
           <div className="filter-item">
             <label htmlFor="filterGuestReact">Misafir</label>
-            <select
+            <input
+              type="text"
               id="filterGuestReact"
+              placeholder="Misafir ara..."
               value={filterGuest}
               onChange={(e) => setFilterGuest(e.target.value)}
-            >
-              <option value="">Tüm Misafirler</option>
-              {sortedFilterGuests.map(g => (
-                <option key={g.GuestID} value={String(g.GuestID)}>{g.FullName}</option>
-              ))}
-            </select>
+            />
           </div>
           <div className="filter-item">
             <label htmlFor="filterSongReact">Şarkı</label>
-            <select
+            <input
+              type="text"
               id="filterSongReact"
+              placeholder="Şarkı ara..."
               value={filterSong}
               onChange={(e) => setFilterSong(e.target.value)}
-            >
-              <option value="">Tüm Şarkılar</option>
-              {sortedSongs.map(s => (
-                <option key={s.SongID} value={String(s.SongID)}>{s.SongTitle}</option>
-              ))}
-            </select>
+            />
           </div>
           <div className="filter-item">
             <label htmlFor="filterArtistReact">Sanatçı</label>
-            <select
+            <input
+              type="text"
               id="filterArtistReact"
+              placeholder="Sanatçı ara..."
               value={filterArtist}
               onChange={(e) => setFilterArtist(e.target.value)}
-            >
-              <option value="">Tüm Sanatçılar</option>
-              {sortedFilterArtists.map(a => (
-                <option key={a.ArtistID} value={String(a.ArtistID)}>{a.ArtistName}</option>
-              ))}
-            </select>
+            />
           </div>
           <div className="filter-item">
             <label htmlFor="filterStatusReact">Durum</label>

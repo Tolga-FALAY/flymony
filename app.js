@@ -2103,24 +2103,35 @@ function renderRequests() {
   const filteredReqs = sortedReqs.filter(req => {
     const guestIds = req.guestIds || (req.guestId ? [req.guestId] : []);
     
-    // 1. Guest filter
-    if (filterGuest && !guestIds.includes(Number(filterGuest))) {
-      return false;
+    // 1. Guest filter (Free text)
+    if (filterGuest) {
+      const searchGuest = filterGuest.toLocaleLowerCase('tr-TR').trim();
+      const guests = DB.guests.filter(g => guestIds.includes(g.id));
+      const guestNames = guests.map(g => `${g.firstName} ${g.lastName}`).join(', ').toLocaleLowerCase('tr-TR');
+      if (!guestNames.includes(searchGuest)) {
+        return false;
+      }
     }
     
     // Get the song details for this request
     const song = DB.songs.find(s => s.id == req.songId);
     
-    // 2. Song filter
-    if (filterSong && req.songId !== Number(filterSong)) {
-      return false;
+    // 2. Song filter (Free text)
+    if (filterSong) {
+      const searchSong = filterSong.toLocaleLowerCase('tr-TR').trim();
+      const songTitle = song ? (song.title || '').toLocaleLowerCase('tr-TR') : '';
+      if (!songTitle.includes(searchSong)) {
+        return false;
+      }
     }
     
-    // 3. Artist filter
+    // 3. Artist filter (Free text)
     if (filterArtist) {
+      const searchArtist = filterArtist.toLocaleLowerCase('tr-TR').trim();
       if (!song) return false;
       const artistIds = DB.song_artists.filter(sa => sa.songId === song.id).map(sa => sa.artistId);
-      if (!artistIds.includes(Number(filterArtist))) {
+      const artistNames = DB.artists.filter(a => artistIds.includes(a.id)).map(a => a.name).join(', ').toLocaleLowerCase('tr-TR');
+      if (!artistNames.includes(searchArtist)) {
         return false;
       }
     }
@@ -2490,15 +2501,15 @@ function populateFilterDropdowns() {
 // Filtre Değişim Olayı
 function handleFilterChange() {
   const searchInput = document.getElementById('filterSearch');
-  const guestSelect = document.getElementById('filterGuestSelect');
-  const songSelect = document.getElementById('filterSongSelect');
-  const artistSelect = document.getElementById('filterArtistSelect');
+  const guestInput = document.getElementById('filterGuestInput') || document.getElementById('filterGuestSelect');
+  const songInput = document.getElementById('filterSongInput') || document.getElementById('filterSongSelect');
+  const artistInput = document.getElementById('filterArtistInput') || document.getElementById('filterArtistSelect');
   const statusSelect = document.getElementById('filterStatusSelect');
 
   filterSearch = searchInput ? searchInput.value : '';
-  filterGuest = guestSelect ? guestSelect.value : '';
-  filterSong = songSelect ? songSelect.value : '';
-  filterArtist = artistSelect ? artistSelect.value : '';
+  filterGuest = guestInput ? guestInput.value : '';
+  filterSong = songInput ? songInput.value : '';
+  filterArtist = artistInput ? artistInput.value : '';
   filterStatus = statusSelect ? statusSelect.value : '';
   
   renderRequests();
@@ -2507,15 +2518,15 @@ function handleFilterChange() {
 // Filtreleri Temizle
 function clearAllFilters() {
   const searchInput = document.getElementById('filterSearch');
-  const guestSelect = document.getElementById('filterGuestSelect');
-  const songSelect = document.getElementById('filterSongSelect');
-  const artistSelect = document.getElementById('filterArtistSelect');
+  const guestInput = document.getElementById('filterGuestInput') || document.getElementById('filterGuestSelect');
+  const songInput = document.getElementById('filterSongInput') || document.getElementById('filterSongSelect');
+  const artistInput = document.getElementById('filterArtistInput') || document.getElementById('filterArtistSelect');
   const statusSelect = document.getElementById('filterStatusSelect');
 
   if (searchInput) searchInput.value = '';
-  if (guestSelect) guestSelect.value = '';
-  if (songSelect) songSelect.value = '';
-  if (artistSelect) artistSelect.value = '';
+  if (guestInput) guestInput.value = '';
+  if (songInput) songInput.value = '';
+  if (artistInput) artistInput.value = '';
   if (statusSelect) statusSelect.value = '';
   
   filterSearch = '';
