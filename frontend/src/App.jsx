@@ -42,6 +42,18 @@ const NAV_ITEMS = [
     )
   },
   {
+    key: 'guests',
+    label: 'Misafirler',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    )
+  },
+  {
     key: 'songs',
     label: 'Şarkılar',
     icon: (
@@ -61,18 +73,6 @@ const NAV_ITEMS = [
         <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
         <line x1="12" y1="19" x2="12" y2="23" />
         <line x1="8" y1="23" x2="16" y2="23" />
-      </svg>
-    )
-  },
-  {
-    key: 'guests',
-    label: 'Misafirler',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     )
   },
@@ -496,9 +496,9 @@ function App() {
         <div className="content-panel">
           <div style={{ display: activeTab === 'requests' ? 'block' : 'none' }}><Requests /></div>
           <div style={{ display: activeTab === 'gigs' ? 'block' : 'none' }}><Gigs /></div>
+          <div style={{ display: activeTab === 'guests' ? 'block' : 'none' }}><Guests /></div>
           <div style={{ display: activeTab === 'songs' ? 'block' : 'none' }}><Songs /></div>
           <div style={{ display: activeTab === 'artists' ? 'block' : 'none' }}><Artists /></div>
-          <div style={{ display: activeTab === 'guests' ? 'block' : 'none' }}><Guests /></div>
           <div style={{ display: activeTab === 'otherOperations' ? 'block' : 'none' }}><OtherOperations /></div>
           <div style={{ display: activeTab === 'parameters' ? 'block' : 'none' }}><Parameters /></div>
           <div style={{ display: activeTab === 'notes' ? 'block' : 'none' }}><Notes /></div>
