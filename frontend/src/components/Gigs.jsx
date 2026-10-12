@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
@@ -1216,8 +1216,9 @@ export default function Gigs() {
     }
 
     // 3. Tarih Aralığı Filtresi
-    if (filterStartDate && gig.GigDate < filterStartDate) return false;
-    if (filterEndDate && gig.GigDate > filterEndDate) return false;
+    const gigDateStr = (gig.GigDate || '').slice(0, 10);
+    if (filterStartDate && gigDateStr < filterStartDate) return false;
+    if (filterEndDate && gigDateStr > filterEndDate) return false;
 
     return true;
   }).sort((a, b) => {
@@ -1237,6 +1238,103 @@ export default function Gigs() {
     }
     return sortConfig.direction === 'asc' ? comp : -comp;
   });
+
+  // --- Averages & Statistics Formatting ---
+  const formatAvg = (val) => {
+    if (val === undefined || val === null || isNaN(val)) return '0';
+    const rounded = Math.round(val * 10) / 10;
+    return Number.isInteger(rounded)
+      ? rounded.toString()
+      : rounded.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  };
+
+  const gigStats = useMemo(() => {
+    const gigCount = filteredGigs.length;
+    if (gigCount === 0) {
+      return {
+        gigCount: 0,
+        totalSongs: 0,
+        totalPlayed: 0,
+        totalGuests: 0,
+        totalRegisteredGuests: 0,
+        totalUnregisteredGuests: 0,
+        avgSongs: 0,
+        avgPlayed: 0,
+        avgGuests: 0,
+        avgRegisteredGuests: 0,
+        avgUnregisteredGuests: 0,
+        uniquePlayedSongs: 0,
+        uniqueTotalSongs: 0,
+        uniqueRegisteredGuests: 0
+      };
+    }
+
+    let totalSongs = 0;
+    let totalPlayed = 0;
+    let totalGuests = 0;
+    let totalRegisteredGuests = 0;
+
+    const uniquePlayedSongKeys = new Set();
+    const uniqueTotalSongKeys = new Set();
+    const uniqueRegisteredGuestIds = new Set();
+
+    filteredGigs.forEach(gig => {
+      // 1. Şarkı Hesaplamaları
+      if (gig.Songs && Array.isArray(gig.Songs)) {
+        totalSongs += gig.Songs.length;
+        gig.Songs.forEach(s => {
+          const isPlayed = Boolean(Number(s.IsPlayed) || s.IsPlayed === true);
+          if (isPlayed) {
+            totalPlayed += 1;
+          }
+
+          const songId = s.SongID ? Number(s.SongID) : 0;
+          const songTitle = (s.SongTitle || (songId ? songs.find(x => x.SongID === songId)?.SongTitle : '') || '').trim();
+          if (songTitle === '...') return; // Repertuvar ara mola sembolünü şarkı sayımından muaf tut
+
+          const songKey = songId > 0 ? `id_${songId}` : (songTitle ? `title_${songTitle.toLocaleLowerCase('tr-TR')}` : null);
+          if (songKey) {
+            uniqueTotalSongKeys.add(songKey);
+            if (isPlayed) {
+              uniquePlayedSongKeys.add(songKey);
+            }
+          }
+        });
+      }
+
+      // 2. Misafir Hesaplamaları
+      if (gig.Guests && Array.isArray(gig.Guests)) {
+        gig.Guests.forEach(g => {
+          const count = Number(g.GuestCount) || 1;
+          totalGuests += count;
+          const isRegistered = !Number(g.IsAnonymous) && Boolean(g.GuestID);
+          if (isRegistered) {
+            totalRegisteredGuests += count;
+            uniqueRegisteredGuestIds.add(Number(g.GuestID));
+          }
+        });
+      }
+    });
+
+    const totalUnregisteredGuests = totalGuests - totalRegisteredGuests;
+
+    return {
+      gigCount,
+      totalSongs,
+      totalPlayed,
+      totalGuests,
+      totalRegisteredGuests,
+      totalUnregisteredGuests,
+      avgSongs: totalSongs / gigCount,
+      avgPlayed: totalPlayed / gigCount,
+      avgGuests: totalGuests / gigCount,
+      avgRegisteredGuests: totalRegisteredGuests / gigCount,
+      avgUnregisteredGuests: totalUnregisteredGuests / gigCount,
+      uniquePlayedSongs: uniquePlayedSongKeys.size,
+      uniqueTotalSongs: uniqueTotalSongKeys.size,
+      uniqueRegisteredGuests: uniqueRegisteredGuestIds.size
+    };
+  }, [filteredGigs, songs]);
 
   // Unique venues list for dropdown filter
   const uniqueVenues = Array.from(new Set(gigs.map(g => g.VenueName).filter(Boolean))).sort((a, b) =>
@@ -1328,6 +1426,26 @@ export default function Gigs() {
             />
           </div>
           <div className="filter-item filter-actions">
+            <button 
+              type="button" 
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                const now = new Date();
+                const past = new Date();
+                past.setMonth(past.getMonth() - 1);
+                const formatYMD = d => {
+                  const y = d.getFullYear();
+                  const m = String(d.getMonth() + 1).padStart(2, '0');
+                  const day = String(d.getDate()).padStart(2, '0');
+                  return `${y}-${m}-${day}`;
+                };
+                setFilterStartDate(formatYMD(past));
+                setFilterEndDate(formatYMD(now));
+              }}
+              title="Son 1 aydaki sahneleri filtrele"
+            >
+              Son 1 Ay
+            </button>
             <button className="btn btn-outline btn-sm" onClick={() => {
               setFilterSearch('');
               setFilterVenue('');
@@ -1490,6 +1608,66 @@ export default function Gigs() {
               <tr><td colSpan="5" style={{ textAlign: 'center' }}>Kayıt bulunamadı.</td></tr>
             )}
           </tbody>
+          {filteredGigs.length > 0 && (
+            <tfoot>
+              {/* 1. TOPLAMLAR SATIRI */}
+              <tr className="table-summary-row table-summary-total">
+                <td data-label="Özet">
+                  <span className="summary-badge summary-badge--total">TOPLAM</span>
+                </td>
+                <td data-label="Kapsam">
+                  <span className="summary-subtext">{filteredGigs.length} Sahne</span>
+                </td>
+                <td data-label="Toplam Şarkı" style={{ textAlign: 'center' }} title={`Toplam Söylenen/Çalınan: ${gigStats.totalPlayed} / Toplam Liste: ${gigStats.totalSongs}`}>
+                  <span style={{ fontWeight: '700' }}>{gigStats.totalPlayed}</span> / {gigStats.totalSongs}
+                </td>
+                <td data-label="Toplam Misafir" style={{ textAlign: 'center' }} title={`Toplam Misafir: ${gigStats.totalGuests} (Kayıtlı: ${gigStats.totalRegisteredGuests} / Kayıtsız: ${gigStats.totalUnregisteredGuests})`}>
+                  <span style={{ fontWeight: '700' }}>{gigStats.totalGuests}</span> ({gigStats.totalRegisteredGuests}/{gigStats.totalUnregisteredGuests})
+                </td>
+                <td className="table-summary-actions-cell" style={{ textAlign: 'right' }}>
+                  <span style={{ color: 'var(--text-faint)' }}>—</span>
+                </td>
+              </tr>
+
+              {/* 2. AVERAJLAR SATIRI */}
+              <tr className="table-summary-row table-summary-avg">
+                <td data-label="Özet">
+                  <span className="summary-badge summary-badge--avg">ORTALAMA</span>
+                </td>
+                <td data-label="Kapsam">
+                  <span className="summary-subtext">Sahne Başına</span>
+                </td>
+                <td data-label="Ort. Şarkı" style={{ textAlign: 'center' }} title={`Ortalama Çalınan: ${formatAvg(gigStats.avgPlayed)} / Ortalama Liste: ${formatAvg(gigStats.avgSongs)}`}>
+                  <span style={{ fontWeight: '700' }}>{formatAvg(gigStats.avgPlayed)}</span> / {formatAvg(gigStats.avgSongs)}
+                </td>
+                <td data-label="Ort. Misafir" style={{ textAlign: 'center' }} title={`Ortalama Misafir: ${formatAvg(gigStats.avgGuests)} (Kayıtlı: ${formatAvg(gigStats.avgRegisteredGuests)} / Kayıtsız: ${formatAvg(gigStats.avgUnregisteredGuests)})`}>
+                  <span style={{ fontWeight: '700' }}>{formatAvg(gigStats.avgGuests)}</span> ({formatAvg(gigStats.avgRegisteredGuests)}/{formatAvg(gigStats.avgUnregisteredGuests)})
+                </td>
+                <td className="table-summary-actions-cell" style={{ textAlign: 'right' }}>
+                  <span style={{ color: 'var(--text-faint)' }}>—</span>
+                </td>
+              </tr>
+
+              {/* 3. FARKLI ADETLER SATIRI */}
+              <tr className="table-summary-row table-summary-unique">
+                <td data-label="Özet">
+                  <span className="summary-badge summary-badge--unique">FARKLILAR</span>
+                </td>
+                <td data-label="Kapsam">
+                  <span className="summary-subtext">Tekil Kayıtlar</span>
+                </td>
+                <td data-label="Farklı Şarkı" style={{ textAlign: 'center' }} title={`Farklı Çalınan Şarkı: ${gigStats.uniquePlayedSongs} / Farklı Repertuvar: ${gigStats.uniqueTotalSongs}`}>
+                  <span style={{ fontWeight: '700' }}>{gigStats.uniquePlayedSongs}</span> / {gigStats.uniqueTotalSongs}
+                </td>
+                <td data-label="Farklı Misafir" style={{ textAlign: 'center' }} title={`Ağırlanan Farklı (Kayıtlı) Misafir: ${gigStats.uniqueRegisteredGuests}`}>
+                  <span style={{ fontWeight: '700' }}>{gigStats.uniqueRegisteredGuests}</span> (Kayıtlı)
+                </td>
+                <td className="table-summary-actions-cell" style={{ textAlign: 'right' }}>
+                  <span style={{ color: 'var(--text-faint)' }}>—</span>
+                </td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 

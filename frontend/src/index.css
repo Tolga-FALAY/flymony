@@ -473,6 +473,75 @@ tbody tr:hover td {
   background: var(--primary-soft);
 }
 
+/* Table Summary / Footer Rows (Sahnelerim vb.) */
+.table-wrapper tfoot {
+  border-top: 2px solid var(--border-strong);
+}
+
+.table-summary-row {
+  transition: var(--transition);
+}
+
+.table-summary-row td {
+  padding: 0.65rem 0.5rem;
+  font-size: 0.92rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table-summary-total {
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.table-summary-avg {
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.table-summary-unique {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.table-summary-row:hover td {
+  background: rgba(14, 165, 233, 0.09);
+}
+
+.summary-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.22rem 0.65rem;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.summary-badge--total {
+  background: rgba(14, 165, 233, 0.16);
+  color: var(--primary-strong);
+  border: 1px solid rgba(14, 165, 233, 0.28);
+}
+
+.summary-badge--avg {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.summary-badge--unique {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+.summary-subtext {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 .action-btns {
   display: flex;
   gap: 0.5rem;
@@ -758,6 +827,7 @@ tbody tr:hover td {
   align-self: flex-end;
   display: flex;
   align-items: flex-end;
+  gap: 0.5rem;
 }
 
 .filter-actions .btn {
@@ -1230,6 +1300,7 @@ tbody tr:hover td {
   .table-wrapper table,
   .table-wrapper thead,
   .table-wrapper tbody,
+  .table-wrapper tfoot,
   .table-wrapper tr,
   .table-wrapper th,
   .table-wrapper td {
@@ -1288,6 +1359,26 @@ tbody tr:hover td {
 
   .table-wrapper td[data-label="İşlemler"]::before {
     display: none;
+  }
+
+  .table-wrapper tr.table-summary-row {
+    border-width: 1.5px;
+    margin-top: 0.75rem;
+  }
+  .table-wrapper tr.table-summary-total {
+    border-color: rgba(14, 165, 233, 0.45);
+    background: rgba(14, 165, 233, 0.03);
+  }
+  .table-wrapper tr.table-summary-avg {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.03);
+  }
+  .table-wrapper tr.table-summary-unique {
+    border-color: rgba(16, 185, 129, 0.45);
+    background: rgba(16, 185, 129, 0.03);
+  }
+  .table-summary-actions-cell {
+    display: none !important;
   }
 
   .action-btns {
