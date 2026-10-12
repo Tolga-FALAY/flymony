@@ -586,6 +586,42 @@ export default function Gigs() {
     }
   };
 
+  const moveTableOrder = (tableIndex, newTargetOrder) => {
+    const tableNames = Object.keys(guestsByTable);
+    if (tableNames.length <= 1) return;
+
+    const targetIdx = Math.max(0, Math.min(tableNames.length - 1, newTargetOrder));
+    if (tableIndex === targetIdx) return;
+
+    const reorderedTables = [...tableNames];
+    const [movedTable] = reorderedTables.splice(tableIndex, 1);
+    reorderedTables.splice(targetIdx, 0, movedTable);
+
+    // Group current guests in formData.Guests by table
+    const tableGuestMap = {};
+    formData.Guests.forEach(g => {
+      const tName = g.TableName || 'Masasız';
+      if (!tableGuestMap[tName]) tableGuestMap[tName] = [];
+      tableGuestMap[tName].push(g);
+    });
+
+    // Reconstruct formData.Guests according to reorderedTables
+    const newGuests = [];
+    reorderedTables.forEach(tName => {
+      if (tableGuestMap[tName]) {
+        newGuests.push(...tableGuestMap[tName]);
+        delete tableGuestMap[tName];
+      }
+    });
+    // Append any remaining guests if any
+    Object.values(tableGuestMap).forEach(list => newGuests.push(...list));
+
+    setFormData(prev => ({
+      ...prev,
+      Guests: newGuests
+    }));
+  };
+
   const handleMoveGuestTable = (guestIndex, targetTableVal) => {
     if (targetTableVal === '__NEW_TABLE__') {
       let maxNum = 0;
@@ -2114,13 +2150,56 @@ export default function Gigs() {
 
                   {/* List of gig guests grouped by Table */}
                   <div style={{ height: '410px', maxHeight: '410px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.5rem' }}>
-                    {Object.keys(guestsByTable).map(tName => {
+                    {Object.keys(guestsByTable).map((tName, tableIdx, tableArr) => {
                       const totalInGroup = guestsByTable[tName].reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0);
                       return (
                         <div key={tName} style={{ marginBottom: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '6px', padding: '0.5rem', background: '#f8fafc' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                              <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)' }}>📍 {tName} ({totalInGroup})</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ fontWeight: 'bold', color: 'var(--text-muted)', fontSize: '0.78rem', minWidth: '16px' }}>{tableIdx + 1}.</span>
+                              <input 
+                                type="text" 
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={tableIdx + 1}
+                                onChange={e => {
+                                  const val = e.target.value.replace(/[^0-9]/g, '');
+                                  if (val) moveTableOrder(tableIdx, parseInt(val, 10) - 1);
+                                }}
+                                style={{ 
+                                  width: '24px', 
+                                  height: '20px', 
+                                  padding: '0', 
+                                  textAlign: 'center', 
+                                  fontSize: '0.75rem', 
+                                  borderRadius: '4px', 
+                                  border: '1px solid var(--border)',
+                                  background: '#ffffff',
+                                  margin: 0
+                                }}
+                                title="Grup Sıra Numarası (Sırayı değiştirmek için numara yazabilirsiniz)"
+                              />
+                              <button 
+                                type="button" 
+                                className="btn btn-outline" 
+                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '20px', minWidth: '19px', lineHeight: 1 }} 
+                                onClick={() => moveTableOrder(tableIdx, tableIdx - 1)} 
+                                disabled={tableIdx === 0}
+                                title="Grubu Yukarı Taşı"
+                              >
+                                ▲
+                              </button>
+                              <button 
+                                type="button" 
+                                className="btn btn-outline" 
+                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '20px', minWidth: '19px', lineHeight: 1 }} 
+                                onClick={() => moveTableOrder(tableIdx, tableIdx + 1)} 
+                                disabled={tableIdx === tableArr.length - 1}
+                                title="Grubu Aşağı Taşı"
+                              >
+                                ▼
+                              </button>
+                              <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)', marginLeft: '3px' }}>📍 {tName} ({totalInGroup})</span>
                               <button 
                                 type="button" 
                                 className="btn btn-outline" 
