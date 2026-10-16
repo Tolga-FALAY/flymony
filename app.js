@@ -5062,7 +5062,7 @@ function searchSongsForGig() {
     return;
   }
 
-  autocomplete.innerHTML = matches.slice(0, 10).map(song => {
+  autocomplete.innerHTML = matches.map(song => {
     const hasChord = Boolean(song.chordImagePath && song.chordImagePath.trim());
     return `
       <div style="padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border-soft); font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;" 
@@ -6102,7 +6102,7 @@ function searchLiveRequestSongs() {
     return;
   }
 
-  autocomplete.innerHTML = matches.slice(0, 10).map(s => {
+  autocomplete.innerHTML = matches.map(s => {
     const hasChord = Boolean(s.chordImagePath && s.chordImagePath.trim());
     return `
       <div onclick="selectLiveRequestSong(${s.id}, '${s.title.replace(/'/g, "\\'")}', '${(s.artistNames || '').replace(/'/g, "\\'")}')" 

@@ -1097,7 +1097,7 @@ export default function Gigs() {
       s.SongTitle.toLocaleLowerCase('tr-TR').includes(term) ||
       (s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(term))
     );
-    setLiveSearchResults(matched.slice(0, 10));
+    setLiveSearchResults(matched);
   };
 
   const playRequestSongDirect = async (song) => {
@@ -1913,7 +1913,6 @@ export default function Gigs() {
                                     const artistMatch = s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(query);
                                     return titleMatch || artistMatch;
                                   })
-                                  .slice(0, 10)
                                   .map(s => {
                                     const hasChord = Boolean(s.ChordImagePath && s.ChordImagePath.trim());
                                     return (
