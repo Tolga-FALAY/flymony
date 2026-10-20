@@ -180,8 +180,8 @@ export default function Guests() {
         event.preventDefault();
         try {
           if (activePasteSection === 'profile') {
-            const compressedBase64 = await compressImage(imageFile, 250, 250, 0.75);
-            setFormData(prev => ({ ...prev, ProfilePicture: compressedBase64 }));
+            const fullBase64 = await readFileAsDataUrl(imageFile);
+            setFormData(prev => ({ ...prev, ProfilePicture: fullBase64 }));
           } else if (activePasteSection === 'gallery') {
             const compressedBase64 = await compressImage(imageFile, 800, 800, 0.7);
             setFormData(prev => ({
@@ -201,11 +201,27 @@ export default function Guests() {
     };
   }, [isModalOpen, activePasteSection]);
 
-  // Keyboard navigation for fullscreen guest gallery
+  // ESC key listener for single fullscreen image modal
+  useEffect(() => {
+    if (!fullscreenImage) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
+        setFullscreenImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreenImage]);
+
+  // Keyboard navigation & ESC for fullscreen guest gallery
   useEffect(() => {
     if (fullscreenGalleryIndex === null) return;
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
         setFullscreenGalleryIndex(null);
       } else if (e.key === 'ArrowLeft') {
         if (formData.Photos && formData.Photos.length > 1) {
@@ -310,6 +326,16 @@ export default function Guests() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Read file/blob as DataURL directly without downsizing or quality loss
+  const readFileAsDataUrl = (fileOrBlob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target.result);
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(fileOrBlob);
+    });
+  };
+
   // HTML5 Canvas client-side image compression
   const compressImage = (file, maxWidth, maxHeight, quality = 0.7) => {
     return new Promise((resolve, reject) => {
@@ -348,17 +374,17 @@ export default function Guests() {
     });
   };
 
-  // Profile Picture Handlers
+  // Profile Picture Handlers (Original full size, no dimension restriction)
   const handleProfilePictureUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
     try {
-      // Compress to 250x250px for circular avatars
-      const compressedBase64 = await compressImage(file, 250, 250, 0.75);
-      setFormData(prev => ({ ...prev, ProfilePicture: compressedBase64 }));
+      const originalBase64 = await readFileAsDataUrl(file);
+      setFormData(prev => ({ ...prev, ProfilePicture: originalBase64 }));
     } catch (err) {
       alert("Profil resmi işlenirken hata oluştu: " + err.message);
     }
+    e.target.value = '';
   };
 
   const removeProfilePicture = () => {
@@ -400,8 +426,8 @@ export default function Guests() {
         for (const type of item.types) {
           if (type.startsWith('image/')) {
             const blob = await item.getType(type);
-            const compressedBase64 = await compressImage(blob, 250, 250, 0.75);
-            setFormData(prev => ({ ...prev, ProfilePicture: compressedBase64 }));
+            const originalBase64 = await readFileAsDataUrl(blob);
+            setFormData(prev => ({ ...prev, ProfilePicture: originalBase64 }));
             found = true;
             break;
           }
@@ -487,18 +513,26 @@ export default function Guests() {
         RelatedGuestIDs: (formData.RelatedGuestIDs || []).map(Number)
       };
       if (editingGuest) {
-        await api.updateGuest(editingGuest.GuestID, payload);
+        const updateResult = await api.updateGuest(editingGuest.GuestID, payload);
+        const finalPic = updateResult?.ProfilePicture || payload.ProfilePicture;
+        const finalPhotos = updateResult?.Photos || payload.Photos;
         // Store'u güncelle — Firestore okuma YOK
         store.updateGuest(editingGuest.GuestID, {
           ...payload,
+          ProfilePicture: finalPic,
+          Photos: finalPhotos,
           IsMusician: formData.IsMusician,
           GuestID:  editingGuest.GuestID,
           FullName: `${payload.FirstName} ${payload.LastName}`.trim()
         });
       } else {
         const result = await api.createGuest(payload);
+        const finalPic = result?.ProfilePicture || payload.ProfilePicture;
+        const finalPhotos = result?.Photos || payload.Photos;
         store.addGuest({
           ...payload,
+          ProfilePicture: finalPic,
+          Photos: finalPhotos,
           IsMusician: formData.IsMusician,
           GuestID:  result.GuestID,
           FullName: `${payload.FirstName} ${payload.LastName}`.trim(),
@@ -1801,23 +1835,26 @@ export default function Guests() {
         <div 
           className="modal-overlay" 
           style={{ 
-            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+            backgroundColor: 'rgba(15, 23, 42, 0.92)', 
             zIndex: 2000, 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            backdropFilter: 'blur(8px)'
+            backdropFilter: 'blur(8px)',
+            cursor: 'zoom-out',
+            padding: '16px'
           }}
           onClick={() => setFullscreenImage(null)}
         >
           <div 
             style={{ 
               position: 'relative', 
-              maxWidth: '90vw', 
-              maxHeight: '90vh',
+              maxWidth: '96vw', 
+              maxHeight: '96vh',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              cursor: 'default'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1825,11 +1862,12 @@ export default function Guests() {
               type="button"
               className="close-btn"
               onClick={() => setFullscreenImage(null)}
+              title="Kapat (ESC)"
               style={{
                 position: 'absolute',
-                top: '-40px',
+                top: '-45px',
                 right: '0px',
-                background: 'rgba(255, 255, 255, 0.15)',
+                background: 'rgba(255, 255, 255, 0.2)',
                 border: 'none',
                 color: '#fff',
                 fontSize: '1.75rem',
@@ -1840,7 +1878,9 @@ export default function Guests() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                lineHeight: 1
+                lineHeight: 1,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                transition: 'all 0.2s'
               }}
             >
               &times;
@@ -1849,11 +1889,13 @@ export default function Guests() {
               src={fullscreenImage} 
               alt="Tam Ekran Görünüm" 
               style={{ 
-                maxWidth: '100%', 
-                maxHeight: '85vh', 
+                maxWidth: '94vw', 
+                maxHeight: '90vh', 
+                width: 'auto',
+                height: 'auto',
                 objectFit: 'contain',
                 borderRadius: '12px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
               }} 
             />
           </div>

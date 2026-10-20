@@ -174,7 +174,12 @@ export const api = {
 
   createGuest: async (data) => {
     const result = await request('/guests', 'POST', data);
-    return { GuestID: Number(result.id), message: 'Guest created successfully' };
+    return { 
+      GuestID: Number(result.id), 
+      ProfilePicture: result.ProfilePicture,
+      Photos: result.Photos,
+      message: 'Guest created successfully' 
+    };
   },
 
   updateGuest: async (id, data) => {

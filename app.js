@@ -818,7 +818,7 @@ function renderGuests() {
     
     const initials = getInitials(guest.firstName, guest.lastName);
     const avatarHtml = guest.profilePicture
-      ? `<img src="${guest.profilePicture}" alt="${guest.fullName}" class="guest-avatar-img" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${guest.profilePicture}')">`
+      ? `<img src="${guest.profilePicture}" alt="${guest.fullName}" class="guest-avatar-img" style="cursor: pointer;" onclick="viewVanillaGuestAvatarFullscreen('${guest.id}')">`
       : `<div class="guest-avatar-initials">${initials}</div>`;
 
     // Age Calculator Helper
@@ -967,6 +967,23 @@ function populateBirthdateDropdowns() {
 }
 
 // Canvas-based image compression for Vanilla JS
+function readVanillaFileAsDataUrl(fileOrBlob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(fileOrBlob);
+  });
+}
+
+function viewVanillaGuestAvatarFullscreen(guestId) {
+  const guest = DB.guests.find(g => String(g.id) === String(guestId));
+  if (guest && guest.profilePicture) {
+    viewVanillaFullscreenImage(guest.profilePicture);
+  }
+}
+window.viewVanillaGuestAvatarFullscreen = viewVanillaGuestAvatarFullscreen;
+
 async function compressVanillaImage(file, maxWidth, maxHeight, quality = 0.7) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1004,13 +1021,13 @@ async function compressVanillaImage(file, maxWidth, maxHeight, quality = 0.7) {
   });
 }
 
-// Vanilla HTML profile picture upload handler
+// Vanilla HTML profile picture upload handler (Original full size, no dimension restriction)
 async function handleVanillaProfileUpload(input) {
-  const file = input.files[0];
+  const file = input.files && input.files[0];
   if (!file) return;
   try {
-    const compressedBase64 = await compressVanillaImage(file, 250, 250, 0.75);
-    document.getElementById('guestProfilePicture').value = compressedBase64;
+    const originalBase64 = await readVanillaFileAsDataUrl(file);
+    document.getElementById('guestProfilePicture').value = originalBase64;
     renderVanillaProfilePreview();
   } catch (err) {
     alert("Profil resmi yüklenirken hata oluştu: " + err.message);
@@ -1029,9 +1046,16 @@ function renderVanillaProfilePreview() {
   if (base64) {
     container.className = "profile-img-preview-wrapper";
     container.innerHTML = `
-      <img src="${base64}" alt="Profil Önizleme" style="cursor: pointer;" onclick="viewVanillaFullscreenImage('${base64}')">
+      <img id="profilePreviewImgEl" src="${base64}" alt="Profil Önizleme" style="cursor: pointer;">
       <button type="button" class="profile-img-delete-badge" onclick="removeVanillaProfilePicture()" title="Resmi Sil">&times;</button>
     `;
+    const imgEl = document.getElementById('profilePreviewImgEl');
+    if (imgEl) {
+      imgEl.onclick = () => {
+        const currentVal = document.getElementById('guestProfilePicture').value;
+        if (currentVal) viewVanillaFullscreenImage(currentVal);
+      };
+    }
   } else {
     container.className = "profile-preview-placeholder";
     container.innerHTML = `<span>RESİM YOK</span>`;
@@ -1074,8 +1098,8 @@ async function pasteVanillaProfilePicture() {
       for (const type of item.types) {
         if (type.startsWith('image/')) {
           const blob = await item.getType(type);
-          const compressedBase64 = await compressVanillaImage(blob, 250, 250, 0.75);
-          document.getElementById('guestProfilePicture').value = compressedBase64;
+          const originalBase64 = await readVanillaFileAsDataUrl(blob);
+          document.getElementById('guestProfilePicture').value = originalBase64;
           renderVanillaProfilePreview();
           found = true;
           break;
@@ -1161,8 +1185,8 @@ function setupVanillaGlobalPasteListener() {
       try {
         if (isGuestModalOpen) {
           if (vanillaActivePasteSection === 'profile') {
-            const compressedBase64 = await compressVanillaImage(imageFile, 250, 250, 0.75);
-            document.getElementById('guestProfilePicture').value = compressedBase64;
+            const originalBase64 = await readVanillaFileAsDataUrl(imageFile);
+            document.getElementById('guestProfilePicture').value = originalBase64;
             renderVanillaProfilePreview();
           } else if (vanillaActivePasteSection === 'gallery') {
             const compressedBase64 = await compressVanillaImage(imageFile, 800, 800, 0.7);
@@ -4476,7 +4500,9 @@ window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
 document.addEventListener('keydown', (e) => {
   const modal = document.getElementById('vanillaImageFullscreenModal');
   if (!modal || modal.style.display === 'none') return;
-  if (e.key === 'Escape') {
+  if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+    e.preventDefault();
+    e.stopPropagation();
     closeVanillaFullscreenImage();
   } else if (e.key === 'ArrowLeft') {
     navigateVanillaGallery(-1);
@@ -7216,6 +7242,7 @@ window.saveVanillaCity = saveVanillaCity;
 window.deleteVanillaCity = deleteVanillaCity;
 window.copyVanillaVenueLink = copyVanillaVenueLink;
 window.viewVanillaFullscreenImage = viewVanillaFullscreenImage;
+window.viewVanillaGuestAvatarFullscreen = viewVanillaGuestAvatarFullscreen;
 window.closeVanillaFullscreenImage = closeVanillaFullscreenImage;
 window.resetVanillaNoteForm = resetVanillaNoteForm;
 window.handleVanillaNotePhotoUpload = handleVanillaNotePhotoUpload;
