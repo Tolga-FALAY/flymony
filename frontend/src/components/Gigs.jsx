@@ -914,7 +914,9 @@ export default function Gigs() {
         e.preventDefault();
         goToPrevSong();
       } else if (e.key === 'Escape') {
-        if (liveRequestersModal) {
+        if (fullscreenGuestProfilePic) {
+          setFullscreenGuestProfilePic(null);
+        } else if (liveRequestersModal) {
           setLiveRequestersModal(null);
         } else if (isLiveDrawerOpen) {
           setIsLiveDrawerOpen(false);
@@ -925,7 +927,7 @@ export default function Gigs() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode, liveChordPageIndex, liveRequestersModal]);
+  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode, liveChordPageIndex, liveRequestersModal, fullscreenGuestProfilePic]);
 
   const startLiveMode = (gig) => {
     if (!gig) return;
@@ -1136,15 +1138,61 @@ export default function Gigs() {
     }
   };
 
-  const formatRequestDate = (dateStr) => {
-    if (!dateStr) return '';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric' });
-    } catch {
-      return dateStr;
+  const parseDateSafe = (dateStr) => {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? null : dateStr;
+    const str = String(dateStr).trim();
+    const parts = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(.*)$/);
+    if (parts) {
+      const day = parseInt(parts[1], 10);
+      const month = parseInt(parts[2], 10) - 1;
+      const year = parseInt(parts[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) return d;
     }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const formatRequestDate = (dateStr) => {
+    const d = parseDateSafe(dateStr);
+    if (!d) return dateStr || '';
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  };
+
+  const formatTimeAgo = (dateStr) => {
+    const d = parseDateSafe(dateStr);
+    if (!d) return '';
+    const now = new Date();
+    const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((nowStart.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) return 'Bugün';
+    if (diffDays === 1) return '1 gün önce';
+    if (diffDays < 30) return `${diffDays} gün önce`;
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      const remDays = diffDays % 30;
+      return remDays > 0 ? `${months} ay ${remDays} gün önce` : `${months} ay önce`;
+    }
+    const years = Math.floor(diffDays / 365);
+    const remMonths = Math.floor((diffDays % 365) / 30);
+    return remMonths > 0 ? `${years} yıl ${remMonths} ay önce` : `${years} yıl önce`;
+  };
+
+  const getStatusBadgeStyle = (statusName) => {
+    const statusObj = (store.statuses || []).find(s => s.StatusName === statusName);
+    const color = statusObj ? statusObj.Color : (statusName === 'Eklendi' ? '#10b981' : '#94a3b8');
+    const hex = (color || '#64748b').replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) || 100;
+    const g = parseInt(hex.substring(2, 4), 16) || 116;
+    const b = parseInt(hex.substring(4, 6), 16) || 139;
+    return {
+      backgroundColor: `rgba(${r}, ${g}, ${b}, 0.18)`,
+      color: color,
+      border: `1px solid rgba(${r}, ${g}, ${b}, 0.35)`
+    };
   };
 
   const getRequestersForSong = (songId) => {
@@ -1154,6 +1202,11 @@ export default function Gigs() {
 
     const guestMap = new Map();
     let anonCounter = 0;
+
+    const getReqTime = (r) => {
+      const d = parseDateSafe(r.RequestDate || r.UpdatedAt || r.CreatedAt);
+      return d ? d.getTime() : 0;
+    };
 
     matched.forEach(req => {
       const gIds = Array.isArray(req.GuestIDs) ? req.GuestIDs : [];
@@ -1186,7 +1239,23 @@ export default function Gigs() {
       }
     });
 
-    return Array.from(guestMap.values());
+    const result = Array.from(guestMap.values()).map(item => {
+      // Sort requests descending so requests[0] is the newest
+      const sortedReqs = item.requests.slice().sort((a, b) => getReqTime(b) - getReqTime(a));
+      const latestReq = sortedReqs[0] || {};
+      const latestTime = getReqTime(latestReq);
+      return {
+        ...item,
+        requests: sortedReqs,
+        latestRequest: latestReq,
+        latestTimestamp: latestTime
+      };
+    });
+
+    // Misafir sıralaması en yeni istek yapandan en eskiye olsun
+    result.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+
+    return result;
   };
 
   const searchLiveRequests = (text) => {
@@ -3970,9 +4039,10 @@ export default function Gigs() {
           onClick={() => setFullscreenGuestProfilePic(null)}
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.9)', zIndex: 99999,
+            backgroundColor: 'rgba(0, 0, 0, 0.92)', backdropFilter: 'blur(8px)',
+            zIndex: 100020,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1rem'
+            padding: '1rem', cursor: 'pointer'
           }}
         >
           <div 
@@ -3982,19 +4052,23 @@ export default function Gigs() {
             <button 
               type="button"
               onClick={() => setFullscreenGuestProfilePic(null)}
+              title="Kapat (ESC)"
               style={{
-                position: 'absolute', top: '-40px', right: '0px',
-                background: 'rgba(255, 255, 255, 0.15)', border: 'none', color: '#fff',
-                fontSize: '1.75rem', width: '40px', height: '40px', borderRadius: '50%',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1
+                position: 'absolute', top: '-42px', right: '0px',
+                background: 'rgba(255, 255, 255, 0.18)', border: 'none', color: '#fff',
+                fontSize: '1.75rem', width: '38px', height: '38px', borderRadius: '50%',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                transition: 'background 0.15s ease'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.5)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'}
             >
               &times;
             </button>
             <img 
               src={fullscreenGuestProfilePic} 
               alt="Profil Büyük Görünüm" 
-              style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }} 
+              style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', cursor: 'default' }} 
             />
           </div>
         </div>,
@@ -4096,11 +4170,11 @@ export default function Gigs() {
 
             {/* Modal List Body */}
             <div style={{
-              padding: '1rem 1.25rem',
+              padding: '0.85rem 1.15rem',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.65rem',
+              gap: '0.55rem',
               maxHeight: 'calc(85vh - 120px)'
             }}>
               {liveRequestersModal.requesters.map((item, idx) => {
@@ -4113,6 +4187,13 @@ export default function Gigs() {
                   .toUpperCase()
                   .slice(0, 2);
 
+                const latestReq = item.latestRequest || (item.requests && item.requests[0]) || {};
+                const reqDate = latestReq.RequestDate || latestReq.UpdatedAt || latestReq.CreatedAt;
+                const dateText = formatRequestDate(reqDate);
+                const timeAgoText = formatTimeAgo(reqDate);
+                const statusName = latestReq.Status || 'Kayıtlı';
+                const statusStyle = getStatusBadgeStyle(statusName);
+
                 return (
                   <div 
                     key={idx}
@@ -4120,92 +4201,113 @@ export default function Gigs() {
                       background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: '12px',
-                      padding: '0.75rem 1rem',
+                      padding: '0.65rem 0.95rem',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.85rem',
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    {/* Guest Avatar */}
+                    {/* Misafir Fotoğrafı (Tıklandığında popup açılır) */}
                     {profilePic ? (
                       <img 
                         src={profilePic} 
                         alt={item.name} 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFullscreenGuestProfilePic(profilePic);
+                        }}
+                        title="Fotoğrafı büyütmek için tıklayın"
                         style={{
                           width: '44px',
                           height: '44px',
                           borderRadius: '50%',
                           objectFit: 'cover',
                           border: '2px solid #a855f7',
-                          flexShrink: 0
-                        }} 
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.08)';
+                          e.currentTarget.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.6)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
                       />
                     ) : (
-                      <div style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #9333ea, #6b21a8)',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        fontSize: '0.95rem',
-                        letterSpacing: '0.5px',
-                        border: '2px solid rgba(168, 85, 247, 0.4)',
-                        flexShrink: 0
-                      }}>
+                      <div 
+                        style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #9333ea, #6b21a8)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 800,
+                          fontSize: '0.95rem',
+                          letterSpacing: '0.5px',
+                          border: '2px solid rgba(168, 85, 247, 0.4)',
+                          flexShrink: 0,
+                          userSelect: 'none'
+                        }}
+                      >
                         {initials}
                       </div>
                     )}
 
-                    {/* Guest Info & Request details */}
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.98rem', color: '#ffffff' }}>
-                          {item.name}
-                        </span>
-                        {item.requests.length > 1 && (
-                          <span style={{
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            borderRadius: '999px',
-                            background: 'rgba(168, 85, 247, 0.25)',
-                            color: '#c084fc',
-                            border: '1px solid rgba(168, 85, 247, 0.4)'
-                          }}>
-                            {item.requests.length} kez
-                          </span>
-                        )}
-                      </div>
+                    {/* Fotoğrafın yanında iki satır: Üstte misafir adı, altta Tarih (geçen süre) */}
+                    <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <span 
+                        style={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.98rem', 
+                          color: '#ffffff',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          lineHeight: 1.25
+                        }}
+                        title={item.name}
+                      >
+                        {item.name}
+                      </span>
+                      <span 
+                        style={{ 
+                          fontSize: '0.78rem', 
+                          color: '#94a3b8',
+                          marginTop: '2px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          lineHeight: 1.2
+                        }}
+                      >
+                        {dateText ? `${dateText}${timeAgoText ? ` (${timeAgoText})` : ''}` : '-'}
+                      </span>
+                    </div>
 
-                      {/* Request Date & Status */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '0.78rem', color: '#94a3b8' }}>
-                        {item.requests.map((r, rIdx) => (
-                          <span key={rIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <span>📅 {formatRequestDate(r.RequestDate || r.UpdatedAt)}</span>
-                            {r.Status && (
-                              <span style={{
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                fontSize: '0.72rem',
-                                background: r.Status === 'Eklendi' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                                color: r.Status === 'Eklendi' ? '#34d399' : '#cbd5e1'
-                              }}>
-                                {r.Status}
-                              </span>
-                            )}
-                            {r.Notes && (
-                              <span style={{ fontStyle: 'italic', color: '#cbd5e1' }}>
-                                &ldquo;{r.Notes}&rdquo;
-                              </span>
-                            )}
-                          </span>
-                        ))}
-                      </div>
+                    {/* En sağ kısım: Durum rozeti (EKLENDİ vb. kendi rengi ile) */}
+                    <div style={{ flexShrink: 0, marginLeft: '0.5rem' }}>
+                      <span 
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.3px',
+                          display: 'inline-block',
+                          whiteSpace: 'nowrap',
+                          ...statusStyle
+                        }}
+                      >
+                        {statusName}
+                      </span>
                     </div>
                   </div>
                 );

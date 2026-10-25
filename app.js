@@ -6369,6 +6369,11 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     goToLivePrevSong();
   } else if (e.key === 'Escape') {
+    const picModal = document.getElementById('vanillaGuestProfilePicModal');
+    if (picModal && picModal.style.display === 'flex') {
+      closeVanillaGuestProfilePicModal();
+      return;
+    }
     const reqModal = document.getElementById('vanillaLiveRequestersModal');
     if (reqModal && reqModal.style.display === 'flex') {
       closeVanillaLiveRequestersModal();
@@ -6382,11 +6387,44 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+function openVanillaGuestProfilePicModal(url) {
+  const modal = document.getElementById('vanillaGuestProfilePicModal');
+  const img = document.getElementById('vanillaGuestProfilePicImg');
+  if (modal && img) {
+    img.src = url;
+    modal.style.display = 'flex';
+  }
+}
+
+function closeVanillaGuestProfilePicModal() {
+  const modal = document.getElementById('vanillaGuestProfilePicModal');
+  if (modal) modal.style.display = 'none';
+}
+
 function getVanillaSongRequesters(songId) {
   if (!songId || !DB.requests) return [];
   const matched = DB.requests.filter(r => Number(r.songId) === Number(songId));
   const guestMap = new Map();
   let anonCounter = 0;
+
+  const parseDateSafe = (dStr) => {
+    if (!dStr) return null;
+    if (dStr instanceof Date) return isNaN(dStr.getTime()) ? null : dStr;
+    const str = String(dStr).trim();
+    const parts = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(.*)$/);
+    if (parts) {
+      const d = new Date(parseInt(parts[3], 10), parseInt(parts[2], 10) - 1, parseInt(parts[1], 10));
+      if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const getReqTime = (r) => {
+    const d = parseDateSafe(r.date || r.requestDate || r.updatedAt || r.createdAt);
+    return d ? d.getTime() : 0;
+  };
+
   matched.forEach(req => {
     const gIds = Array.isArray(req.guestIds) ? req.guestIds : (req.guestId ? [req.guestId] : []);
     if (gIds.length === 0) {
@@ -6404,7 +6442,21 @@ function getVanillaSongRequesters(songId) {
       });
     }
   });
-  return Array.from(guestMap.values());
+
+  const result = Array.from(guestMap.values()).map(item => {
+    const sortedReqs = item.requests.slice().sort((a, b) => getReqTime(b) - getReqTime(a));
+    const latestReq = sortedReqs[0] || {};
+    const latestTime = getReqTime(latestReq);
+    return {
+      ...item,
+      requests: sortedReqs,
+      latestRequest: latestReq,
+      latestTimestamp: latestTime
+    };
+  });
+
+  result.sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+  return result;
 }
 
 function openVanillaLiveRequestersModal() {
@@ -6425,35 +6477,83 @@ function openVanillaLiveRequestersModal() {
   if (title) title.innerHTML = `🎵 <strong style="color: #fff;">${fullSong.title}</strong> ${gigSong.artistNames ? ` - ${gigSong.artistNames}` : ''}`;
 
   if (list) {
+    const parseDateSafe = (dStr) => {
+      if (!dStr) return null;
+      if (dStr instanceof Date) return isNaN(dStr.getTime()) ? null : dStr;
+      const str = String(dStr).trim();
+      const parts = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(.*)$/);
+      if (parts) {
+        const d = new Date(parseInt(parts[3], 10), parseInt(parts[2], 10) - 1, parseInt(parts[1], 10));
+        if (!isNaN(d.getTime())) return d;
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const formatRequestDate = (dStr) => {
+      const d = parseDateSafe(dStr);
+      if (!d) return dStr || '';
+      return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    };
+
+    const formatTimeAgo = (dStr) => {
+      const d = parseDateSafe(dStr);
+      if (!d) return '';
+      const now = new Date();
+      const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffDays = Math.round((nowStart.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 0) return 'Bugün';
+      if (diffDays === 1) return '1 gün önce';
+      if (diffDays < 30) return `${diffDays} gün önce`;
+      if (diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        const remDays = diffDays % 30;
+        return remDays > 0 ? `${months} ay ${remDays} gün önce` : `${months} ay önce`;
+      }
+      const years = Math.floor(diffDays / 365);
+      const remMonths = Math.floor((diffDays % 365) / 30);
+      return remMonths > 0 ? `${years} yıl ${remMonths} ay önce` : `${years} yıl önce`;
+    };
+
     list.innerHTML = songRequesters.map(item => {
       const g = item.guest;
       const initials = (item.name || 'M').split(' ').map(p => p.charAt(0)).join('').toUpperCase().slice(0, 2);
-      const reqDetails = item.requests.map(r => {
-        const dStr = r.date ? new Date(r.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric' }) : '';
-        return `
-          <span style="display: inline-flex; align-items: center; gap: 4px;">
-            <span>📅 ${dStr}</span>
-            ${r.status ? `<span style="padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; background: ${r.status === 'Eklendi' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)'}; color: ${r.status === 'Eklendi' ? '#34d399' : '#cbd5e1'};">${r.status}</span>` : ''}
-            ${r.notes ? `<span style="font-style: italic; color: #cbd5e1;">&ldquo;${r.notes}&rdquo;</span>` : ''}
-          </span>
-        `;
-      }).join(' ');
+      const latestReq = item.latestRequest || (item.requests && item.requests[0]) || {};
+      const reqDate = latestReq.date || latestReq.requestDate || latestReq.updatedAt || latestReq.createdAt;
+
+      const dateText = formatRequestDate(reqDate);
+      const timeAgoText = formatTimeAgo(reqDate);
+      const statusName = latestReq.status || 'Kayıtlı';
+
+      const statusObj = (DB.statuses || []).find(s => s.name === statusName);
+      const color = statusObj ? statusObj.color : (statusName === 'Eklendi' ? '#10b981' : '#94a3b8');
+      const hex = (color || '#64748b').replace('#', '');
+      const rgbR = parseInt(hex.substring(0, 2), 16) || 100;
+      const rgbG = parseInt(hex.substring(2, 4), 16) || 116;
+      const rgbB = parseInt(hex.substring(4, 6), 16) || 139;
+      const statusStyle = `background-color: rgba(${rgbR}, ${rgbG}, ${rgbB}, 0.18); color: ${color}; border: 1px solid rgba(${rgbR}, ${rgbG}, ${rgbB}, 0.35);`;
+
+      const photoUrl = g && g.profilePicture ? g.profilePicture : '';
+      const photoClickHtml = photoUrl ? `onclick="openVanillaGuestProfilePicModal('${photoUrl.replace(/'/g, "\\'")}')" title="Fotoğrafı büyütmek için tıklayın"` : '';
 
       return `
-        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.85rem;">
-          ${g && g.profilePicture ? `
-            <img src="${g.profilePicture}" alt="${item.name}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #a855f7; flex-shrink: 0;" />
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 0.65rem 0.95rem; display: flex; align-items: center; gap: 0.85rem;">
+          ${photoUrl ? `
+            <img src="${photoUrl}" alt="${item.name}" ${photoClickHtml} style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #a855f7; flex-shrink: 0; cursor: pointer; transition: transform 0.15s ease;" />
           ` : `
-            <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #9333ea, #6b21a8); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; border: 2px solid rgba(168,85,247,0.4); flex-shrink: 0;">${initials}</div>
+            <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #9333ea, #6b21a8); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; border: 2px solid rgba(168,85,247,0.4); flex-shrink: 0; user-select: none;">${initials}</div>
           `}
-          <div style="min-width: 0; flex: 1;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-              <span style="font-weight: 700; font-size: 0.98rem; color: #ffffff;">${item.name}</span>
-              ${item.requests.length > 1 ? `<span style="font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: rgba(168,85,247,0.25); color: #c084fc; border: 1px solid rgba(168,85,247,0.4);">${item.requests.length} kez</span>` : ''}
-            </div>
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: 0.78rem; color: #94a3b8;">
-              ${reqDetails}
-            </div>
+          <div style="min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+            <span style="font-weight: 700; font-size: 0.98rem; color: #ffffff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.25;" title="${item.name}">${item.name}</span>
+            <span style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2;">
+              ${dateText ? `${dateText}${timeAgoText ? ` (${timeAgoText})` : ''}` : '-'}
+            </span>
+          </div>
+          <div style="flex-shrink: 0; margin-left: 0.5rem;">
+            <span style="padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; display: inline-block; white-space: nowrap; ${statusStyle}">
+              ${statusName}
+            </span>
           </div>
         </div>
       `;
