@@ -2927,15 +2927,39 @@ export default function Gigs() {
                                 </span>
                               </button>
 
-                              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {gigSong.SongTitle}
-                              </span>
-                              {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
-                                <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginLeft: '0.25rem', flexShrink: 0 }}>
-                                  - {gigSong.ArtistNames}
+                              {/* Song Title (Top) & Solist / Ton (Bottom) */}
+                              <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+                                <span style={{
+                                  fontSize: '1.15rem',
+                                  fontWeight: 800,
+                                  color: '#ffffff',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  lineHeight: 1.25
+                                }}>
+                                  {gigSong.SongTitle}
                                 </span>
-                              )}
-                              {origKey && <span className="orig-key-badge" style={{ marginLeft: '0.25rem', flexShrink: 0 }}>({origKey} Tonu)</span>}
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.4rem',
+                                  fontSize: '0.82rem',
+                                  color: '#94a3b8',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  lineHeight: 1.2,
+                                  marginTop: '2px'
+                                }}>
+                                  {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {gigSong.ArtistNames}
+                                    </span>
+                                  )}
+                                  {origKey && <span className="orig-key-badge" style={{ flexShrink: 0 }}>({origKey} Tonu)</span>}
+                                </div>
+                              </div>
                             </div>
 
                             {/* Right: Controls Aligned in Top Bar */}
@@ -3246,10 +3270,39 @@ export default function Gigs() {
                             </span>
                           </button>
 
-                          <span className="song-title-label">
-                            {gigSong.SongTitle} {gigSong.ArtistNames && gigSong.ArtistNames !== '-' ? ` - ${gigSong.ArtistNames}` : ''}
-                          </span>
-                          {origKey && <span className="orig-key-badge">({origKey} Tonu)</span>}
+                          {/* Song Title (Top) & Solist / Ton (Bottom) */}
+                          <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+                            <span style={{
+                              fontSize: '1.2rem',
+                              fontWeight: 800,
+                              color: 'var(--text-main)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              lineHeight: 1.25
+                            }}>
+                              {gigSong.SongTitle}
+                            </span>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              fontSize: '0.82rem',
+                              color: 'var(--text-muted)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              lineHeight: 1.2,
+                              marginTop: '2px'
+                            }}>
+                              {gigSong.ArtistNames && gigSong.ArtistNames !== '-' && (
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {gigSong.ArtistNames}
+                                </span>
+                              )}
+                              {origKey && <span className="orig-key-badge" style={{ flexShrink: 0 }}>({origKey} Tonu)</span>}
+                            </div>
+                          </div>
                           
                           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                             {/* İstek Yapan Misafir Sayısı Butonu (Mor İkili Gölge Adam) */}

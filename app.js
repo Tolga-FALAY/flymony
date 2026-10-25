@@ -5921,7 +5921,8 @@ function renderLiveGigSong() {
     updateReqBtn('btnLiveRequestersImg', 'btnLiveRequestersImgCount');
 
     document.getElementById('gigLiveImgSongTitle').innerText = gigSong.title;
-    document.getElementById('gigLiveImgSongArtist').innerText = artistNames ? `- ${artistNames}` : '';
+    const imgArtistSpan = document.getElementById('gigLiveImgSongArtist');
+    if (imgArtistSpan) imgArtistSpan.innerText = (artistNames && artistNames !== '-') ? artistNames : '';
     const imgKeyBadge = document.getElementById('gigLiveImgOrigKey');
     if (imgKeyBadge) {
       if (origKey) {
@@ -6022,7 +6023,9 @@ function renderLiveGigSong() {
       }
     }
 
-    document.getElementById('gigLiveSongTitle').innerText = `${gigSong.title}${artistNames ? ` - ${artistNames}` : ''}`;
+    document.getElementById('gigLiveSongTitle').innerText = gigSong.title;
+    const transArtistSpan = document.getElementById('gigLiveSongArtist');
+    if (transArtistSpan) transArtistSpan.innerText = (artistNames && artistNames !== '-') ? artistNames : '';
     const origKeyBadge = document.getElementById('gigLiveOrigKeyBadge');
     if (origKeyBadge) {
       if (origKey) {
