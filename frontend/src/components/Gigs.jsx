@@ -1470,6 +1470,12 @@ export default function Gigs() {
   };
 
   const handleSelectGuestSong = async (songObj) => {
+    if (!songObj) return;
+    const hasChord = Boolean(
+      (songObj.ChordImagePath && songObj.ChordImagePath.trim()) ||
+      (Array.isArray(songObj.ChordImages) && songObj.ChordImages.length > 0)
+    );
+    if (!hasChord) return; // Akor olmayan şarkı seçilemez, sessizce geri dön
     await playRequestSongDirect(songObj);
     setLiveGuestRequestsModal(null);
     setIsLiveDrawerOpen(false);
@@ -4685,28 +4691,34 @@ export default function Gigs() {
                   return (
                     <div 
                       key={idx}
-                      onClick={() => handleSelectGuestSong(song)}
+                      onClick={() => {
+                        if (!hasChord) return;
+                        handleSelectGuestSong(song);
+                      }}
                       style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        background: hasChord ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                        border: hasChord ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.04)',
                         borderRadius: '12px',
                         padding: '0.75rem 1rem',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: '0.75rem',
-                        cursor: 'pointer',
+                        cursor: hasChord ? 'pointer' : 'not-allowed',
+                        opacity: hasChord ? 1 : 0.5,
                         transition: 'all 0.15s ease'
                       }}
                       onMouseEnter={(e) => {
+                        if (!hasChord) return;
                         e.currentTarget.style.background = 'rgba(168, 85, 247, 0.15)';
                         e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.45)';
                       }}
                       onMouseLeave={(e) => {
+                        if (!hasChord) return;
                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
                       }}
-                      title={`"${song.SongTitle}" şarkısını sahneye istek olarak ekle ve aç`}
+                      title={hasChord ? `"${song.SongTitle}" şarkısını sahneye istek olarak ekle ve aç` : undefined}
                     >
                       {/* Left: Song Info */}
                       <div style={{ minWidth: 0, flex: 1 }}>
