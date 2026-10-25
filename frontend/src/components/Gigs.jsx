@@ -81,6 +81,11 @@ export default function Gigs() {
   const [liveIsSingleScreen, setLiveIsSingleScreen] = useState(false);
   const [liveSearchQuery, setLiveSearchQuery] = useState('');
   const [liveSearchResults, setLiveSearchResults] = useState([]);
+  const [liveGuestSearchQuery, setLiveGuestSearchQuery] = useState('');
+  const [liveGuestSearchResults, setLiveGuestSearchResults] = useState([]);
+  const [liveGuestRequestsModal, setLiveGuestRequestsModal] = useState(null);
+  const [livePreviewChordSong, setLivePreviewChordSong] = useState(null);
+  const [livePreviewChordPageIndex, setLivePreviewChordPageIndex] = useState(0);
   const [liveSortField, setLiveSortField] = useState('no'); // 'no', 'sarki', 'sanatci'
   const [liveSortOrder, setLiveSortOrder] = useState('asc'); // 'asc', 'desc'
   const [liveShowUnplayedOnly, setLiveShowUnplayedOnly] = useState(false);
@@ -914,8 +919,12 @@ export default function Gigs() {
         e.preventDefault();
         goToPrevSong();
       } else if (e.key === 'Escape') {
-        if (fullscreenGuestProfilePic) {
+        if (livePreviewChordSong) {
+          setLivePreviewChordSong(null);
+        } else if (fullscreenGuestProfilePic) {
           setFullscreenGuestProfilePic(null);
+        } else if (liveGuestRequestsModal) {
+          setLiveGuestRequestsModal(null);
         } else if (liveRequestersModal) {
           setLiveRequestersModal(null);
         } else if (isLiveDrawerOpen) {
@@ -927,7 +936,7 @@ export default function Gigs() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode, liveChordPageIndex, liveRequestersModal, fullscreenGuestProfilePic]);
+  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode, liveChordPageIndex, liveRequestersModal, fullscreenGuestProfilePic, liveGuestRequestsModal, livePreviewChordSong]);
 
   const startLiveMode = (gig) => {
     if (!gig) return;
@@ -942,6 +951,10 @@ export default function Gigs() {
     setLiveIsSingleScreen(false);
     setLiveSearchQuery('');
     setLiveSearchResults([]);
+    setLiveGuestSearchQuery('');
+    setLiveGuestSearchResults([]);
+    setLiveGuestRequestsModal(null);
+    setLivePreviewChordSong(null);
     setLiveSortField('no');
     setLiveSortOrder('asc');
     setLiveShowUnplayedOnly(false);
@@ -972,6 +985,10 @@ export default function Gigs() {
     setLiveSongIndex(-1);
     setLiveChordPageIndex(0);
     setLiveTransposeShift(0);
+    setLiveGuestSearchQuery('');
+    setLiveGuestSearchResults([]);
+    setLiveGuestRequestsModal(null);
+    setLivePreviewChordSong(null);
     // Force store reload to keep database status synced
     await store.load(true);
   };
@@ -1331,6 +1348,131 @@ export default function Gigs() {
     // Clear request search box
     setLiveSearchQuery('');
     setLiveSearchResults([]);
+  };
+
+  const getStatusRank = (statusName) => {
+    if (!statusName) return 50;
+    const norm = String(statusName).trim().toLocaleUpperCase('tr-TR').replace(/[\s_-]+/g, '');
+    if (norm.includes('EKLEND')) return 1;
+    if (norm.includes('İYİLEŞT') || norm.includes('IYILEST')) return 2;
+    if (norm.includes('DENEME')) return 3;
+    if (norm.includes('ERKENBAK')) return 4;
+    if (norm.includes('KAYITLI')) return 5;
+    if (norm.includes('İPTAL') || norm.includes('IPTAL')) return 99;
+    return 10;
+  };
+
+  const searchLiveGuests = (text) => {
+    setLiveGuestSearchQuery(text);
+    if (!text.trim()) {
+      setLiveGuestSearchResults([]);
+      return;
+    }
+    const query = text.toLocaleLowerCase('tr-TR');
+    const allRequests = requests.length > 0 ? requests : (store.requests || []);
+    const allGuests = guests.length > 0 ? guests : (store.guests || []);
+
+    const guestMap = new Map();
+
+    allRequests.forEach(req => {
+      const gIds = Array.isArray(req.GuestIDs) ? req.GuestIDs : [];
+      if (gIds.length === 0) {
+        if (req.FullNames && req.FullNames !== '-' && req.FullNames.trim()) {
+          const names = req.FullNames.split(',').map(n => n.trim()).filter(Boolean);
+          names.forEach(name => {
+            const key = `name_${name.toLocaleLowerCase('tr-TR')}`;
+            if (!guestMap.has(key)) {
+              guestMap.set(key, { key, name, guestId: null, guest: null, requests: [req] });
+            } else {
+              guestMap.get(key).requests.push(req);
+            }
+          });
+        }
+      } else {
+        gIds.forEach(gid => {
+          const gNum = Number(gid);
+          const gObj = allGuests.find(g => Number(g.GuestID) === gNum);
+          const name = gObj ? (gObj.FullName || `${gObj.FirstName || ''} ${gObj.LastName || ''}`.trim()) : `Misafir #${gNum}`;
+          const key = `id_${gNum}`;
+          if (!guestMap.has(key)) {
+            guestMap.set(key, { key, name, guestId: gNum, guest: gObj, requests: [req] });
+          } else {
+            guestMap.get(key).requests.push(req);
+          }
+        });
+      }
+    });
+
+    allGuests.forEach(gObj => {
+      const gNum = Number(gObj.GuestID);
+      const key = `id_${gNum}`;
+      if (!guestMap.has(key)) {
+        const name = gObj.FullName || `${gObj.FirstName || ''} ${gObj.LastName || ''}`.trim();
+        if (name) {
+          guestMap.set(key, { key, name, guestId: gNum, guest: gObj, requests: [] });
+        }
+      }
+    });
+
+    const matched = Array.from(guestMap.values()).filter(item => {
+      return item.name.toLocaleLowerCase('tr-TR').includes(query);
+    });
+
+    matched.sort((a, b) => {
+      if ((b.requests.length > 0) !== (a.requests.length > 0)) {
+        return b.requests.length - a.requests.length;
+      }
+      return a.name.toLocaleLowerCase('tr-TR').localeCompare(b.name.toLocaleLowerCase('tr-TR'), 'tr');
+    });
+
+    setLiveGuestSearchResults(matched.slice(0, 15));
+  };
+
+  const openGuestRequestsModal = (gItem) => {
+    setLiveGuestSearchResults([]);
+    const allSongs = songs.length > 0 ? songs : (store.songs || []);
+
+    const songItems = gItem.requests.map(req => {
+      const sObj = allSongs.find(s => Number(s.SongID) === Number(req.SongID)) || {
+        SongID: req.SongID,
+        SongTitle: req.SongTitle || 'Bilinmeyen Şarkı',
+        ArtistNames: '-'
+      };
+      return {
+        request: req,
+        song: sObj
+      };
+    });
+
+    // 1) EKLENDİ (şarkı adı sırasına göre)
+    // 2) İYİLEŞTİR
+    // 3) DENEMEDE
+    // 4) ERKEN_BAK
+    // 5) KAYITLI
+    // 6) Diğer durumlar
+    // 7) İPTAL
+    songItems.sort((a, b) => {
+      const rankA = getStatusRank(a.request.Status);
+      const rankB = getStatusRank(b.request.Status);
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+      const titleA = (a.song.SongTitle || '').toLocaleLowerCase('tr-TR');
+      const titleB = (b.song.SongTitle || '').toLocaleLowerCase('tr-TR');
+      return titleA.localeCompare(titleB, 'tr');
+    });
+
+    setLiveGuestRequestsModal({
+      guestName: gItem.name,
+      guest: gItem.guest,
+      items: songItems
+    });
+  };
+
+  const handleSelectGuestSong = async (songObj) => {
+    await playRequestSongDirect(songObj);
+    setLiveGuestRequestsModal(null);
+    setIsLiveDrawerOpen(false);
   };
 
   // Touch Swipe & Tap for Chord Slider
@@ -2753,6 +2895,74 @@ export default function Gigs() {
                           )}
                         </div>
                         <div style={{ fontSize: '0.84rem', opacity: 0.75, marginTop: '2px' }}>{s.ArtistNames || '-'}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* GUEST NAME SEARCH (UNDERNEATH SONG SEARCH) */}
+            <div className="live-stage-search-box" style={{ marginTop: '8px' }}>
+              <div className="live-search-input-wrapper">
+                <input 
+                  type="text" 
+                  placeholder="Misafir ismi ile istek ara..." 
+                  value={liveGuestSearchQuery} 
+                  onChange={e => searchLiveGuests(e.target.value)} 
+                  className="live-stage-search-input"
+                />
+                {liveGuestSearchQuery && (
+                  <button 
+                    type="button" 
+                    className="live-search-clear-btn" 
+                    onClick={() => { setLiveGuestSearchQuery(''); setLiveGuestSearchResults([]); }}
+                    title="Temizle"
+                  >
+                    &times;
+                  </button>
+                )}
+              </div>
+
+              {/* Guest Search Autocomplete Results */}
+              {liveGuestSearchResults.length > 0 && (
+                <div className="live-stage-search-results">
+                  {liveGuestSearchResults.map(gItem => {
+                    const profilePic = gItem.guest && gItem.guest.ProfilePicture ? getUploadsUrl(gItem.guest.ProfilePicture) : null;
+                    const initials = (gItem.name || 'M')
+                      .split(' ')
+                      .map(p => p.charAt(0))
+                      .join('')
+                      .toUpperCase()
+                      .slice(0, 2);
+
+                    return (
+                      <div 
+                        key={gItem.key} 
+                        onClick={() => openGuestRequestsModal(gItem)}
+                        className="live-stage-search-item"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.6rem 0.75rem', cursor: 'pointer' }}
+                      >
+                        {profilePic ? (
+                          <img 
+                            src={profilePic} 
+                            alt={gItem.name} 
+                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #a855f7', flexShrink: 0 }} 
+                          />
+                        ) : (
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #9333ea, #6b21a8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', flexShrink: 0 }}>
+                            {initials}
+                          </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {gItem.name}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#c084fc', marginTop: '1px' }}>
+                            {gItem.requests.length} şarkı isteği
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>➔</span>
                       </div>
                     );
                   })}
@@ -4336,6 +4546,361 @@ export default function Gigs() {
                 Kapat
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Misafirin İstek Şarkıları Modal */}
+      {liveGuestRequestsModal && createPortal(
+        <div 
+          className="modal-overlay"
+          onClick={() => setLiveGuestRequestsModal(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.82)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 100010,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div 
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '520px',
+              maxHeight: '85vh',
+              backgroundColor: '#1e293b',
+              color: '#ffffff',
+              borderRadius: '16px',
+              border: '1.5px solid rgba(168, 85, 247, 0.5)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(168, 85, 247, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.1rem 1.25rem',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(30, 41, 59, 0.85))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem'
+            }}>
+              <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {(() => {
+                  const g = liveGuestRequestsModal.guest;
+                  const profilePic = g && g.ProfilePicture ? getUploadsUrl(g.ProfilePicture) : null;
+                  const initials = (liveGuestRequestsModal.guestName || 'M').split(' ').map(p => p.charAt(0)).join('').toUpperCase().slice(0, 2);
+                  return profilePic ? (
+                    <img 
+                      src={profilePic} 
+                      alt={liveGuestRequestsModal.guestName} 
+                      style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #a855f7', flexShrink: 0 }} 
+                    />
+                  ) : (
+                    <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #9333ea, #6b21a8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', border: '1.5px solid rgba(168, 85, 247, 0.4)', flexShrink: 0 }}>
+                      {initials}
+                    </div>
+                  );
+                })()}
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#f3e8ff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>{liveGuestRequestsModal.guestName}</span>
+                    <span style={{
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      background: '#9333ea',
+                      color: '#ffffff',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      lineHeight: 1.2
+                    }}>
+                      {liveGuestRequestsModal.items.length} İstek
+                    </span>
+                  </h3>
+                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '3px' }}>
+                    Şarkıya tıklayarak sahneye ekleyebilir ve hemen çalabilirsiniz.
+                  </div>
+                </div>
+              </div>
+
+              {/* Çarpı Kapat Butonu */}
+              <button 
+                type="button"
+                onClick={() => setLiveGuestRequestsModal(null)}
+                title="Kapat (ESC)"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  color: '#e2e8f0',
+                  fontSize: '1.5rem',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1,
+                  flexShrink: 0,
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'; e.currentTarget.style.color = '#ef4444'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#e2e8f0'; }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body: Song List */}
+            <div style={{
+              padding: '0.85rem 1.15rem',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.55rem',
+              maxHeight: 'calc(85vh - 120px)'
+            }}>
+              {liveGuestRequestsModal.items.length === 0 ? (
+                <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                  Bu misafire ait kayıtlı istek şarkısı bulunamadı.
+                </div>
+              ) : (
+                liveGuestRequestsModal.items.map((item, idx) => {
+                  const song = item.song;
+                  const req = item.request;
+                  const hasChord = Boolean(
+                    (song.ChordImagePath && song.ChordImagePath.trim()) ||
+                    (Array.isArray(song.ChordImages) && song.ChordImages.length > 0)
+                  );
+                  const statusName = req.Status || 'Kayıtlı';
+                  const statusStyle = getStatusBadgeStyle(statusName);
+
+                  return (
+                    <div 
+                      key={idx}
+                      onClick={() => handleSelectGuestSong(song)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '12px',
+                        padding: '0.75rem 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(168, 85, 247, 0.15)';
+                        e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.45)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                      }}
+                      title={`"${song.SongTitle}" şarkısını sahneye istek olarak ekle ve aç`}
+                    >
+                      {/* Left: Song Info */}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.98rem', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {song.SongTitle}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {song.ArtistNames && song.ArtistNames !== '-' ? song.ArtistNames : ''}
+                        </div>
+                      </div>
+
+                      {/* Right: Akor / Akor Yok Butonu + Durum Rozeti */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexShrink: 0 }}>
+                        {/* Akor / Akor Yok Butonu */}
+                        {hasChord ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLivePreviewChordPageIndex(0);
+                              setLivePreviewChordSong(song);
+                            }}
+                            style={{
+                              background: 'rgba(16, 185, 129, 0.2)',
+                              color: '#34d399',
+                              border: '1px solid rgba(16, 185, 129, 0.4)',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.35)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'}
+                            title="Akor Görselini Önizle"
+                          >
+                            Akor
+                          </button>
+                        ) : (
+                          <span
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.15)',
+                              color: '#f87171',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              flexShrink: 0,
+                              userSelect: 'none'
+                            }}
+                          >
+                            Akor Yok
+                          </span>
+                        )}
+
+                        {/* Durum Rozeti (EKLENDİ vb.) */}
+                        <span 
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.3px',
+                            display: 'inline-block',
+                            whiteSpace: 'nowrap',
+                            ...statusStyle
+                          }}
+                        >
+                          {statusName}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '0.75rem 1.25rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              background: 'rgba(15, 23, 42, 0.4)'
+            }}>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => setLiveGuestRequestsModal(null)}
+                style={{
+                  padding: '0.4rem 1.2rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Akor Önizleme Modal (Popup) */}
+      {livePreviewChordSong && createPortal(
+        <div 
+          className="fullscreen-modal"
+          onClick={() => setLivePreviewChordSong(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.92)', backdropFilter: 'blur(8px)',
+            zIndex: 100030,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem', cursor: 'pointer'
+          }}
+        >
+          <div 
+            style={{ position: 'relative', maxWidth: '92vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ position: 'absolute', top: '-42px', left: '0px', color: '#fff', fontWeight: 800, fontSize: '1rem', textShadow: '0 2px 4px rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80vw' }}>
+              🎵 {livePreviewChordSong.SongTitle} {livePreviewChordSong.ArtistNames && livePreviewChordSong.ArtistNames !== '-' ? ` - ${livePreviewChordSong.ArtistNames}` : ''}
+            </div>
+            <button 
+              type="button"
+              onClick={() => setLivePreviewChordSong(null)}
+              title="Kapat (ESC)"
+              style={{
+                position: 'absolute', top: '-42px', right: '0px',
+                background: 'rgba(255, 255, 255, 0.18)', border: 'none', color: '#fff',
+                fontSize: '1.75rem', width: '38px', height: '38px', borderRadius: '50%',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.5)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'}
+            >
+              &times;
+            </button>
+            {(() => {
+              const chordImages = (Array.isArray(livePreviewChordSong.ChordImages) && livePreviewChordSong.ChordImages.length > 0)
+                ? livePreviewChordSong.ChordImages
+                : (livePreviewChordSong.ChordImagePath ? [livePreviewChordSong.ChordImagePath] : []);
+              const currentImg = chordImages[livePreviewChordPageIndex] || chordImages[0] || '';
+              const totalPages = chordImages.length;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img 
+                    src={getUploadsUrl(currentImg)} 
+                    alt={livePreviewChordSong.SongTitle} 
+                    style={{ maxWidth: '100%', maxHeight: '82vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', cursor: 'default', background: '#fff' }} 
+                  />
+                  {totalPages > 1 && (
+                    <div style={{
+                      marginTop: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.85rem',
+                      background: 'rgba(0,0,0,0.85)',
+                      padding: '0.35rem 0.9rem',
+                      borderRadius: '20px',
+                      border: '1px solid rgba(255,255,255,0.2)'
+                    }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => setLivePreviewChordPageIndex(p => Math.max(0, p - 1))}
+                        disabled={livePreviewChordPageIndex === 0}
+                        style={{ padding: '0.2rem 0.6rem', opacity: livePreviewChordPageIndex === 0 ? 0.3 : 1 }}
+                      >
+                        ◀ Önceki
+                      </button>
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#f8fafc' }}>
+                        {livePreviewChordPageIndex + 1} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => setLivePreviewChordPageIndex(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={livePreviewChordPageIndex === totalPages - 1}
+                        style={{ padding: '0.2rem 0.6rem', opacity: livePreviewChordPageIndex === totalPages - 1 ? 0.3 : 1 }}
+                      >
+                        Sonraki ▶
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>,
         document.body
