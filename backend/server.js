@@ -1339,6 +1339,40 @@ app.put('/api/songs/:id', (req, res) => {
     }
 });
 
+app.patch('/api/songs/:id/fav', (req, res) => {
+    const songId = req.params.id;
+    const { FavLike, FavAcclaim, FavRequest } = req.body;
+    try {
+        const updates = [];
+        const params = [];
+        if (FavLike !== undefined) {
+            updates.push('FavLike = ?');
+            params.push(FavLike ? 1 : 0);
+        }
+        if (FavAcclaim !== undefined) {
+            updates.push('FavAcclaim = ?');
+            params.push(FavAcclaim ? 1 : 0);
+        }
+        if (FavRequest !== undefined) {
+            updates.push('FavRequest = ?');
+            params.push(FavRequest ? 1 : 0);
+        }
+        if (updates.length > 0) {
+            params.push(songId);
+            db.prepare(`UPDATE Songs SET ${updates.join(', ')} WHERE SongID = ?`).run(...params);
+        }
+        const updated = db.prepare('SELECT SongID, FavLike, FavAcclaim, FavRequest FROM Songs WHERE SongID = ?').get(songId);
+        res.json({
+            message: 'Fav status updated successfully',
+            FavLike: Boolean(updated?.FavLike),
+            FavAcclaim: Boolean(updated?.FavAcclaim),
+            FavRequest: Boolean(updated?.FavRequest)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/songs/:id', (req, res) => {
     try {
         const isLinked = db.prepare('SELECT 1 FROM Requests WHERE SongID = ?').get(req.params.id);

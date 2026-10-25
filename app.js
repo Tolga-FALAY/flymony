@@ -181,7 +181,10 @@ const DB = {
           audioPath: s.AudioPath || "",
           originalKey: s.OriginalKey || "",
           chordImagePath: s.ChordImagePath || (s.ChordImages && s.ChordImages[0]) || "",
-          chordImages: s.ChordImages || (s.ChordImagePath ? [s.ChordImagePath] : [])
+          chordImages: s.ChordImages || (s.ChordImagePath ? [s.ChordImagePath] : []),
+          FavLike: Boolean(s.FavLike),
+          FavAcclaim: Boolean(s.FavAcclaim),
+          FavRequest: Boolean(s.FavRequest)
         });
         const artistIds = s.ArtistIDs || [];
         artistIds.forEach(aid => {
@@ -5792,6 +5795,33 @@ async function toggleLiveSongPlayed() {
   await toggleLiveSongPlayedIdx(liveGigSongIndex);
 }
 
+async function toggleVanillaLiveSongFav(field) {
+  if (liveGigSongIndex === -1 || !liveGigObj || !liveGigObj.songs || !liveGigObj.songs[liveGigSongIndex]) return;
+  const gigSong = liveGigObj.songs[liveGigSongIndex];
+  const fullSong = DB.songs.find(s => s.id === gigSong.songId);
+  if (!fullSong) return;
+
+  const currentVal = Boolean(fullSong[field]);
+  const newVal = !currentVal;
+
+  fullSong[field] = newVal;
+  renderLiveGigSong();
+
+  try {
+    await apiRequest(`/songs/${fullSong.id}/fav`, 'PATCH', { [field]: newVal });
+  } catch (err) {
+    console.warn('PATCH fav hatası, PUT deneniyor...', err);
+    try {
+      await apiRequest(`/songs/${fullSong.id}`, 'PUT', { ...fullSong, [field]: newVal });
+    } catch (fallbackErr) {
+      console.error('Favori güncelleme hatası:', fallbackErr);
+      fullSong[field] = currentVal;
+      renderLiveGigSong();
+      alert('Favori durumu güncellenemedi: ' + fallbackErr.message);
+    }
+  }
+}
+
 function renderLiveGigSong() {
   const counterBadge = document.getElementById('gigLiveCounterBadge');
   const toggleViewBtn = document.getElementById('btnToggleLiveViewMode');
@@ -5884,6 +5914,30 @@ function renderLiveGigSong() {
       }
     }
 
+    // Update Fav Buttons (Image View)
+    const favItemsImg = [
+      { id: 'btnLiveFavLikeImg', active: Boolean(fullSong && fullSong.FavLike), bg: 'rgba(239, 68, 68, 0.28)', border: '#ef4444', glow: '0 0 10px rgba(239, 68, 68, 0.45)' },
+      { id: 'btnLiveFavAcclaimImg', active: Boolean(fullSong && fullSong.FavAcclaim), bg: 'rgba(245, 158, 11, 0.28)', border: '#f59e0b', glow: '0 0 10px rgba(245, 158, 11, 0.45)' },
+      { id: 'btnLiveFavRequestImg', active: Boolean(fullSong && fullSong.FavRequest), bg: 'rgba(14, 165, 233, 0.28)', border: '#0ea5e9', glow: '0 0 10px rgba(14, 165, 233, 0.45)' }
+    ];
+    favItemsImg.forEach(f => {
+      const btn = document.getElementById(f.id);
+      if (!btn) return;
+      if (f.active) {
+        btn.style.opacity = '1';
+        btn.style.filter = 'none';
+        btn.style.background = f.bg;
+        btn.style.borderColor = f.border;
+        btn.style.boxShadow = f.glow;
+      } else {
+        btn.style.opacity = '0.35';
+        btn.style.filter = 'grayscale(100%)';
+        btn.style.background = 'rgba(255, 255, 255, 0.08)';
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        btn.style.boxShadow = 'none';
+      }
+    });
+
     const imgContainer = document.getElementById('gigLiveImgContainer');
     if (imgContainer) {
       if (fullSong && fullSong.chordImagePath) {
@@ -5929,6 +5983,30 @@ function renderLiveGigSong() {
         playedBtn.style.color = 'var(--text-main)';
       }
     }
+
+    // Update Fav Buttons (Transpose View)
+    const favItemsTrans = [
+      { id: 'btnLiveFavLike', active: Boolean(fullSong && fullSong.FavLike), bg: 'rgba(239, 68, 68, 0.28)', border: '#ef4444', glow: '0 0 10px rgba(239, 68, 68, 0.45)' },
+      { id: 'btnLiveFavAcclaim', active: Boolean(fullSong && fullSong.FavAcclaim), bg: 'rgba(245, 158, 11, 0.28)', border: '#f59e0b', glow: '0 0 10px rgba(245, 158, 11, 0.45)' },
+      { id: 'btnLiveFavRequest', active: Boolean(fullSong && fullSong.FavRequest), bg: 'rgba(14, 165, 233, 0.28)', border: '#0ea5e9', glow: '0 0 10px rgba(14, 165, 233, 0.45)' }
+    ];
+    favItemsTrans.forEach(f => {
+      const btn = document.getElementById(f.id);
+      if (!btn) return;
+      if (f.active) {
+        btn.style.opacity = '1';
+        btn.style.filter = 'none';
+        btn.style.background = f.bg;
+        btn.style.borderColor = f.border;
+        btn.style.boxShadow = f.glow;
+      } else {
+        btn.style.opacity = '0.35';
+        btn.style.filter = 'grayscale(100%)';
+        btn.style.background = 'var(--surface)';
+        btn.style.borderColor = 'var(--border-strong)';
+        btn.style.boxShadow = 'none';
+      }
+    });
 
     document.getElementById('gigLiveTransposeBadge').innerText = `${liveGigTransposeShift > 0 ? `+${liveGigTransposeShift}` : liveGigTransposeShift} Semiton`;
 

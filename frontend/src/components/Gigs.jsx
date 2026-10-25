@@ -1086,6 +1086,51 @@ export default function Gigs() {
     }
   };
 
+  const toggleLiveSongFav = async (field) => {
+    if (liveSongIndex === -1 || !liveGig || !liveGig.Songs || !liveGig.Songs[liveSongIndex]) return;
+    const currentGigSong = liveGig.Songs[liveSongIndex];
+    const songId = Number(currentGigSong.SongID);
+    const currentSongObj = (songs || []).find(s => Number(s.SongID) === songId) || (store.songs || []).find(s => Number(s.SongID) === songId) || currentGigSong;
+
+    const currentVal = Boolean(currentSongObj[field]);
+    const newVal = !currentVal;
+
+    // 1. Optimistic update
+    setSongs(prev => prev.map(s => Number(s.SongID) === songId ? { ...s, [field]: newVal } : s));
+    setLiveGig(prev => {
+      if (!prev || !prev.Songs) return prev;
+      return {
+        ...prev,
+        Songs: prev.Songs.map((s, idx) => idx === liveSongIndex ? { ...s, [field]: newVal } : s)
+      };
+    });
+    store.updateSong(songId, { [field]: newVal });
+
+    // 2. Persist to backend API
+    try {
+      await api.toggleSongFav(songId, { [field]: newVal });
+    } catch (err) {
+      console.warn('PATCH fav hatası, PUT fallback deneniyor...', err);
+      try {
+        const full = (store.songs || []).find(s => Number(s.SongID) === songId) || currentSongObj;
+        await api.updateSong(songId, { ...full, [field]: newVal });
+      } catch (fallbackErr) {
+        console.error('Favori güncelleme hatası:', fallbackErr);
+        // Revert on error
+        setSongs(prev => prev.map(s => Number(s.SongID) === songId ? { ...s, [field]: currentVal } : s));
+        setLiveGig(prev => {
+          if (!prev || !prev.Songs) return prev;
+          return {
+            ...prev,
+            Songs: prev.Songs.map((s, idx) => idx === liveSongIndex ? { ...s, [field]: currentVal } : s)
+          };
+        });
+        store.updateSong(songId, { [field]: currentVal });
+        alert('Favori durumu güncellenemedi: ' + fallbackErr.message);
+      }
+    }
+  };
+
   const searchLiveRequests = (text) => {
     setLiveSearchQuery(text);
     if (!text.trim()) {
@@ -2864,6 +2909,48 @@ export default function Gigs() {
                                 </div>
                               )}
 
+                              {/* Sahne Favori Butonları: En solda Beğeni, ortada Eşlik, Çalındı'nın hemen solunda İstek */}
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                                {[
+                                  { key: 'FavLike', icon: '❤️', title: 'Beğeni', border: '#ef4444', bg: 'rgba(239, 68, 68, 0.28)', glow: '0 0 10px rgba(239, 68, 68, 0.45)' },
+                                  { key: 'FavAcclaim', icon: '👏', title: 'Eşlik', border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.28)', glow: '0 0 10px rgba(245, 158, 11, 0.45)' },
+                                  { key: 'FavRequest', icon: '☝️', title: 'İstek', border: '#0ea5e9', bg: 'rgba(14, 165, 233, 0.28)', glow: '0 0 10px rgba(14, 165, 233, 0.45)' }
+                                ].map(f => {
+                                  const isAct = Boolean(fullSongObj && fullSongObj[f.key]);
+                                  return (
+                                    <button
+                                      key={f.key}
+                                      type="button"
+                                      id={`live-img-${f.key}-btn`}
+                                      onClick={() => toggleLiveSongFav(f.key)}
+                                      title={f.title}
+                                      style={{
+                                        height: '38px',
+                                        width: '38px',
+                                        minWidth: '38px',
+                                        padding: 0,
+                                        borderRadius: '8px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        fontSize: '1.25rem',
+                                        lineHeight: 1,
+                                        border: isAct ? `1.5px solid ${f.border}` : '1px solid rgba(255, 255, 255, 0.2)',
+                                        background: isAct ? f.bg : 'rgba(255, 255, 255, 0.08)',
+                                        boxShadow: isAct ? f.glow : 'none',
+                                        opacity: isAct ? 1 : 0.35,
+                                        filter: isAct ? 'none' : 'grayscale(100%)',
+                                        transition: 'all 0.15s ease',
+                                        userSelect: 'none'
+                                      }}
+                                    >
+                                      {f.icon}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
                               <button
                                 type="button"
                                 onClick={() => toggleSongPlayed(liveSongIndex)}
@@ -3058,6 +3145,48 @@ export default function Gigs() {
                           {origKey && <span className="orig-key-badge">({origKey} Tonu)</span>}
                           
                           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            {/* Sahne Favori Butonları: En solda Beğeni, ortada Eşlik, Çalındı'nın hemen solunda İstek */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                              {[
+                                { key: 'FavLike', icon: '❤️', title: 'Beğeni', border: '#ef4444', bg: 'rgba(239, 68, 68, 0.28)', glow: '0 0 10px rgba(239, 68, 68, 0.45)' },
+                                { key: 'FavAcclaim', icon: '👏', title: 'Eşlik', border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.28)', glow: '0 0 10px rgba(245, 158, 11, 0.45)' },
+                                { key: 'FavRequest', icon: '☝️', title: 'İstek', border: '#0ea5e9', bg: 'rgba(14, 165, 233, 0.28)', glow: '0 0 10px rgba(14, 165, 233, 0.45)' }
+                              ].map(f => {
+                                const isAct = Boolean(fullSongObj && fullSongObj[f.key]);
+                                return (
+                                  <button
+                                    key={f.key}
+                                    type="button"
+                                    id={`live-trans-${f.key}-btn`}
+                                    onClick={() => toggleLiveSongFav(f.key)}
+                                    title={f.title}
+                                    style={{
+                                      height: '38px',
+                                      width: '38px',
+                                      minWidth: '38px',
+                                      padding: 0,
+                                      borderRadius: '8px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                      fontSize: '1.25rem',
+                                      lineHeight: 1,
+                                      border: isAct ? `1.5px solid ${f.border}` : '1px solid var(--border-strong)',
+                                      background: isAct ? f.bg : 'var(--surface)',
+                                      boxShadow: isAct ? f.glow : 'none',
+                                      opacity: isAct ? 1 : 0.35,
+                                      filter: isAct ? 'none' : 'grayscale(100%)',
+                                      transition: 'all 0.15s ease',
+                                      userSelect: 'none'
+                                    }}
+                                  >
+                                    {f.icon}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
                             <button
                               type="button"
                               onClick={() => toggleSongPlayed(liveSongIndex)}

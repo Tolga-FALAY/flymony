@@ -102,6 +102,10 @@ export const api = {
     return request(`/songs/${id}`, 'PUT', data);
   },
 
+  toggleSongFav: async (id, data) => {
+    return request(`/songs/${id}/fav`, 'PATCH', data);
+  },
+
   deleteSong: async (id) => {
     return request(`/songs/${id}`, 'DELETE');
   },

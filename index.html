@@ -1308,6 +1308,11 @@
             <span id="gigLiveImgSongArtist" style="font-size: 0.85rem; color: #94a3b8; margin-left: 0.5rem;">-</span>
             <span id="gigLiveImgOrigKey" class="orig-key-badge" style="margin-left: 0.5rem; display: none;">-</span>
           </div>
+          <div style="display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; flex-shrink: 0;">
+            <button type="button" id="btnLiveFavLikeImg" onclick="toggleVanillaLiveSongFav('FavLike')" title="Beğeni" style="height: 38px; width: 38px; min-width: 38px; padding: 0; border-radius: 8px; font-size: 1.25rem; line-height: 1; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); opacity: 0.35; filter: grayscale(100%); transition: all 0.15s ease;">❤️</button>
+            <button type="button" id="btnLiveFavAcclaimImg" onclick="toggleVanillaLiveSongFav('FavAcclaim')" title="Eşlik" style="height: 38px; width: 38px; min-width: 38px; padding: 0; border-radius: 8px; font-size: 1.25rem; line-height: 1; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); opacity: 0.35; filter: grayscale(100%); transition: all 0.15s ease;">👏</button>
+            <button type="button" id="btnLiveFavRequestImg" onclick="toggleVanillaLiveSongFav('FavRequest')" title="İstek" style="height: 38px; width: 38px; min-width: 38px; padding: 0; border-radius: 8px; font-size: 1.25rem; line-height: 1; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); opacity: 0.35; filter: grayscale(100%); transition: all 0.15s ease;">☝️</button>
+          </div>
           <button type="button" id="btnToggleLivePlayedImg" onclick="toggleLiveSongPlayed()" style="margin-right: 125px; padding: 0.4rem 0.85rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.1); color: #f8fafc; font-size: 0.88rem; white-space: nowrap;">
             ◯ Çalınmadı
           </button>
@@ -1322,7 +1327,12 @@
           <div class="toolbar-section" style="padding-right: 10px;">
             <span id="gigLiveSongTitle" class="song-title-label">-</span>
             <span id="gigLiveOrigKeyBadge" class="orig-key-badge" style="display: none;">-</span>
-            <button type="button" id="btnToggleLivePlayed" onclick="toggleLiveSongPlayed()" style="margin-left: auto; margin-right: 125px; padding: 0.35rem 0.75rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-main); font-size: 0.85rem; white-space: nowrap;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 12px; flex-shrink: 0;">
+              <button type="button" id="btnLiveFavLike" onclick="toggleVanillaLiveSongFav('FavLike')" title="Beğeni" style="height: 38px; width: 38px; min-width: 38px; padding: 0; border-radius: 8px; font-size: 1.25rem; line-height: 1; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); opacity: 0.35; filter: grayscale(100%); transition: all 0.15s ease;">❤️</button>
+              <button type="button" id="btnLiveFavAcclaim" onclick="toggleVanillaLiveSongFav('FavAcclaim')" title="Eşlik" style="height: 38px; width: 38px; min-width: 38px; padding: 0; border-radius: 8px; font-size: 1.25rem; line-height: 1; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); opacity: 0.35; filter: grayscale(100%); transition: all 0.15s ease;">👏</button>
+              <button type="button" id="btnLiveFavRequest" onclick="toggleVanillaLiveSongFav('FavRequest')" title="İstek" style="height: 38px; width: 38px; min-width: 38px; padding: 0; border-radius: 8px; font-size: 1.25rem; line-height: 1; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); opacity: 0.35; filter: grayscale(100%); transition: all 0.15s ease;">☝️</button>
+            </div>
+            <button type="button" id="btnToggleLivePlayed" onclick="toggleLiveSongPlayed()" style="margin-right: 125px; padding: 0.35rem 0.75rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-main); font-size: 0.85rem; white-space: nowrap;">
               ◯ Çalınmadı
             </button>
           </div>
