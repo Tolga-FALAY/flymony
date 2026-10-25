@@ -195,7 +195,8 @@ const store = {
           CategoryIDs: (s.CategoryIDs || []).map(Number),
           EmotionIDs: (s.EmotionIDs || []).map(Number),
           FavLike: Boolean(s.FavLike),
-          FavAcclaim: Boolean(s.FavAcclaim)
+          FavAcclaim: Boolean(s.FavAcclaim),
+          FavRequest: Boolean(s.FavRequest)
         };
       });
 

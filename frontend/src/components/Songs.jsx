@@ -78,7 +78,8 @@ export default function Songs() {
     CategoryIDs: [],
     EmotionIDs: [],
     FavLike: false,
-    FavAcclaim: false
+    FavAcclaim: false,
+    FavRequest: false
   });
 
   const [artistSearch, setArtistSearch] = useState('');
@@ -225,7 +226,8 @@ export default function Songs() {
         CategoryIDs: (song.CategoryIDs || []).map(Number),
         EmotionIDs: (song.EmotionIDs || []).map(Number),
         FavLike: Boolean(song.FavLike),
-        FavAcclaim: Boolean(song.FavAcclaim)
+        FavAcclaim: Boolean(song.FavAcclaim),
+        FavRequest: Boolean(song.FavRequest)
       });
       if (song.AudioPath) {
         setAudioPreviewUrl(getUploadsUrl(song.AudioPath));
@@ -249,7 +251,7 @@ export default function Songs() {
       setEditingSong(null);
       const turkishLang = store.languages.find(l => l.LanguageName === 'Türkçe');
       const defaultLangId = turkishLang ? String(turkishLang.LanguageID) : '';
-      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId, Notes: '', GenreIDs: [], CategoryIDs: [], EmotionIDs: [], FavLike: false, FavAcclaim: false });
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId, Notes: '', GenreIDs: [], CategoryIDs: [], EmotionIDs: [], FavLike: false, FavAcclaim: false, FavRequest: false });
       setAudioPreviewUrl('');
       setChordImagesList([]);
       setTimeout(() => {
@@ -619,7 +621,8 @@ export default function Songs() {
       CategoryIDs: (formData.CategoryIDs || []).map(Number),
       EmotionIDs: (formData.EmotionIDs || []).map(Number),
       FavLike: Boolean(formData.FavLike),
-      FavAcclaim: Boolean(formData.FavAcclaim)
+      FavAcclaim: Boolean(formData.FavAcclaim),
+      FavRequest: Boolean(formData.FavRequest)
     };
 
     try {
@@ -1351,7 +1354,8 @@ export default function Songs() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {[
                     { key: 'FavLike', label: '❤️ Beğenilen İstek (FavLike)' },
-                    { key: 'FavAcclaim', label: '👏 Seyirci Eşlik Etti (FavAcclaim)' }
+                    { key: 'FavAcclaim', label: '👏 Seyirci Eşlik Etti (FavAcclaim)' },
+                    { key: 'FavRequest', label: '☝️ İstek (FavRequest)' }
                   ].map(f => (
                     <button
                       type="button"

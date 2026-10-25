@@ -448,8 +448,12 @@ export const initializeDB = () => {
             console.log("Migrating database: Adding column FavAcclaim to Songs table...");
             db.exec("ALTER TABLE Songs ADD COLUMN FavAcclaim INTEGER NOT NULL DEFAULT 0;");
         }
+        if (!existingCols.includes('FavRequest')) {
+            console.log("Migrating database: Adding column FavRequest to Songs table...");
+            db.exec("ALTER TABLE Songs ADD COLUMN FavRequest INTEGER NOT NULL DEFAULT 0;");
+        }
     } catch (e) {
-        console.error("Migration error while adding FavLike/FavAcclaim columns to Songs table:", e);
+        console.error("Migration error while adding FavLike/FavAcclaim/FavRequest columns to Songs table:", e);
     }
 
     // Migration for adding ChordImagePath column to Songs table dynamically if it does not exist
