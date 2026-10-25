@@ -10,8 +10,11 @@ frontend/build/
 # SQLite database (local data, not to be committed)
 backend/song_requests.db
 backend/*.db
+backend/*.db*
 backend/*.bak*
 backend/backups/
+*.db-wal
+*.db-shm
 
 # Environment & secrets
 .env
