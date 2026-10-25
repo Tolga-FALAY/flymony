@@ -1350,12 +1350,11 @@ export default function Songs() {
 
               {/* Sahne Favorileri */}
               <div className="form-group">
-                <label>Sahne Favorileri</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '0.4rem' }}>
                   {[
-                    { key: 'FavLike', label: '❤️ Beğenilen İstek (FavLike)' },
-                    { key: 'FavAcclaim', label: '👏 Seyirci Eşlik Etti (FavAcclaim)' },
-                    { key: 'FavRequest', label: '☝️ İstek (FavRequest)' }
+                    { key: 'FavRequest', label: '☝️ İstek' },
+                    { key: 'FavAcclaim', label: '👏 Eşlik' },
+                    { key: 'FavLike', label: '❤️ Beğeni' }
                   ].map(f => (
                     <button
                       type="button"
@@ -1363,14 +1362,15 @@ export default function Songs() {
                       id={`song-${f.key}-toggle`}
                       onClick={() => setFormData(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
                       style={{
-                        cursor: 'pointer', padding: '0.5rem 1rem', borderRadius: '999px', fontSize: '0.88rem', fontWeight: 600,
+                        cursor: 'pointer', padding: '0.25rem 0.6rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600,
+                        whiteSpace: 'nowrap', lineHeight: 1.3,
                         background: formData[f.key] ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
                         color: formData[f.key] ? '#fff' : 'var(--text-muted)',
                         border: formData[f.key] ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
                         transition: 'all 0.15s ease',
                         userSelect: 'none'
                       }}
-                    >{formData[f.key] ? '✓ ' : ''}{f.label}</button>
+                    >{f.label}</button>
                   ))}
                 </div>
               </div>
