@@ -16,6 +16,8 @@ export default function Gigs() {
   const [gigs, setGigs] = useState([]);
   const [songs, setSongs] = useState([]);
   const [guests, setGuests] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [liveRequestersModal, setLiveRequestersModal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [noteModalGig, setNoteModalGig] = useState(null);
@@ -132,6 +134,7 @@ export default function Gigs() {
       setGigs([...store.gigs]);
       setSongs([...store.songs]);
       setGuests([...store.guests]);
+      setRequests([...store.requests]);
     };
     if (store.isLoaded) {
       syncFromStore();
@@ -911,7 +914,9 @@ export default function Gigs() {
         e.preventDefault();
         goToPrevSong();
       } else if (e.key === 'Escape') {
-        if (isLiveDrawerOpen) {
+        if (liveRequestersModal) {
+          setLiveRequestersModal(null);
+        } else if (isLiveDrawerOpen) {
           setIsLiveDrawerOpen(false);
         } else {
           closeLiveMode();
@@ -920,7 +925,7 @@ export default function Gigs() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode, liveChordPageIndex]);
+  }, [isLiveMode, liveGig, liveSongIndex, isLiveDrawerOpen, liveViewMode, liveChordPageIndex, liveRequestersModal]);
 
   const startLiveMode = (gig) => {
     if (!gig) return;
@@ -1129,6 +1134,59 @@ export default function Gigs() {
         alert('Favori durumu güncellenemedi: ' + fallbackErr.message);
       }
     }
+  };
+
+  const formatRequestDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getRequestersForSong = (songId) => {
+    if (!songId) return [];
+    const matched = (requests.length > 0 ? requests : (store.requests || [])).filter(r => Number(r.SongID) === Number(songId));
+    const allGuests = guests.length > 0 ? guests : (store.guests || []);
+
+    const guestMap = new Map();
+    let anonCounter = 0;
+
+    matched.forEach(req => {
+      const gIds = Array.isArray(req.GuestIDs) ? req.GuestIDs : [];
+      if (gIds.length === 0) {
+        if (req.FullNames && req.FullNames !== '-' && req.FullNames.trim()) {
+          const names = req.FullNames.split(',').map(n => n.trim()).filter(Boolean);
+          names.forEach(name => {
+            const key = `name_${name.toLocaleLowerCase('tr-TR')}`;
+            if (!guestMap.has(key)) {
+              guestMap.set(key, { name, guestId: null, requests: [req] });
+            } else {
+              guestMap.get(key).requests.push(req);
+            }
+          });
+        } else {
+          anonCounter++;
+          guestMap.set(`anon_${anonCounter}`, { name: 'İsimsiz Misafir', guestId: null, requests: [req] });
+        }
+      } else {
+        gIds.forEach(gid => {
+          const gNum = Number(gid);
+          const gObj = allGuests.find(g => Number(g.GuestID) === gNum);
+          const name = gObj ? (gObj.FullName || `${gObj.FirstName || ''} ${gObj.LastName || ''}`.trim()) : `Misafir #${gNum}`;
+          if (!guestMap.has(gNum)) {
+            guestMap.set(gNum, { name, guestId: gNum, guest: gObj, requests: [req] });
+          } else {
+            guestMap.get(gNum).requests.push(req);
+          }
+        });
+      }
+    });
+
+    return Array.from(guestMap.values());
   };
 
   const searchLiveRequests = (text) => {
@@ -2909,6 +2967,55 @@ export default function Gigs() {
                                 </div>
                               )}
 
+                              {/* İstek Yapan Misafir Sayısı Butonu (Mor İkili Gölge Adam) */}
+                              {(() => {
+                                const songRequesters = getRequestersForSong(gigSong.SongID);
+                                const count = songRequesters.length;
+                                const hasReq = count > 0;
+                                return (
+                                  <button
+                                    type="button"
+                                    id="live-img-requesters-btn"
+                                    onClick={() => {
+                                      if (hasReq) {
+                                        setLiveRequestersModal({
+                                          songTitle: gigSong.SongTitle,
+                                          artistNames: gigSong.ArtistNames,
+                                          requesters: songRequesters
+                                        });
+                                      }
+                                    }}
+                                    disabled={!hasReq}
+                                    title={hasReq ? `${count} misafir bu şarkıyı istedi (Görmek için tıklayın)` : 'Bu şarkı için istek bulunmuyor'}
+                                    style={{
+                                      height: '38px',
+                                      padding: '0 0.65rem',
+                                      borderRadius: '8px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '5px',
+                                      fontFamily: "'Montserrat', sans-serif",
+                                      fontSize: '0.88rem',
+                                      fontWeight: 800,
+                                      cursor: hasReq ? 'pointer' : 'default',
+                                      border: hasReq ? '1.5px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.18)',
+                                      background: hasReq ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255, 255, 255, 0.06)',
+                                      color: hasReq ? '#f3e8ff' : 'rgba(255, 255, 255, 0.35)',
+                                      boxShadow: hasReq ? '0 0 10px rgba(168, 85, 247, 0.45)' : 'none',
+                                      opacity: hasReq ? 1 : 0.4,
+                                      filter: hasReq ? 'none' : 'grayscale(100%)',
+                                      transition: 'all 0.15s ease',
+                                      userSelect: 'none',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>👥</span>
+                                    <span>{count}</span>
+                                  </button>
+                                );
+                              })()}
+
                               {/* Sahne Favori Butonları: En solda Beğeni, ortada Eşlik, Çalındı'nın hemen solunda İstek */}
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
                                 {[
@@ -3145,6 +3252,55 @@ export default function Gigs() {
                           {origKey && <span className="orig-key-badge">({origKey} Tonu)</span>}
                           
                           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            {/* İstek Yapan Misafir Sayısı Butonu (Mor İkili Gölge Adam) */}
+                            {(() => {
+                              const songRequesters = getRequestersForSong(gigSong.SongID);
+                              const count = songRequesters.length;
+                              const hasReq = count > 0;
+                              return (
+                                <button
+                                  type="button"
+                                  id="live-trans-requesters-btn"
+                                  onClick={() => {
+                                    if (hasReq) {
+                                      setLiveRequestersModal({
+                                        songTitle: gigSong.SongTitle,
+                                        artistNames: gigSong.ArtistNames,
+                                        requesters: songRequesters
+                                      });
+                                    }
+                                  }}
+                                  disabled={!hasReq}
+                                  title={hasReq ? `${count} misafir bu şarkıyı istedi (Görmek için tıklayın)` : 'Bu şarkı için istek bulunmuyor'}
+                                  style={{
+                                    height: '38px',
+                                    padding: '0 0.65rem',
+                                    borderRadius: '8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '5px',
+                                    fontFamily: "'Montserrat', sans-serif",
+                                    fontSize: '0.88rem',
+                                    fontWeight: 800,
+                                    cursor: hasReq ? 'pointer' : 'default',
+                                    border: hasReq ? '1.5px solid #a855f7' : '1px solid var(--border-strong)',
+                                    background: hasReq ? 'rgba(168, 85, 247, 0.22)' : 'var(--surface)',
+                                    color: hasReq ? '#c084fc' : 'var(--text-muted)',
+                                    boxShadow: hasReq ? '0 0 10px rgba(168, 85, 247, 0.45)' : 'none',
+                                    opacity: hasReq ? 1 : 0.4,
+                                    filter: hasReq ? 'none' : 'grayscale(100%)',
+                                    transition: 'all 0.15s ease',
+                                    userSelect: 'none',
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>👥</span>
+                                  <span>{count}</span>
+                                </button>
+                              );
+                            })()}
+
                             {/* Sahne Favori Butonları: En solda Beğeni, ortada Eşlik, Çalındı'nın hemen solunda İstek */}
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
                               {[
@@ -3787,6 +3943,244 @@ export default function Gigs() {
               alt="Profil Büyük Görünüm" 
               style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }} 
             />
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Sahnem Canlı İstek Yapan Misafirler Modal */}
+      {liveRequestersModal && createPortal(
+        <div 
+          className="modal-overlay"
+          onClick={() => setLiveRequestersModal(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.82)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 100005,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div 
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '480px',
+              maxHeight: '85vh',
+              backgroundColor: '#1e293b',
+              color: '#ffffff',
+              borderRadius: '16px',
+              border: '1.5px solid rgba(168, 85, 247, 0.5)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(168, 85, 247, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.1rem 1.25rem',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(30, 41, 59, 0.8))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem'
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.3rem' }}>👥</span>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#f3e8ff' }}>
+                    İstek Yapan Misafirler
+                  </h3>
+                  <span style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    background: '#9333ea',
+                    color: '#ffffff',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    lineHeight: 1.2
+                  }}>
+                    {liveRequestersModal.requesters.length}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.84rem', color: '#94a3b8', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  🎵 <strong style={{ color: '#ffffff' }}>{liveRequestersModal.songTitle}</strong>
+                  {liveRequestersModal.artistNames && liveRequestersModal.artistNames !== '-' && ` - ${liveRequestersModal.artistNames}`}
+                </div>
+              </div>
+
+              {/* ÇARPI (Close) Butonu */}
+              <button 
+                type="button"
+                onClick={() => setLiveRequestersModal(null)}
+                title="Kapat (ESC)"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  color: '#e2e8f0',
+                  fontSize: '1.5rem',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1,
+                  flexShrink: 0,
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'; e.currentTarget.style.color = '#ef4444'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#e2e8f0'; }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal List Body */}
+            <div style={{
+              padding: '1rem 1.25rem',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.65rem',
+              maxHeight: 'calc(85vh - 120px)'
+            }}>
+              {liveRequestersModal.requesters.map((item, idx) => {
+                const guest = item.guest;
+                const profilePic = guest && guest.ProfilePicture ? getUploadsUrl(guest.ProfilePicture) : null;
+                const initials = (item.name || 'M')
+                  .split(' ')
+                  .map(part => part.charAt(0))
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2);
+
+                return (
+                  <div 
+                    key={idx}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '12px',
+                      padding: '0.75rem 1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.85rem',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {/* Guest Avatar */}
+                    {profilePic ? (
+                      <img 
+                        src={profilePic} 
+                        alt={item.name} 
+                        style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '2px solid #a855f7',
+                          flexShrink: 0
+                        }} 
+                      />
+                    ) : (
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #9333ea, #6b21a8)',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        fontSize: '0.95rem',
+                        letterSpacing: '0.5px',
+                        border: '2px solid rgba(168, 85, 247, 0.4)',
+                        flexShrink: 0
+                      }}>
+                        {initials}
+                      </div>
+                    )}
+
+                    {/* Guest Info & Request details */}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.98rem', color: '#ffffff' }}>
+                          {item.name}
+                        </span>
+                        {item.requests.length > 1 && (
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: '999px',
+                            background: 'rgba(168, 85, 247, 0.25)',
+                            color: '#c084fc',
+                            border: '1px solid rgba(168, 85, 247, 0.4)'
+                          }}>
+                            {item.requests.length} kez
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Request Date & Status */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '0.78rem', color: '#94a3b8' }}>
+                        {item.requests.map((r, rIdx) => (
+                          <span key={rIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <span>📅 {formatRequestDate(r.RequestDate || r.UpdatedAt)}</span>
+                            {r.Status && (
+                              <span style={{
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontSize: '0.72rem',
+                                background: r.Status === 'Eklendi' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                                color: r.Status === 'Eklendi' ? '#34d399' : '#cbd5e1'
+                              }}>
+                                {r.Status}
+                              </span>
+                            )}
+                            {r.Notes && (
+                              <span style={{ fontStyle: 'italic', color: '#cbd5e1' }}>
+                                &ldquo;{r.Notes}&rdquo;
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '0.75rem 1.25rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              background: 'rgba(15, 23, 42, 0.4)'
+            }}>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => setLiveRequestersModal(null)}
+                style={{
+                  padding: '0.4rem 1.2rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Kapat
+              </button>
+            </div>
           </div>
         </div>,
         document.body

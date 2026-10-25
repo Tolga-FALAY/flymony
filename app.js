@@ -5887,6 +5887,39 @@ function renderLiveGigSong() {
     if (imageView) imageView.style.display = 'flex';
     if (transposeView) transposeView.style.display = 'none';
 
+    // Update Requesters Button (Image View)
+    const songRequesters = fullSong ? getVanillaSongRequesters(fullSong.id) : [];
+    const reqCount = songRequesters.length;
+    const hasReq = reqCount > 0;
+    const updateReqBtn = (btnId, countId) => {
+      const btn = document.getElementById(btnId);
+      const span = document.getElementById(countId);
+      if (span) span.innerText = reqCount;
+      if (!btn) return;
+      if (hasReq) {
+        btn.style.opacity = '1';
+        btn.style.filter = 'none';
+        btn.style.background = 'rgba(168, 85, 247, 0.22)';
+        btn.style.borderColor = '#a855f7';
+        btn.style.color = '#f3e8ff';
+        btn.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.45)';
+        btn.style.cursor = 'pointer';
+        btn.disabled = false;
+        btn.title = `${reqCount} misafir bu şarkıyı istedi (Görmek için tıklayın)`;
+      } else {
+        btn.style.opacity = '0.4';
+        btn.style.filter = 'grayscale(100%)';
+        btn.style.background = 'rgba(255, 255, 255, 0.06)';
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+        btn.style.color = 'rgba(255, 255, 255, 0.35)';
+        btn.style.boxShadow = 'none';
+        btn.style.cursor = 'default';
+        btn.disabled = true;
+        btn.title = 'Bu şarkı için istek bulunmuyor';
+      }
+    };
+    updateReqBtn('btnLiveRequestersImg', 'btnLiveRequestersImgCount');
+
     document.getElementById('gigLiveImgSongTitle').innerText = gigSong.title;
     document.getElementById('gigLiveImgSongArtist').innerText = artistNames ? `- ${artistNames}` : '';
     const imgKeyBadge = document.getElementById('gigLiveImgOrigKey');
@@ -5957,6 +5990,37 @@ function renderLiveGigSong() {
     // Transpose View
     if (imageView) imageView.style.display = 'none';
     if (transposeView) transposeView.style.display = 'flex';
+
+    // Update Requesters Button (Transpose View)
+    const songRequesters = fullSong ? getVanillaSongRequesters(fullSong.id) : [];
+    const reqCount = songRequesters.length;
+    const hasReq = reqCount > 0;
+    const reqBtn = document.getElementById('btnLiveRequesters');
+    const reqCountSpan = document.getElementById('btnLiveRequestersCount');
+    if (reqCountSpan) reqCountSpan.innerText = reqCount;
+    if (reqBtn) {
+      if (hasReq) {
+        reqBtn.style.opacity = '1';
+        reqBtn.style.filter = 'none';
+        reqBtn.style.background = 'rgba(168, 85, 247, 0.22)';
+        reqBtn.style.borderColor = '#a855f7';
+        reqBtn.style.color = '#c084fc';
+        reqBtn.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.45)';
+        reqBtn.style.cursor = 'pointer';
+        reqBtn.disabled = false;
+        reqBtn.title = `${reqCount} misafir bu şarkıyı istedi (Görmek için tıklayın)`;
+      } else {
+        reqBtn.style.opacity = '0.4';
+        reqBtn.style.filter = 'grayscale(100%)';
+        reqBtn.style.background = 'var(--surface)';
+        reqBtn.style.borderColor = 'var(--border-strong)';
+        reqBtn.style.color = 'var(--text-muted)';
+        reqBtn.style.boxShadow = 'none';
+        reqBtn.style.cursor = 'default';
+        reqBtn.disabled = true;
+        reqBtn.title = 'Bu şarkı için istek bulunmuyor';
+      }
+    }
 
     document.getElementById('gigLiveSongTitle').innerText = `${gigSong.title}${artistNames ? ` - ${artistNames}` : ''}`;
     const origKeyBadge = document.getElementById('gigLiveOrigKeyBadge');
@@ -6302,6 +6366,11 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     goToLivePrevSong();
   } else if (e.key === 'Escape') {
+    const reqModal = document.getElementById('vanillaLiveRequestersModal');
+    if (reqModal && reqModal.style.display === 'flex') {
+      closeVanillaLiveRequestersModal();
+      return;
+    }
     if (liveGigDrawerOpen) {
       closeLiveDrawer();
     } else {
@@ -6309,6 +6378,92 @@ window.addEventListener('keydown', (e) => {
     }
   }
 });
+
+function getVanillaSongRequesters(songId) {
+  if (!songId || !DB.requests) return [];
+  const matched = DB.requests.filter(r => Number(r.songId) === Number(songId));
+  const guestMap = new Map();
+  let anonCounter = 0;
+  matched.forEach(req => {
+    const gIds = Array.isArray(req.guestIds) ? req.guestIds : (req.guestId ? [req.guestId] : []);
+    if (gIds.length === 0) {
+      anonCounter++;
+      guestMap.set(`anon_${anonCounter}`, { name: 'İsimsiz Misafir', guestId: null, requests: [req] });
+    } else {
+      gIds.forEach(gid => {
+        const gObj = DB.guests.find(g => Number(g.id) === Number(gid));
+        const name = gObj ? (gObj.fullName || `${gObj.firstName || ''} ${gObj.lastName || ''}`.trim()) : `Misafir #${gid}`;
+        if (!guestMap.has(gid)) {
+          guestMap.set(gid, { name, guestId: gid, guest: gObj, requests: [req] });
+        } else {
+          guestMap.get(gid).requests.push(req);
+        }
+      });
+    }
+  });
+  return Array.from(guestMap.values());
+}
+
+function openVanillaLiveRequestersModal() {
+  if (liveGigSongIndex === -1 || !liveGigObj || !liveGigObj.songs || !liveGigObj.songs[liveGigSongIndex]) return;
+  const gigSong = liveGigObj.songs[liveGigSongIndex];
+  const fullSong = DB.songs.find(s => s.id === gigSong.songId);
+  if (!fullSong) return;
+
+  const songRequesters = getVanillaSongRequesters(fullSong.id);
+  if (songRequesters.length === 0) return;
+
+  const modal = document.getElementById('vanillaLiveRequestersModal');
+  const badge = document.getElementById('vanillaLiveRequestersBadge');
+  const title = document.getElementById('vanillaLiveRequestersSongTitle');
+  const list = document.getElementById('vanillaLiveRequestersList');
+
+  if (badge) badge.innerText = songRequesters.length;
+  if (title) title.innerHTML = `🎵 <strong style="color: #fff;">${fullSong.title}</strong> ${gigSong.artistNames ? ` - ${gigSong.artistNames}` : ''}`;
+
+  if (list) {
+    list.innerHTML = songRequesters.map(item => {
+      const g = item.guest;
+      const initials = (item.name || 'M').split(' ').map(p => p.charAt(0)).join('').toUpperCase().slice(0, 2);
+      const reqDetails = item.requests.map(r => {
+        const dStr = r.date ? new Date(r.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric', year: 'numeric' }) : '';
+        return `
+          <span style="display: inline-flex; align-items: center; gap: 4px;">
+            <span>📅 ${dStr}</span>
+            ${r.status ? `<span style="padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; background: ${r.status === 'Eklendi' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)'}; color: ${r.status === 'Eklendi' ? '#34d399' : '#cbd5e1'};">${r.status}</span>` : ''}
+            ${r.notes ? `<span style="font-style: italic; color: #cbd5e1;">&ldquo;${r.notes}&rdquo;</span>` : ''}
+          </span>
+        `;
+      }).join(' ');
+
+      return `
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.85rem;">
+          ${g && g.profilePicture ? `
+            <img src="${g.profilePicture}" alt="${item.name}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #a855f7; flex-shrink: 0;" />
+          ` : `
+            <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #9333ea, #6b21a8); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.95rem; border: 2px solid rgba(168,85,247,0.4); flex-shrink: 0;">${initials}</div>
+          `}
+          <div style="min-width: 0; flex: 1;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+              <span style="font-weight: 700; font-size: 0.98rem; color: #ffffff;">${item.name}</span>
+              ${item.requests.length > 1 ? `<span style="font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: rgba(168,85,247,0.25); color: #c084fc; border: 1px solid rgba(168,85,247,0.4);">${item.requests.length} kez</span>` : ''}
+            </div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px; font-size: 0.78rem; color: #94a3b8;">
+              ${reqDetails}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeVanillaLiveRequestersModal() {
+  const modal = document.getElementById('vanillaLiveRequestersModal');
+  if (modal) modal.style.display = 'none';
+}
 
 // ==========================================
 // SYSTEM PARAMETERS (STATUSES, VENUES, CITIES)
