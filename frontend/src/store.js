@@ -193,7 +193,9 @@ const store = {
           CreatedAt: s.CreatedAt || '',
           GenreIDs: (s.GenreIDs || []).map(Number),
           CategoryIDs: (s.CategoryIDs || []).map(Number),
-          EmotionIDs: (s.EmotionIDs || []).map(Number)
+          EmotionIDs: (s.EmotionIDs || []).map(Number),
+          FavLike: Boolean(s.FavLike),
+          FavAcclaim: Boolean(s.FavAcclaim)
         };
       });
 

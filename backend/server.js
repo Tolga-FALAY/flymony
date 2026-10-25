@@ -510,7 +510,7 @@ app.get('/api/songs', (req, res) => {
     try {
         // Fetch songs with their associated artists
         const songs = db.prepare(`
-            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath, s.LanguageID, s.Notes, s.CreatedAt, l.LanguageName,
+            SELECT s.SongID, s.SongTitle, s.Duration, s.SongYear, s.Lyrics, s.AudioPath, s.OriginalKey, s.ChordImagePath, s.LanguageID, s.Notes, s.CreatedAt, s.FavLike, s.FavAcclaim, l.LanguageName,
                    GROUP_CONCAT(DISTINCT a.ArtistID) as ArtistIDs,
                    GROUP_CONCAT(DISTINCT a.ArtistName) as ArtistNames
             FROM Songs s
@@ -538,6 +538,8 @@ app.get('/api/songs', (req, res) => {
                 Lyrics: s.Lyrics || '',
                 AudioPath: s.AudioPath || '',
                 OriginalKey: s.OriginalKey || '',
+                FavLike: Boolean(s.FavLike),
+                FavAcclaim: Boolean(s.FavAcclaim),
                 ChordImagePath: chordImages[0] || '',
                 ChordImages: chordImages,
                 LanguageID: s.LanguageID ? Number(s.LanguageID) : null,
@@ -1096,7 +1098,7 @@ function processGuestPics(photos, firstName, lastName, guestId) {
 }
 
 app.post('/api/songs', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs, FavLike, FavAcclaim } = req.body;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
     }
@@ -1182,6 +1184,7 @@ app.post('/api/songs', (req, res) => {
         });
 
         const songId = transaction(SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, audioPathToSave, OriginalKey || null, chordImagePathToSave, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || [], (GenreIDs || []).map(Number), (CategoryIDs || []).map(Number), (EmotionIDs || []).map(Number));
+        db.prepare('UPDATE Songs SET FavLike = ?, FavAcclaim = ? WHERE SongID = ?').run(FavLike ? 1 : 0, FavAcclaim ? 1 : 0, songId);
         res.status(201).json({ id: songId, message: 'Song created successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1189,7 +1192,7 @@ app.post('/api/songs', (req, res) => {
 });
 
 app.put('/api/songs/:id', (req, res) => {
-    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs } = req.body;
+    const { SongTitle, Duration, ArtistIDs, SongYear, Lyrics, AudioPath, AudioData, OriginalKey, ChordImagePath, ChordImageData, ChordImages, LanguageID, Notes, GenreIDs, CategoryIDs, EmotionIDs, FavLike, FavAcclaim } = req.body;
     const songId = req.params.id;
     if (!SongTitle || !SongTitle.trim()) {
         return res.status(400).json({ error: 'Şarkı adı boş olamaz!' });
@@ -1320,6 +1323,12 @@ app.put('/api/songs/:id', (req, res) => {
         });
 
         transaction(songId, SongTitle, Duration, SongYear ? Number(SongYear) : null, Lyrics || null, finalAudioPath, OriginalKey || null, finalChordImagePath, LanguageID ? Number(LanguageID) : null, Notes || null, ArtistIDs || [], (GenreIDs || []).map(Number), (CategoryIDs || []).map(Number), (EmotionIDs || []).map(Number));
+        if (FavLike !== undefined) {
+            db.prepare('UPDATE Songs SET FavLike = ? WHERE SongID = ?').run(FavLike ? 1 : 0, songId);
+        }
+        if (FavAcclaim !== undefined) {
+            db.prepare('UPDATE Songs SET FavAcclaim = ? WHERE SongID = ?').run(FavAcclaim ? 1 : 0, songId);
+        }
         res.json({ message: 'Song updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });

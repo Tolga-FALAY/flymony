@@ -76,7 +76,9 @@ export default function Songs() {
     Notes: '',
     GenreIDs: [],
     CategoryIDs: [],
-    EmotionIDs: []
+    EmotionIDs: [],
+    FavLike: false,
+    FavAcclaim: false
   });
 
   const [artistSearch, setArtistSearch] = useState('');
@@ -221,7 +223,9 @@ export default function Songs() {
         Notes: song.Notes || '',
         GenreIDs: (song.GenreIDs || []).map(Number),
         CategoryIDs: (song.CategoryIDs || []).map(Number),
-        EmotionIDs: (song.EmotionIDs || []).map(Number)
+        EmotionIDs: (song.EmotionIDs || []).map(Number),
+        FavLike: Boolean(song.FavLike),
+        FavAcclaim: Boolean(song.FavAcclaim)
       });
       if (song.AudioPath) {
         setAudioPreviewUrl(getUploadsUrl(song.AudioPath));
@@ -245,7 +249,7 @@ export default function Songs() {
       setEditingSong(null);
       const turkishLang = store.languages.find(l => l.LanguageName === 'Türkçe');
       const defaultLangId = turkishLang ? String(turkishLang.LanguageID) : '';
-      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId, Notes: '', GenreIDs: [], CategoryIDs: [], EmotionIDs: [] });
+      setFormData({ SongTitle: '', Duration: '', SongYear: '', Lyrics: '', AudioPath: '', AudioData: '', OriginalKey: '', ChordImagePath: '', ChordImageData: '', ArtistIDs: [], LanguageID: defaultLangId, Notes: '', GenreIDs: [], CategoryIDs: [], EmotionIDs: [], FavLike: false, FavAcclaim: false });
       setAudioPreviewUrl('');
       setChordImagesList([]);
       setTimeout(() => {
@@ -613,7 +617,9 @@ export default function Songs() {
       Notes: formData.Notes || '',
       GenreIDs: (formData.GenreIDs || []).map(Number),
       CategoryIDs: (formData.CategoryIDs || []).map(Number),
-      EmotionIDs: (formData.EmotionIDs || []).map(Number)
+      EmotionIDs: (formData.EmotionIDs || []).map(Number),
+      FavLike: Boolean(formData.FavLike),
+      FavAcclaim: Boolean(formData.FavAcclaim)
     };
 
     try {
@@ -1337,6 +1343,32 @@ export default function Songs() {
                     <option key={l.LanguageID} value={String(l.LanguageID)}>{l.LanguageName}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Sahne Favorileri */}
+              <div className="form-group">
+                <label>Sahne Favorileri</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {[
+                    { key: 'FavLike', label: '❤️ Beğenilen İstek (FavLike)' },
+                    { key: 'FavAcclaim', label: '👏 Seyirci Eşlik Etti (FavAcclaim)' }
+                  ].map(f => (
+                    <button
+                      type="button"
+                      key={f.key}
+                      id={`song-${f.key}-toggle`}
+                      onClick={() => setFormData(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
+                      style={{
+                        cursor: 'pointer', padding: '0.5rem 1rem', borderRadius: '999px', fontSize: '0.88rem', fontWeight: 600,
+                        background: formData[f.key] ? 'var(--primary-color, #0ea5e9)' : 'var(--border)',
+                        color: formData[f.key] ? '#fff' : 'var(--text-muted)',
+                        border: formData[f.key] ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid transparent',
+                        transition: 'all 0.15s ease',
+                        userSelect: 'none'
+                      }}
+                    >{formData[f.key] ? '✓ ' : ''}{f.label}</button>
+                  ))}
+                </div>
               </div>
 
               {/* Şarkı Türü */}

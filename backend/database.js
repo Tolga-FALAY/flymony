@@ -436,6 +436,22 @@ export const initializeDB = () => {
         console.error("Migration error while adding OriginalKey column to Songs table:", e);
     }
 
+    // Migration for adding FavLike / FavAcclaim boolean flags (0/1) to Songs table
+    try {
+        const tableInfo = db.prepare("PRAGMA table_info(Songs)").all();
+        const existingCols = tableInfo.map(col => col.name);
+        if (!existingCols.includes('FavLike')) {
+            console.log("Migrating database: Adding column FavLike to Songs table...");
+            db.exec("ALTER TABLE Songs ADD COLUMN FavLike INTEGER NOT NULL DEFAULT 0;");
+        }
+        if (!existingCols.includes('FavAcclaim')) {
+            console.log("Migrating database: Adding column FavAcclaim to Songs table...");
+            db.exec("ALTER TABLE Songs ADD COLUMN FavAcclaim INTEGER NOT NULL DEFAULT 0;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding FavLike/FavAcclaim columns to Songs table:", e);
+    }
+
     // Migration for adding ChordImagePath column to Songs table dynamically if it does not exist
     try {
         const tableInfo = db.prepare("PRAGMA table_info(Songs)").all();
