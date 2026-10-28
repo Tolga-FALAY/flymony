@@ -1609,6 +1609,9 @@ export default function Gigs() {
     if (gigCount === 0) {
       return {
         gigCount: 0,
+        gigsWithSongs: 0,
+        gigsWithPlayed: 0,
+        gigsWithGuests: 0,
         totalSongs: 0,
         totalPlayed: 0,
         totalGuests: 0,
@@ -1630,18 +1633,25 @@ export default function Gigs() {
     let totalGuests = 0;
     let totalRegisteredGuests = 0;
 
+    let gigsWithSongs = 0;
+    let gigsWithPlayed = 0;
+    let gigsWithGuests = 0;
+
     const uniquePlayedSongKeys = new Set();
     const uniqueTotalSongKeys = new Set();
     const uniqueRegisteredGuestIds = new Set();
 
     filteredGigs.forEach(gig => {
       // 1. Şarkı Hesaplamaları
+      let gigSongsCount = 0;
+      let gigPlayedCount = 0;
       if (gig.Songs && Array.isArray(gig.Songs)) {
-        totalSongs += gig.Songs.length;
+        gigSongsCount = gig.Songs.length;
+        totalSongs += gigSongsCount;
         gig.Songs.forEach(s => {
           const isPlayed = Boolean(Number(s.IsPlayed) || s.IsPlayed === true);
           if (isPlayed) {
-            totalPlayed += 1;
+            gigPlayedCount += 1;
           }
 
           const songId = s.SongID ? Number(s.SongID) : 0;
@@ -1656,19 +1666,35 @@ export default function Gigs() {
             }
           }
         });
+        totalPlayed += gigPlayedCount;
+      }
+
+      if (gigSongsCount > 0) {
+        gigsWithSongs += 1;
+      }
+      if (gigPlayedCount > 0) {
+        gigsWithPlayed += 1;
       }
 
       // 2. Misafir Hesaplamaları
+      let gigGuestsCount = 0;
+      let gigRegisteredCount = 0;
       if (gig.Guests && Array.isArray(gig.Guests)) {
         gig.Guests.forEach(g => {
           const count = Number(g.GuestCount) || 1;
-          totalGuests += count;
+          gigGuestsCount += count;
           const isRegistered = !Number(g.IsAnonymous) && Boolean(g.GuestID);
           if (isRegistered) {
-            totalRegisteredGuests += count;
+            gigRegisteredCount += count;
             uniqueRegisteredGuestIds.add(Number(g.GuestID));
           }
         });
+        totalGuests += gigGuestsCount;
+        totalRegisteredGuests += gigRegisteredCount;
+      }
+
+      if (gigGuestsCount > 0) {
+        gigsWithGuests += 1;
       }
     });
 
@@ -1676,16 +1702,19 @@ export default function Gigs() {
 
     return {
       gigCount,
+      gigsWithSongs,
+      gigsWithPlayed,
+      gigsWithGuests,
       totalSongs,
       totalPlayed,
       totalGuests,
       totalRegisteredGuests,
       totalUnregisteredGuests,
-      avgSongs: totalSongs / gigCount,
-      avgPlayed: totalPlayed / gigCount,
-      avgGuests: totalGuests / gigCount,
-      avgRegisteredGuests: totalRegisteredGuests / gigCount,
-      avgUnregisteredGuests: totalUnregisteredGuests / gigCount,
+      avgSongs: gigsWithSongs > 0 ? totalSongs / gigsWithSongs : 0,
+      avgPlayed: gigsWithPlayed > 0 ? totalPlayed / gigsWithPlayed : 0,
+      avgGuests: gigsWithGuests > 0 ? totalGuests / gigsWithGuests : 0,
+      avgRegisteredGuests: gigsWithGuests > 0 ? totalRegisteredGuests / gigsWithGuests : 0,
+      avgUnregisteredGuests: gigsWithGuests > 0 ? totalUnregisteredGuests / gigsWithGuests : 0,
       uniquePlayedSongs: uniquePlayedSongKeys.size,
       uniqueTotalSongs: uniqueTotalSongKeys.size,
       uniqueRegisteredGuests: uniqueRegisteredGuestIds.size
@@ -1993,10 +2022,10 @@ export default function Gigs() {
                 <td data-label="Kapsam">
                   <span className="summary-subtext">Sahne Başına</span>
                 </td>
-                <td data-label="Ort. Şarkı" style={{ textAlign: 'center' }} title={`Ortalama Çalınan: ${formatAvg(gigStats.avgPlayed)} / Ortalama Liste: ${formatAvg(gigStats.avgSongs)}`}>
+                <td data-label="Ort. Şarkı" style={{ textAlign: 'center' }} title={`Ortalama Çalınan: ${formatAvg(gigStats.avgPlayed)} (${gigStats.gigsWithPlayed} sahne) / Ortalama Liste: ${formatAvg(gigStats.avgSongs)} (${gigStats.gigsWithSongs} sahne)`}>
                   <span style={{ fontWeight: '700' }}>{formatAvg(gigStats.avgPlayed)}</span> / {formatAvg(gigStats.avgSongs)}
                 </td>
-                <td data-label="Ort. Misafir" style={{ textAlign: 'center' }} title={`Ortalama Misafir: ${formatAvg(gigStats.avgGuests)} (Kayıtlı: ${formatAvg(gigStats.avgRegisteredGuests)} / Kayıtsız: ${formatAvg(gigStats.avgUnregisteredGuests)})`}>
+                <td data-label="Ort. Misafir" style={{ textAlign: 'center' }} title={`Ortalama Misafir: ${formatAvg(gigStats.avgGuests)} (${gigStats.gigsWithGuests} sahne - Kayıtlı: ${formatAvg(gigStats.avgRegisteredGuests)} / Kayıtsız: ${formatAvg(gigStats.avgUnregisteredGuests)})`}>
                   <span style={{ fontWeight: '700' }}>{formatAvg(gigStats.avgGuests)}</span> ({formatAvg(gigStats.avgRegisteredGuests)}/{formatAvg(gigStats.avgUnregisteredGuests)})
                 </td>
                 <td className="table-summary-actions-cell" style={{ textAlign: 'right' }}>
