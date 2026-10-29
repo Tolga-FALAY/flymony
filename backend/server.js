@@ -38,7 +38,7 @@ app.use(helmet({
 }));
 
 // 2. CORS Configuration (Strict Origins + Credentials for HttpOnly cookies)
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
     : ['http://localhost:5173', 'http://localhost:5000', 'http://127.0.0.1:5173'];
 
@@ -522,11 +522,11 @@ app.get('/api/songs', (req, res) => {
 
         // Preload genre/category/emotion junction data
         const allGenres = db.prepare('SELECT SongID, GenreID FROM Song_Genres').all();
-        const allCats   = db.prepare('SELECT SongID, CategoryID FROM Song_Categories').all();
-        const allEmots  = db.prepare('SELECT SongID, EmotionID FROM Song_Emotions').all();
+        const allCats = db.prepare('SELECT SongID, CategoryID FROM Song_Categories').all();
+        const allEmots = db.prepare('SELECT SongID, EmotionID FROM Song_Emotions').all();
         const genreMap = {}; allGenres.forEach(r => { if (!genreMap[r.SongID]) genreMap[r.SongID] = []; genreMap[r.SongID].push(r.GenreID); });
-        const catMap   = {}; allCats.forEach(r   => { if (!catMap[r.SongID])   catMap[r.SongID] = [];   catMap[r.SongID].push(r.CategoryID); });
-        const emotMap  = {}; allEmots.forEach(r  => { if (!emotMap[r.SongID])  emotMap[r.SongID] = [];  emotMap[r.SongID].push(r.EmotionID); });
+        const catMap = {}; allCats.forEach(r => { if (!catMap[r.SongID]) catMap[r.SongID] = []; catMap[r.SongID].push(r.CategoryID); });
+        const emotMap = {}; allEmots.forEach(r => { if (!emotMap[r.SongID]) emotMap[r.SongID] = []; emotMap[r.SongID].push(r.EmotionID); });
 
         // Parse ArtistIDs to an array of numbers and parse ChordImages
         const formattedSongs = songs.map(s => {
@@ -570,13 +570,13 @@ function saveAudioFile(audioData, customExactName = null) {
     let mimeType = 'audio/mpeg';
     let base64Content = audioData;
     let extension = 'mp3';
-    
+
     if (audioData.startsWith('data:')) {
         const parts = audioData.split(';base64,');
         const meta = parts[0];
         base64Content = parts[1];
         mimeType = meta.split(':')[1].split(';')[0];
-        
+
         if (mimeType.includes('wav')) extension = 'wav';
         else if (mimeType.includes('webm')) extension = 'webm';
         else if (mimeType.includes('ogg')) extension = 'ogg';
@@ -584,7 +584,7 @@ function saveAudioFile(audioData, customExactName = null) {
         else if (mimeType.includes('mp4')) extension = 'mp4';
         else if (mimeType.includes('aac')) extension = 'aac';
     }
-    
+
     const buffer = Buffer.from(base64Content, 'base64');
     const uploadDir = path.join(__dirname, '../uploads');
     if (!fs.existsSync(uploadDir)) {
@@ -747,30 +747,30 @@ function saveUploadedImageFile(imageData, prefix = 'photo', customExactName = nu
     if (!imageData.startsWith('data:image/')) {
         return imageData;
     }
-    
+
     let mimeType = 'image/jpeg';
     let base64Content = imageData;
     let extension = 'jpg';
-    
+
     const parts = imageData.split(';base64,');
     if (parts.length === 2) {
         const meta = parts[0];
         base64Content = parts[1];
         mimeType = meta.split(':')[1]?.split(';')[0] || 'image/jpeg';
-        
+
         if (mimeType.includes('png')) extension = 'png';
         else if (mimeType.includes('webp')) extension = 'webp';
         else if (mimeType.includes('gif')) extension = 'gif';
         else if (mimeType.includes('svg')) extension = 'svg';
         else extension = 'jpg';
     }
-    
+
     const buffer = Buffer.from(base64Content, 'base64');
     const uploadDir = path.join(__dirname, '../uploads');
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
-    const fileName = customExactName 
+    const fileName = customExactName
         ? `${customExactName}.${extension}`
         : `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}.${extension}`;
     fs.writeFileSync(path.join(uploadDir, fileName), buffer);
@@ -799,7 +799,7 @@ function deleteUploadedFiles(filePaths) {
             if (!fileName.includes('..') && fileName.length > 0) {
                 const fullPath = path.join(uploadDir, fileName);
                 if (fs.existsSync(fullPath)) {
-                    try { fs.unlinkSync(fullPath); } catch (e) {}
+                    try { fs.unlinkSync(fullPath); } catch (e) { }
                 }
             }
         }
@@ -821,10 +821,10 @@ function formatGigDateInfo(dateStr) {
     }
     const [year, month, day] = parts;
     const yyyymmdd = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
-    
+
     const d = new Date(year, month - 1, day, 12, 0, 0);
     const dayIndex = d.getDay();
-    
+
     const dayNames = [
         'Pazar',      // 0
         'Pazartesi',  // 1
@@ -834,7 +834,7 @@ function formatGigDateInfo(dateStr) {
         'Cuma',       // 5
         'Cumartesi'   // 6
     ];
-    
+
     const dayName = dayNames[dayIndex] || 'Gun';
     return { yyyymmdd, dayName };
 }
@@ -842,12 +842,12 @@ function formatGigDateInfo(dateStr) {
 // Mekan kısaltmasını belirler (Tanımlı ise Abbreviation, değilse kelime baş harfleri / tek kelime ise adı)
 function getVenueAbbreviation(venue) {
     if (!venue) return 'GN';
-    
+
     const trMap = {
         'ç': 'C', 'Ç': 'C', 'ğ': 'G', 'Ğ': 'G', 'ı': 'I', 'I': 'I', 'İ': 'I', 'i': 'I',
         'ö': 'O', 'Ö': 'O', 'ş': 'S', 'Ş': 'S', 'ü': 'U', 'Ü': 'U'
     };
-    
+
     if (venue.Abbreviation && venue.Abbreviation.trim()) {
         const abbrevClean = venue.Abbreviation.trim()
             .split('')
@@ -857,15 +857,15 @@ function getVenueAbbreviation(venue) {
             .replace(/[^A-Z0-9]/g, '');
         if (abbrevClean) return abbrevClean;
     }
-    
+
     const venueName = (venue.VenueName || '').trim();
     if (!venueName) return 'GN';
-    
+
     const cleanName = venueName
         .split('')
         .map(c => trMap[c] || c)
         .join('');
-    
+
     const words = cleanName.split(/\s+/).filter(Boolean);
     if (words.length > 1) {
         return words.map(w => w[0]).join('').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -964,12 +964,12 @@ function cleanNamePart(text) {
 function generateGuestAvatarBaseName(firstName, lastName, guestId) {
     const cleanFirst = cleanNamePart(firstName);
     const cleanLast = cleanNamePart(lastName);
-    
+
     const parts = ['guest_avatar'];
     if (cleanFirst) parts.push(cleanFirst);
     if (cleanLast) parts.push(cleanLast);
     if (guestId) parts.push(String(guestId));
-    
+
     return parts.join('_');
 }
 
@@ -1024,15 +1024,15 @@ function processGuestAvatar(profilePicture, firstName, lastName, guestId, oldPro
 function generateGuestPicBaseName(firstName, lastName, guestId, photoIndex = 0) {
     const cleanFirst = cleanNamePart(firstName);
     const cleanLast = cleanNamePart(lastName);
-    
+
     const parts = ['guest_pics'];
     if (cleanFirst) parts.push(cleanFirst);
     if (cleanLast) parts.push(cleanLast);
     if (guestId) parts.push(String(guestId));
-    
+
     const numStr = String(photoIndex + 1).padStart(2, '0');
     parts.push(numStr);
-    
+
     return parts.join('_');
 }
 
@@ -1108,7 +1108,7 @@ app.post('/api/songs', (req, res) => {
         const existingSongs = db.prepare('SELECT SongID FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?))').all(SongTitle);
         let isDuplicate = false;
         const newArtistIDs = (ArtistIDs || []).map(Number);
-        
+
         for (const s of existingSongs) {
             const existingArtists = db.prepare('SELECT ArtistID FROM Song_Artists WHERE SongID = ?').all(s.SongID).map(row => row.ArtistID);
             if (existingArtists.length === 0 && newArtistIDs.length === 0) {
@@ -1120,7 +1120,7 @@ app.post('/api/songs', (req, res) => {
                 break;
             }
         }
-        
+
         if (isDuplicate) {
             return res.status(400).json({ error: 'Bu şarkı zaten kayıtlı!' });
         }
@@ -1162,9 +1162,9 @@ app.post('/api/songs', (req, res) => {
 
         const insertSong = db.prepare('INSERT INTO Songs (SongTitle, Duration, SongYear, Lyrics, AudioPath, OriginalKey, ChordImagePath, LanguageID, Notes, CreatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(\'now\'))');
         const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
-        const insertGenre    = db.prepare('INSERT OR IGNORE INTO Song_Genres (SongID, GenreID) VALUES (?, ?)');
+        const insertGenre = db.prepare('INSERT OR IGNORE INTO Song_Genres (SongID, GenreID) VALUES (?, ?)');
         const insertCategory = db.prepare('INSERT OR IGNORE INTO Song_Categories (SongID, CategoryID) VALUES (?, ?)');
-        const insertEmotion  = db.prepare('INSERT OR IGNORE INTO Song_Emotions (SongID, EmotionID) VALUES (?, ?)');
+        const insertEmotion = db.prepare('INSERT OR IGNORE INTO Song_Emotions (SongID, EmotionID) VALUES (?, ?)');
 
         const transaction = db.transaction((songTitle, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds, genreIds, categoryIds, emotionIds) => {
             const info = insertSong.run(songTitle, duration || null, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null, notes || null);
@@ -1203,7 +1203,7 @@ app.put('/api/songs/:id', (req, res) => {
         const existingSongs = db.prepare('SELECT SongID FROM Songs WHERE TRIM(LOWER(SongTitle)) = TRIM(LOWER(?)) AND SongID != ?').all(SongTitle, songId);
         let isDuplicate = false;
         const newArtistIDs = (ArtistIDs || []).map(Number);
-        
+
         for (const s of existingSongs) {
             const existingArtists = db.prepare('SELECT ArtistID FROM Song_Artists WHERE SongID = ?').all(s.SongID).map(row => row.ArtistID);
             if (existingArtists.length === 0 && newArtistIDs.length === 0) {
@@ -1215,7 +1215,7 @@ app.put('/api/songs/:id', (req, res) => {
                 break;
             }
         }
-        
+
         if (isDuplicate) {
             return res.status(400).json({ error: 'Bu şarkı zaten kayıtlı!' });
         }
@@ -1254,7 +1254,7 @@ app.put('/api/songs/:id', (req, res) => {
                 if (!ChordImages.includes(oldPath)) {
                     const oldFilePath = path.join(__dirname, '..', oldPath);
                     if (fs.existsSync(oldFilePath)) {
-                        try { fs.unlinkSync(oldFilePath); } catch (e) {}
+                        try { fs.unlinkSync(oldFilePath); } catch (e) { }
                     }
                 }
             }
@@ -1299,15 +1299,15 @@ app.put('/api/songs/:id', (req, res) => {
 
         const finalChordImagePath = finalChordImages.length > 0 ? JSON.stringify(finalChordImages) : null;
 
-        const updateSong        = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ?, LanguageID = ?, Notes = ? WHERE SongID = ?');
+        const updateSong = db.prepare('UPDATE Songs SET SongTitle = ?, Duration = ?, SongYear = ?, Lyrics = ?, AudioPath = ?, OriginalKey = ?, ChordImagePath = ?, LanguageID = ?, Notes = ? WHERE SongID = ?');
         const deleteSongArtists = db.prepare('DELETE FROM Song_Artists WHERE SongID = ?');
-        const insertSongArtist  = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
-        const deleteGenres      = db.prepare('DELETE FROM Song_Genres WHERE SongID = ?');
-        const deleteCategories  = db.prepare('DELETE FROM Song_Categories WHERE SongID = ?');
-        const deleteEmotions    = db.prepare('DELETE FROM Song_Emotions WHERE SongID = ?');
-        const insertGenre       = db.prepare('INSERT OR IGNORE INTO Song_Genres (SongID, GenreID) VALUES (?, ?)');
-        const insertCategory    = db.prepare('INSERT OR IGNORE INTO Song_Categories (SongID, CategoryID) VALUES (?, ?)');
-        const insertEmotion     = db.prepare('INSERT OR IGNORE INTO Song_Emotions (SongID, EmotionID) VALUES (?, ?)');
+        const insertSongArtist = db.prepare('INSERT INTO Song_Artists (SongID, ArtistID) VALUES (?, ?)');
+        const deleteGenres = db.prepare('DELETE FROM Song_Genres WHERE SongID = ?');
+        const deleteCategories = db.prepare('DELETE FROM Song_Categories WHERE SongID = ?');
+        const deleteEmotions = db.prepare('DELETE FROM Song_Emotions WHERE SongID = ?');
+        const insertGenre = db.prepare('INSERT OR IGNORE INTO Song_Genres (SongID, GenreID) VALUES (?, ?)');
+        const insertCategory = db.prepare('INSERT OR IGNORE INTO Song_Categories (SongID, CategoryID) VALUES (?, ?)');
+        const insertEmotion = db.prepare('INSERT OR IGNORE INTO Song_Emotions (SongID, EmotionID) VALUES (?, ?)');
 
         const transaction = db.transaction((id, title, duration, songYear, lyrics, audioPath, originalKey, chordImagePath, languageId, notes, artistIds, genreIds, categoryIds, emotionIds) => {
             updateSong.run(title, duration || null, songYear || null, lyrics || null, audioPath || null, originalKey || null, chordImagePath || null, languageId || null, notes || null, id);
@@ -1379,11 +1379,11 @@ app.delete('/api/songs/:id', (req, res) => {
         if (isLinked) {
             return res.status(400).json({ error: 'Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz' });
         }
-        
+
         const existingSong = db.prepare('SELECT AudioPath, ChordImagePath FROM Songs WHERE SongID = ?').get(req.params.id);
-        
+
         db.prepare('DELETE FROM Songs WHERE SongID = ?').run(req.params.id);
-        
+
         if (existingSong && existingSong.AudioPath) {
             const filePath = path.join(__dirname, '..', existingSong.AudioPath);
             if (fs.existsSync(filePath)) {
@@ -1499,7 +1499,7 @@ app.get('/api/guests', (req, res) => {
     try {
         const guests = db.prepare('SELECT * FROM Guests').all();
         const relationships = db.prepare('SELECT * FROM Guest_Relationships').all();
-        
+
         const relMap = {};
         relationships.forEach(r => {
             const g1 = Number(r.GuestID);
@@ -1543,17 +1543,17 @@ app.post('/api/guests', (req, res) => {
                 INSERT INTO Guests (FirstName, LastName, PhoneNumber, InstagramLink, Notes, City, CityTR, ProfilePicture, BirthDateDay, BirthDateMonth, BirthDateYear, Photos, IsMusician) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
-                FirstName, 
-                LastName, 
-                PhoneNumber || "", 
-                InstagramLink || "", 
-                Notes || "", 
+                FirstName,
+                LastName,
+                PhoneNumber || "",
+                InstagramLink || "",
+                Notes || "",
                 City || "",
                 CityTR || "",
-                "", 
-                BirthDateDay ? Number(BirthDateDay) : null, 
-                BirthDateMonth ? Number(BirthDateMonth) : null, 
-                BirthDateYear ? Number(BirthDateYear) : null, 
+                "",
+                BirthDateDay ? Number(BirthDateDay) : null,
+                BirthDateMonth ? Number(BirthDateMonth) : null,
+                BirthDateYear ? Number(BirthDateYear) : null,
                 "[]",
                 IsMusician ? 1 : 0
             );
@@ -1571,7 +1571,7 @@ app.post('/api/guests', (req, res) => {
                 JSON.stringify(finalPhotos),
                 guestId
             );
-            
+
             if (RelatedGuestIDs && Array.isArray(RelatedGuestIDs)) {
                 const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
                 for (const rId of RelatedGuestIDs) {
@@ -1618,7 +1618,7 @@ app.put('/api/guests/:id', (req, res) => {
                         deleteUploadedFiles(removed);
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // 2. Avatar ve albüm fotoğraflarını iki aşamalı olarak yeni ada senkronize et
@@ -1631,17 +1631,17 @@ app.put('/api/guests/:id', (req, res) => {
                 SET FirstName = ?, LastName = ?, PhoneNumber = ?, InstagramLink = ?, Notes = ?, City = ?, CityTR = ?, ProfilePicture = ?, BirthDateDay = ?, BirthDateMonth = ?, BirthDateYear = ?, Photos = ?, IsMusician = ?, UpdatedAt = CURRENT_TIMESTAMP 
                 WHERE GuestID = ?
             `).run(
-                FirstName, 
-                LastName, 
-                PhoneNumber || "", 
-                InstagramLink || "", 
-                Notes || "", 
+                FirstName,
+                LastName,
+                PhoneNumber || "",
+                InstagramLink || "",
+                Notes || "",
                 City || "",
                 CityTR || "",
-                finalProfilePic || "", 
-                BirthDateDay ? Number(BirthDateDay) : null, 
-                BirthDateMonth ? Number(BirthDateMonth) : null, 
-                BirthDateYear ? Number(BirthDateYear) : null, 
+                finalProfilePic || "",
+                BirthDateDay ? Number(BirthDateDay) : null,
+                BirthDateMonth ? Number(BirthDateMonth) : null,
+                BirthDateYear ? Number(BirthDateYear) : null,
                 JSON.stringify(finalPhotos),
                 IsMusician ? 1 : 0,
                 guestId
@@ -1693,7 +1693,7 @@ app.post('/api/guests/bulk-relate', (req, res) => {
         }
         const numIds = guestIds.map(Number).filter(id => !isNaN(id) && id > 0);
         const insertRel = db.prepare('INSERT OR IGNORE INTO Guest_Relationships (GuestID, RelatedGuestID) VALUES (?, ?)');
-        
+
         db.transaction(() => {
             for (let i = 0; i < numIds.length; i++) {
                 for (let j = i + 1; j < numIds.length; j++) {
@@ -1702,7 +1702,7 @@ app.post('/api/guests/bulk-relate', (req, res) => {
                 }
             }
         })();
-        
+
         res.json({ message: 'Misafirler başarıyla birbiriyle kalıcı olarak ilişkilendirildi.', count: numIds.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1720,7 +1720,7 @@ app.delete('/api/guests/:id', (req, res) => {
         if (oldGuest) {
             if (oldGuest.ProfilePicture) deleteUploadedFiles(oldGuest.ProfilePicture);
             if (oldGuest.Photos) {
-                try { deleteUploadedFiles(JSON.parse(oldGuest.Photos)); } catch (e) {}
+                try { deleteUploadedFiles(JSON.parse(oldGuest.Photos)); } catch (e) { }
             }
         }
 
@@ -1893,14 +1893,14 @@ app.put('/api/statuses/:id', (req, res) => {
         if (!Color || !Color.trim()) {
             return res.status(400).json({ error: 'Renk boş olamaz!' });
         }
-        
+
         const existing = db.prepare('SELECT * FROM RequestStatuses WHERE TRIM(LOWER(StatusName)) = TRIM(LOWER(?)) AND StatusID != ?').get(StatusName, statusId);
         if (existing) {
             return res.status(400).json({ error: 'Bu isimde başka bir durum zaten tanımlı!' });
         }
 
         const oldStatus = db.prepare('SELECT StatusName FROM RequestStatuses WHERE StatusID = ?').get(statusId);
-        
+
         const transaction = db.transaction((id, name, color, oldName) => {
             db.prepare('UPDATE RequestStatuses SET StatusName = ?, Color = ? WHERE StatusID = ?').run(name, color, id);
             // If the status name changed, update existing requests with this status to keep compatibility
@@ -2107,16 +2107,16 @@ app.post('/api/venues', (req, res) => {
             INSERT INTO Venues (VenueName, CityID, ContactPerson, ContactPhone, InstagramLink, Notes, GoogleMapsLink, Abbreviation) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(VenueName.trim(), Number(CityID), ContactPerson ? ContactPerson.trim() : '', ContactPhone ? ContactPhone.trim() : '', InstagramLink ? InstagramLink.trim() : '', Notes ? Notes.trim() : '', GoogleMapsLink ? GoogleMapsLink.trim() : '', Abbreviation ? Abbreviation.trim() : '');
-        
+
         const cityName = db.prepare('SELECT CityName FROM Cities WHERE CityID = ?').get(CityID)?.CityName || '-';
-        
-        res.status(201).json({ 
-            VenueID: Number(info.lastInsertRowid), 
-            VenueName: VenueName.trim(), 
+
+        res.status(201).json({
+            VenueID: Number(info.lastInsertRowid),
+            VenueName: VenueName.trim(),
             CityID: Number(CityID),
             CityName: cityName,
-            ContactPerson: ContactPerson ? ContactPerson.trim() : '', 
-            ContactPhone: ContactPhone ? ContactPhone.trim() : '', 
+            ContactPerson: ContactPerson ? ContactPerson.trim() : '',
+            ContactPhone: ContactPhone ? ContactPhone.trim() : '',
             InstagramLink: InstagramLink ? InstagramLink.trim() : '',
             Notes: Notes ? Notes.trim() : '',
             GoogleMapsLink: GoogleMapsLink ? GoogleMapsLink.trim() : '',
@@ -2153,7 +2153,7 @@ app.put('/api/venues/:id', (req, res) => {
         const updateGigPhotos = db.prepare('UPDATE Gigs SET Photos = ? WHERE GigID = ?');
         for (const g of venueGigs) {
             let photosList = [];
-            try { photosList = typeof g.Photos === 'string' ? JSON.parse(g.Photos) : g.Photos; } catch (e) {}
+            try { photosList = typeof g.Photos === 'string' ? JSON.parse(g.Photos) : g.Photos; } catch (e) { }
             if (Array.isArray(photosList) && photosList.length > 0) {
                 const newPhotos = processGigPhotos(photosList, venueObj, g.GigDate);
                 updateGigPhotos.run(JSON.stringify(newPhotos), g.GigID);
@@ -2192,7 +2192,7 @@ app.get('/api/gigs', (req, res) => {
             LEFT JOIN Cities c ON v.CityID = c.CityID
             ORDER BY g.GigDate DESC, g.GigID DESC
         `).all();
-        
+
         const formattedGigs = gigs.map(gig => {
             const songs = db.prepare(`
                 SELECT gs.GigSongID, gs.SongID, gs.SortOrder, gs.IsPlayed, gs.IsRequest, s.SongTitle, s.ChordImagePath,
@@ -2245,6 +2245,8 @@ app.get('/api/gigs', (req, res) => {
                 Notes: gig.Notes || '',
                 Photos: gig.Photos ? JSON.parse(gig.Photos) : [],
                 Videos: gig.Videos ? JSON.parse(gig.Videos) : [],
+                ExcludeSongsFromAvg: Boolean(gig.ExcludeSongsFromAvg),
+                ExcludeGuestsFromAvg: Boolean(gig.ExcludeGuestsFromAvg),
                 Songs: songs,
                 Guests: guests,
                 CreatedAt: gig.CreatedAt,
@@ -2259,7 +2261,7 @@ app.get('/api/gigs', (req, res) => {
 });
 
 app.post('/api/gigs', (req, res) => {
-    const { VenueID, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
+    const { VenueID, GigDate, Notes, Photos, Videos, Songs, Guests, ExcludeSongsFromAvg, ExcludeGuestsFromAvg } = req.body;
     if (!VenueID || !GigDate) {
         return res.status(400).json({ error: 'Mekân ve tarih alanları boş bırakılamaz!' });
     }
@@ -2270,14 +2272,16 @@ app.post('/api/gigs', (req, res) => {
 
         const createTransaction = db.transaction(() => {
             const gigInfo = db.prepare(`
-                INSERT INTO Gigs (VenueID, GigDate, Notes, Photos, Videos)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO Gigs (VenueID, GigDate, Notes, Photos, Videos, ExcludeSongsFromAvg, ExcludeGuestsFromAvg)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `).run(
                 Number(VenueID),
                 GigDate,
                 Notes || '',
                 finalPhotos ? JSON.stringify(finalPhotos) : '[]',
-                Videos ? JSON.stringify(Videos) : '[]'
+                Videos ? JSON.stringify(Videos) : '[]',
+                ExcludeSongsFromAvg ? 1 : 0,
+                ExcludeGuestsFromAvg ? 1 : 0
             );
             const gigId = gigInfo.lastInsertRowid;
 
@@ -2321,7 +2325,7 @@ app.post('/api/gigs', (req, res) => {
 
 app.put('/api/gigs/:id', (req, res) => {
     const gigId = req.params.id;
-    const { VenueID, GigDate, Notes, Photos, Videos, Songs, Guests } = req.body;
+    const { VenueID, GigDate, Notes, Photos, Videos, Songs, Guests, ExcludeSongsFromAvg, ExcludeGuestsFromAvg } = req.body;
     if (!VenueID || !GigDate) {
         return res.status(400).json({ error: 'Mekân ve tarih alanları boş bırakılamaz!' });
     }
@@ -2330,7 +2334,7 @@ app.put('/api/gigs/:id', (req, res) => {
         const venue = db.prepare('SELECT VenueName, Abbreviation FROM Venues WHERE VenueID = ?').get(Number(VenueID));
 
         // 1. Silinen fotoğrafları önce tespit edip diskten temizle (indeks kaydırma çakışmalarını önler)
-        const oldGig = db.prepare('SELECT Photos FROM Gigs WHERE GigID = ?').get(gigId);
+        const oldGig = db.prepare('SELECT Photos, ExcludeSongsFromAvg, ExcludeGuestsFromAvg FROM Gigs WHERE GigID = ?').get(gigId);
         if (oldGig && oldGig.Photos) {
             try {
                 const oldPhotos = JSON.parse(oldGig.Photos);
@@ -2341,16 +2345,18 @@ app.put('/api/gigs/:id', (req, res) => {
                         deleteUploadedFiles(removed);
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // 2. Kalan ve yeni fotoğrafları iki aşamalı olarak sıralı ve güvenli şekilde yeniden adlandır
         const finalPhotos = processGigPhotos(Photos, venue, GigDate);
+        const finalExcludeSongs = ExcludeSongsFromAvg !== undefined ? (ExcludeSongsFromAvg ? 1 : 0) : Number(oldGig?.ExcludeSongsFromAvg || 0);
+        const finalExcludeGuests = ExcludeGuestsFromAvg !== undefined ? (ExcludeGuestsFromAvg ? 1 : 0) : Number(oldGig?.ExcludeGuestsFromAvg || 0);
 
         const updateTransaction = db.transaction(() => {
             db.prepare(`
                 UPDATE Gigs
-                SET VenueID = ?, GigDate = ?, Notes = ?, Photos = ?, Videos = ?, UpdatedAt = CURRENT_TIMESTAMP
+                SET VenueID = ?, GigDate = ?, Notes = ?, Photos = ?, Videos = ?, ExcludeSongsFromAvg = ?, ExcludeGuestsFromAvg = ?, UpdatedAt = CURRENT_TIMESTAMP
                 WHERE GigID = ?
             `).run(
                 Number(VenueID),
@@ -2358,6 +2364,8 @@ app.put('/api/gigs/:id', (req, res) => {
                 Notes || '',
                 finalPhotos ? JSON.stringify(finalPhotos) : '[]',
                 Videos ? JSON.stringify(Videos) : '[]',
+                finalExcludeSongs,
+                finalExcludeGuests,
                 gigId
             );
 
@@ -2406,7 +2414,7 @@ app.delete('/api/gigs/:id', (req, res) => {
             try {
                 const oldPhotos = JSON.parse(gig.Photos);
                 deleteUploadedFiles(oldPhotos);
-            } catch (e) {}
+            } catch (e) { }
         }
         db.prepare('DELETE FROM Gigs WHERE GigID = ?').run(req.params.id);
         res.json({ message: 'Sahne kaydı silindi.' });
@@ -2465,7 +2473,7 @@ app.post('/api/gigs/export-chords', (req, res) => {
             const cleanTitle = rawTitle.replace(/[\\/:*?"<>|]/g, '_').trim();
 
             chordImages.forEach((chordImg, imgIdx) => {
-                const prefix = chordImages.length > 1 
+                const prefix = chordImages.length > 1
                     ? `${twoDigitOrder}${String.fromCharCode(97 + imgIdx)}` // 01a, 01b, 01c...
                     : twoDigitOrder; // 01, 02...
 
@@ -2480,7 +2488,7 @@ app.post('/api/gigs/export-chords', (req, res) => {
                     } else if (typeof chordImg === 'string') {
                         const cleanPath = chordImg.startsWith('/') ? chordImg.slice(1) : chordImg;
                         const srcPath = path.isAbsolute(chordImg) ? chordImg : path.join(__dirname, '..', cleanPath);
-                        
+
                         if (fs.existsSync(srcPath)) {
                             fs.copyFileSync(srcPath, destPath);
                             exportedCount++;
@@ -2597,7 +2605,7 @@ app.delete('/api/notes/:id/permanent', (req, res) => {
             try {
                 const oldPhotos = JSON.parse(oldNote.Photos);
                 deleteUploadedFiles(oldPhotos);
-            } catch (e) {}
+            } catch (e) { }
         }
         db.prepare('DELETE FROM QuickNotes WHERE NoteID = ?').run(noteId);
         res.json({ message: 'Not kalıcı olarak silindi.' });

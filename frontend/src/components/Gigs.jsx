@@ -55,6 +55,8 @@ export default function Gigs() {
     Notes: '',
     Photos: [],
     Videos: [],
+    ExcludeSongsFromAvg: false,
+    ExcludeGuestsFromAvg: false,
     Songs: [], // { SongID, SortOrder, IsPlayed, IsRequest }
     Guests: [] // { GuestID, TableName }
   });
@@ -241,6 +243,8 @@ export default function Gigs() {
       Notes: gig.Notes || '',
       Photos: gig.Photos || [],
       Videos: gig.Videos || [],
+      ExcludeSongsFromAvg: Boolean(gig.ExcludeSongsFromAvg),
+      ExcludeGuestsFromAvg: Boolean(gig.ExcludeGuestsFromAvg),
       Songs: gig.Songs ? gig.Songs.map((s, idx) => ({
         _uid: 'gs_' + (s.GigSongID ? s.GigSongID + '_' : '') + s.SongID + '_' + idx + '_' + Math.random().toString(36).slice(2),
         SongID: Number(s.SongID),
@@ -307,6 +311,8 @@ export default function Gigs() {
       Notes: '',
       Photos: [],
       Videos: [],
+      ExcludeSongsFromAvg: false,
+      ExcludeGuestsFromAvg: false,
       Songs: cleanNewSongs,
       Guests: []
     });
@@ -326,6 +332,8 @@ export default function Gigs() {
       Notes: '',
       Photos: [],
       Videos: [],
+      ExcludeSongsFromAvg: false,
+      ExcludeGuestsFromAvg: false,
       Songs: [],
       Guests: []
     });
@@ -356,6 +364,8 @@ export default function Gigs() {
 
     const payload = {
       ...formData,
+      ExcludeSongsFromAvg: formData.ExcludeSongsFromAvg ? 1 : 0,
+      ExcludeGuestsFromAvg: formData.ExcludeGuestsFromAvg ? 1 : 0,
       Guests: formData.Guests.map(g => ({
         GuestID: (g.GuestID && Number(g.GuestID) > 0) ? Number(g.GuestID) : null,
         IsAnonymous: g.IsAnonymous ? 1 : 0,
@@ -1609,9 +1619,8 @@ export default function Gigs() {
     if (gigCount === 0) {
       return {
         gigCount: 0,
-        gigsWithSongs: 0,
-        gigsWithPlayed: 0,
-        gigsWithGuests: 0,
+        avgSongGigsCount: 0,
+        avgGuestGigsCount: 0,
         totalSongs: 0,
         totalPlayed: 0,
         totalGuests: 0,
@@ -1633,9 +1642,13 @@ export default function Gigs() {
     let totalGuests = 0;
     let totalRegisteredGuests = 0;
 
-    let gigsWithSongs = 0;
-    let gigsWithPlayed = 0;
-    let gigsWithGuests = 0;
+    let avgSongGigsCount = 0;
+    let avgTotalSongs = 0;
+    let avgTotalPlayed = 0;
+
+    let avgGuestGigsCount = 0;
+    let avgTotalGuests = 0;
+    let avgTotalRegisteredGuests = 0;
 
     const uniquePlayedSongKeys = new Set();
     const uniqueTotalSongKeys = new Set();
@@ -1669,11 +1682,10 @@ export default function Gigs() {
         totalPlayed += gigPlayedCount;
       }
 
-      if (gigSongsCount > 0) {
-        gigsWithSongs += 1;
-      }
-      if (gigPlayedCount > 0) {
-        gigsWithPlayed += 1;
+      if (!gig.ExcludeSongsFromAvg) {
+        avgSongGigsCount += 1;
+        avgTotalSongs += gigSongsCount;
+        avgTotalPlayed += gigPlayedCount;
       }
 
       // 2. Misafir Hesaplamaları
@@ -1693,28 +1705,30 @@ export default function Gigs() {
         totalRegisteredGuests += gigRegisteredCount;
       }
 
-      if (gigGuestsCount > 0) {
-        gigsWithGuests += 1;
+      if (!gig.ExcludeGuestsFromAvg) {
+        avgGuestGigsCount += 1;
+        avgTotalGuests += gigGuestsCount;
+        avgTotalRegisteredGuests += gigRegisteredCount;
       }
     });
 
     const totalUnregisteredGuests = totalGuests - totalRegisteredGuests;
+    const avgTotalUnregisteredGuests = avgTotalGuests - avgTotalRegisteredGuests;
 
     return {
       gigCount,
-      gigsWithSongs,
-      gigsWithPlayed,
-      gigsWithGuests,
+      avgSongGigsCount,
+      avgGuestGigsCount,
       totalSongs,
       totalPlayed,
       totalGuests,
       totalRegisteredGuests,
       totalUnregisteredGuests,
-      avgSongs: gigsWithSongs > 0 ? totalSongs / gigsWithSongs : 0,
-      avgPlayed: gigsWithPlayed > 0 ? totalPlayed / gigsWithPlayed : 0,
-      avgGuests: gigsWithGuests > 0 ? totalGuests / gigsWithGuests : 0,
-      avgRegisteredGuests: gigsWithGuests > 0 ? totalRegisteredGuests / gigsWithGuests : 0,
-      avgUnregisteredGuests: gigsWithGuests > 0 ? totalUnregisteredGuests / gigsWithGuests : 0,
+      avgSongs: avgSongGigsCount > 0 ? avgTotalSongs / avgSongGigsCount : 0,
+      avgPlayed: avgSongGigsCount > 0 ? avgTotalPlayed / avgSongGigsCount : 0,
+      avgGuests: avgGuestGigsCount > 0 ? avgTotalGuests / avgGuestGigsCount : 0,
+      avgRegisteredGuests: avgGuestGigsCount > 0 ? avgTotalRegisteredGuests / avgGuestGigsCount : 0,
+      avgUnregisteredGuests: avgGuestGigsCount > 0 ? avgTotalUnregisteredGuests / avgGuestGigsCount : 0,
       uniquePlayedSongs: uniquePlayedSongKeys.size,
       uniqueTotalSongs: uniqueTotalSongKeys.size,
       uniqueRegisteredGuests: uniqueRegisteredGuestIds.size
@@ -1885,10 +1899,18 @@ export default function Gigs() {
                 <tr key={gig.GigID}>
                   <td data-label="Tarih">{formattedDate}</td>
                   <td data-label="Mekân">{gig.VenueName} ({gig.CityName || '-'})</td>
-                  <td data-label="Şarkı Sayısı" style={{ textAlign: 'center' }}>
+                  <td
+                    data-label="Şarkı Sayısı"
+                    style={{ textAlign: 'center', color: gig.ExcludeSongsFromAvg ? '#b5835a' : undefined }}
+                    title={gig.ExcludeSongsFromAvg ? 'Ortalama Dışı (Şarkı)' : undefined}
+                  >
                     <span style={{ fontWeight: '600' }}>{playedCount}</span> / {songsCount}
                   </td>
-                  <td data-label="Misafir Sayısı" style={{ textAlign: 'center' }}>
+                  <td
+                    data-label="Misafir Sayısı"
+                    style={{ textAlign: 'center', color: gig.ExcludeGuestsFromAvg ? '#b5835a' : undefined }}
+                    title={gig.ExcludeGuestsFromAvg ? 'Ortalama Dışı (Misafir)' : undefined}
+                  >
                     {guestsCount > 0 ? <><span style={{ fontWeight: 'bold' }}>{guestsCount}</span> ({registeredGuestsCount}/{unregisteredGuestsCount})</> : '0'}
                   </td>
                   <td data-label="İşlemler">
@@ -2022,10 +2044,10 @@ export default function Gigs() {
                 <td data-label="Kapsam">
                   <span className="summary-subtext">Sahne Başına</span>
                 </td>
-                <td data-label="Ort. Şarkı" style={{ textAlign: 'center' }} title={`Ortalama Çalınan: ${formatAvg(gigStats.avgPlayed)} (${gigStats.gigsWithPlayed} sahne) / Ortalama Liste: ${formatAvg(gigStats.avgSongs)} (${gigStats.gigsWithSongs} sahne)`}>
+                <td data-label="Ort. Şarkı" style={{ textAlign: 'center' }} title={`Ortalama Çalınan: ${formatAvg(gigStats.avgPlayed)} / Ortalama Liste: ${formatAvg(gigStats.avgSongs)} (${gigStats.avgSongGigsCount} sahne)`}>
                   <span style={{ fontWeight: '700' }}>{formatAvg(gigStats.avgPlayed)}</span> / {formatAvg(gigStats.avgSongs)}
                 </td>
-                <td data-label="Ort. Misafir" style={{ textAlign: 'center' }} title={`Ortalama Misafir: ${formatAvg(gigStats.avgGuests)} (${gigStats.gigsWithGuests} sahne - Kayıtlı: ${formatAvg(gigStats.avgRegisteredGuests)} / Kayıtsız: ${formatAvg(gigStats.avgUnregisteredGuests)})`}>
+                <td data-label="Ort. Misafir" style={{ textAlign: 'center' }} title={`Ortalama Misafir: ${formatAvg(gigStats.avgGuests)} (${gigStats.avgGuestGigsCount} sahne - Kayıtlı: ${formatAvg(gigStats.avgRegisteredGuests)} / Kayıtsız: ${formatAvg(gigStats.avgUnregisteredGuests)})`}>
                   <span style={{ fontWeight: '700' }}>{formatAvg(gigStats.avgGuests)}</span> ({formatAvg(gigStats.avgRegisteredGuests)}/{formatAvg(gigStats.avgUnregisteredGuests)})
                 </td>
                 <td className="table-summary-actions-cell" style={{ textAlign: 'right' }}>
@@ -2790,9 +2812,32 @@ export default function Gigs() {
 
               </div>
 
-              <div className="modal-actions" style={{ marginTop: '2rem' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>İptal</button>
-                <button type="submit" className="btn btn-primary">Kaydet</button>
+              <div className="modal-actions" style={{ marginTop: '2rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>Ortalama Dışı</span>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.ExcludeSongsFromAvg)}
+                      onChange={e => setFormData({ ...formData, ExcludeSongsFromAvg: e.target.checked })}
+                      style={{ width: '17px', height: '17px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
+                    />
+                    Şarkı
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.ExcludeGuestsFromAvg)}
+                      onChange={e => setFormData({ ...formData, ExcludeGuestsFromAvg: e.target.checked })}
+                      style={{ width: '17px', height: '17px', margin: 0, cursor: 'pointer', accentColor: 'var(--primary)' }}
+                    />
+                    Misafir
+                  </label>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>İptal</button>
+                  <button type="submit" className="btn btn-primary">Kaydet</button>
+                </div>
               </div>
             </form>
           </div>

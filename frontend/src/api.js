@@ -371,6 +371,8 @@ export const api = {
       Notes: gig.Notes || '',
       Photos: gig.Photos || [],
       Videos: gig.Videos || [],
+      ExcludeSongsFromAvg: Boolean(gig.ExcludeSongsFromAvg),
+      ExcludeGuestsFromAvg: Boolean(gig.ExcludeGuestsFromAvg),
       Songs: (gig.Songs || []).map(s => ({
         GigSongID: Number(s.GigSongID),
         SongID: Number(s.SongID),

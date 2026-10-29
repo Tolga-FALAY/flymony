@@ -129,6 +129,8 @@ export const initializeDB = () => {
             Notes TEXT,
             Photos TEXT,
             Videos TEXT,
+            ExcludeSongsFromAvg INTEGER DEFAULT 0,
+            ExcludeGuestsFromAvg INTEGER DEFAULT 0,
             CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
             UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -1875,6 +1877,23 @@ export const initializeDB = () => {
         }
     } catch (e) {
         console.error("Migration error while adding Abbreviation column to Venues table:", e);
+    }
+
+    // ----------------------------------------------------
+    // GIGS TABLE MIGRATION (Add ExcludeSongsFromAvg & ExcludeGuestsFromAvg)
+    // ----------------------------------------------------
+    try {
+        const gigCols = db.prepare("PRAGMA table_info(Gigs)").all();
+        if (!gigCols.some(col => col.name === 'ExcludeSongsFromAvg')) {
+            console.log("Migrating Gigs table: Adding ExcludeSongsFromAvg column...");
+            db.exec("ALTER TABLE Gigs ADD COLUMN ExcludeSongsFromAvg INTEGER DEFAULT 0;");
+        }
+        if (!gigCols.some(col => col.name === 'ExcludeGuestsFromAvg')) {
+            console.log("Migrating Gigs table: Adding ExcludeGuestsFromAvg column...");
+            db.exec("ALTER TABLE Gigs ADD COLUMN ExcludeGuestsFromAvg INTEGER DEFAULT 0;");
+        }
+    } catch (e) {
+        console.error("Migration error while adding ExcludeSongsFromAvg/ExcludeGuestsFromAvg to Gigs table:", e);
     }
 
     console.log("Database tables initialized.");
