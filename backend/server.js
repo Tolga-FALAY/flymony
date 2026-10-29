@@ -1711,12 +1711,24 @@ app.post('/api/guests/bulk-relate', (req, res) => {
 
 app.delete('/api/guests/:id', (req, res) => {
     try {
-        const isLinked = db.prepare('SELECT 1 FROM Request_Guests WHERE GuestID = ?').get(req.params.id);
-        if (isLinked) {
-            return res.status(400).json({ error: 'Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz' });
+        const guestId = Number(req.params.id);
+
+        const isLinkedToGig = db.prepare('SELECT 1 FROM Gig_Guests WHERE GuestID = ?').get(guestId);
+        if (isLinkedToGig) {
+            return res.status(400).json({ error: 'Bu misafir en az bir sahnede kayıtlı. Bu misafir kaydını silmek için, öncelikle bu misafir kaydını tüm sahnelerden çıkarmanız gerekir.' });
         }
 
-        const oldGuest = db.prepare('SELECT ProfilePicture, Photos FROM Guests WHERE GuestID = ?').get(req.params.id);
+        const isLinkedToRequest = db.prepare('SELECT 1 FROM Request_Guests WHERE GuestID = ?').get(guestId);
+        if (isLinkedToRequest) {
+            return res.status(400).json({ error: 'Bu misafir en az bir istek kaydında kayıtlı. Bu misafir kaydını silmek için, öncelikle bu misafir kaydını tüm istek kayıtlarından çıkarmanız gerekir.' });
+        }
+
+        const isLinkedToGuest = db.prepare('SELECT 1 FROM Guest_Relationships WHERE GuestID = ? OR RelatedGuestID = ?').get(guestId, guestId);
+        if (isLinkedToGuest) {
+            return res.status(400).json({ error: 'Bu misafir en az bir başka misafir ile ilişkili. Bu misafir kaydını silmek için, öncelikle tüm misafir ilişkilerini kaldırmanız gerekir.' });
+        }
+
+        const oldGuest = db.prepare('SELECT ProfilePicture, Photos FROM Guests WHERE GuestID = ?').get(guestId);
         if (oldGuest) {
             if (oldGuest.ProfilePicture) deleteUploadedFiles(oldGuest.ProfilePicture);
             if (oldGuest.Photos) {
@@ -1725,9 +1737,8 @@ app.delete('/api/guests/:id', (req, res) => {
         }
 
         const deleteGuestTransaction = db.transaction(() => {
-            // Clean relationships manually first (though foreign key delete cascade should work, manual is safe)
-            db.prepare('DELETE FROM Guest_Relationships WHERE GuestID = ? OR RelatedGuestID = ?').run(req.params.id, req.params.id);
-            db.prepare('DELETE FROM Guests WHERE GuestID = ?').run(req.params.id);
+            db.prepare('DELETE FROM Guest_Relationships WHERE GuestID = ? OR RelatedGuestID = ?').run(guestId, guestId);
+            db.prepare('DELETE FROM Guests WHERE GuestID = ?').run(guestId);
         });
 
         deleteGuestTransaction();

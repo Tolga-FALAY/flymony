@@ -552,18 +552,45 @@ export default function Guests() {
 
   const handleDelete = async (id) => {
     try {
-      // Bağlantı kontrolü: Firestore okuma YOK — bellekteki store kullanılır
-      const isLinked = store.requests.some(r => (r.GuestIDs || []).includes(Number(id)));
-      if (isLinked) {
-        alert("Bu şarkıyı veya misafiri silmek için önce bu şarkının ve misafirin kayıtlı olduğu tüm istek kayıtlarını silmelisiniz");
+      const targetId = Number(id);
+
+      // 1. Sahne kontrolü
+      const isLinkedToGig = (store.gigs || []).some(gig =>
+        (gig.Guests || []).some(g => Number(g.GuestID ?? g.guestId) === targetId)
+      );
+      if (isLinkedToGig) {
+        alert("Bu misafir en az bir sahnede kayıtlı. Bu misafir kaydını silmek için, öncelikle bu misafir kaydını tüm sahnelerden çıkarmanız gerekir.");
         return;
       }
+
+      // 2. İstek kaydı kontrolü
+      const isLinkedToRequest = (store.requests || []).some(r =>
+        (r.GuestIDs || []).map(Number).includes(targetId)
+      );
+      if (isLinkedToRequest) {
+        alert("Bu misafir en az bir istek kaydında kayıtlı. Bu misafir kaydını silmek için, öncelikle bu misafir kaydını tüm istek kayıtlarından çıkarmanız gerekir.");
+        return;
+      }
+
+      // 3. Misafir ilişkisi kontrolü
+      const targetGuest = (store.guests || []).find(g => Number(g.GuestID) === targetId);
+      const hasRelatedGuests =
+        (targetGuest && Array.isArray(targetGuest.RelatedGuestIDs) && targetGuest.RelatedGuestIDs.length > 0) ||
+        (store.guests || []).some(g =>
+          Number(g.GuestID) !== targetId &&
+          (g.RelatedGuestIDs || []).map(Number).includes(targetId)
+        );
+      if (hasRelatedGuests) {
+        alert("Bu misafir en az bir başka misafir ile ilişkili. Bu misafir kaydını silmek için, öncelikle tüm misafir ilişkilerini kaldırmanız gerekir.");
+        return;
+      }
+
       if (window.confirm('Bu misafiri silmek istediğinize emin misiniz?')) {
         await api.deleteGuest(id);
-        store.removeGuest(Number(id));
+        store.removeGuest(targetId);
       }
     } catch (err) {
-      alert("Silme hatası: " + err.message);
+      alert(err.message);
     }
   };
 
