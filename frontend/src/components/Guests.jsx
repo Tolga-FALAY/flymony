@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
+import { copyImageToClipboard } from '../utils/chordUtils';
 
 const cleanPhoneNumberForWhatsapp = (phone) => {
   if (!phone) return '';
@@ -81,6 +82,15 @@ export default function Guests() {
   const [fullscreenGalleryIndex, setFullscreenGalleryIndex] = useState(null);
   const [noteModalGuest, setNoteModalGuest] = useState(null);
   const [showTRCity, setShowTRCity] = useState(false);
+  const [copiedPhotoKey, setCopiedPhotoKey] = useState(null);
+
+  const handleCopyPhoto = async (photoSrc, key = 'photo') => {
+    const ok = await copyImageToClipboard(photoSrc);
+    if (ok) {
+      setCopiedPhotoKey(key);
+      setTimeout(() => setCopiedPhotoKey(prev => (prev === key ? null : prev)), 2000);
+    }
+  };
 
   // Sorting configuration
   const [sortConfig, setSortConfig] = useState({ key: 'CreatedAt', direction: 'desc' });
@@ -1375,17 +1385,32 @@ export default function Guests() {
 
                 {/* Previews Grid */}
                 <div className="gallery-previews-grid">
-                  {formData.Photos && formData.Photos.map((photo, index) => (
-                    <div key={index} className="gallery-preview-item">
-                      <img 
-                        src={photo} 
-                        alt={`Galeri Önizleme ${index + 1}`} 
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => setFullscreenGalleryIndex(index)}
-                      />
-                      <button type="button" className="gallery-preview-delete-badge" onClick={() => removeGalleryPhoto(index)} title="Fotoğrafı Sil">&times;</button>
-                    </div>
-                  ))}
+                  {formData.Photos && formData.Photos.map((photo, index) => {
+                    const copyKey = `guest-thumb-${index}`;
+                    const isCopied = copiedPhotoKey === copyKey;
+                    return (
+                      <div key={index} className="gallery-preview-item">
+                        <img 
+                          src={photo} 
+                          alt={`Galeri Önizleme ${index + 1}`} 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setFullscreenGalleryIndex(index)}
+                        />
+                        <button
+                          type="button"
+                          className={`gallery-preview-copy-badge ${isCopied ? 'copied' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyPhoto(photo, copyKey);
+                          }}
+                          title="Fotoğrafı Panoya Kopyala"
+                        >
+                          {isCopied ? '✓' : '📋'}
+                        </button>
+                        <button type="button" className="gallery-preview-delete-badge" onClick={() => removeGalleryPhoto(index)} title="Fotoğrafı Sil">&times;</button>
+                      </div>
+                    );
+                  })}
                   {(!formData.Photos || formData.Photos.length === 0) && (
                     <div className="gallery-empty-placeholder">
                       <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
@@ -1794,13 +1819,38 @@ export default function Guests() {
               window._guestGalTouchX = null;
             }}
           >
+            <button
+              type="button"
+              onClick={() => handleCopyPhoto(formData.Photos[fullscreenGalleryIndex], `guest-fs-${fullscreenGalleryIndex}`)}
+              style={{
+                position: 'absolute',
+                top: '-42px',
+                right: '48px',
+                background: copiedPhotoKey === `guest-fs-${fullscreenGalleryIndex}` ? '#10b981' : 'rgba(255, 255, 255, 0.18)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#fff',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                height: '38px',
+                padding: '0 0.85rem',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                lineHeight: 1
+              }}
+              title="Fotoğrafı Panoya Kopyala"
+            >
+              {copiedPhotoKey === `guest-fs-${fullscreenGalleryIndex}` ? '✅ Kopyalandı!' : '📋 Kopyala'}
+            </button>
             <button 
               type="button"
               className="close-btn"
               onClick={() => setFullscreenGalleryIndex(null)}
               style={{
                 position: 'absolute',
-                top: '-40px',
+                top: '-42px',
                 right: '0px',
                 background: 'rgba(255, 255, 255, 0.15)',
                 border: 'none',
@@ -1838,7 +1888,6 @@ export default function Guests() {
                   objectFit: 'contain',
                   borderRadius: '12px',
                   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                  pointerEvents: 'none',
                   userSelect: 'none',
                   WebkitUserSelect: 'none'
                 }} 
@@ -1885,6 +1934,32 @@ export default function Guests() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              onClick={() => handleCopyPhoto(fullscreenImage, 'guest-prof-fs')}
+              style={{
+                position: 'absolute',
+                top: '-45px',
+                right: '48px',
+                background: copiedPhotoKey === 'guest-prof-fs' ? '#10b981' : 'rgba(255, 255, 255, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#fff',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                height: '38px',
+                padding: '0 0.85rem',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                lineHeight: 1,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}
+              title="Fotoğrafı Panoya Kopyala"
+            >
+              {copiedPhotoKey === 'guest-prof-fs' ? '✅ Kopyalandı!' : '📋 Kopyala'}
+            </button>
             <button 
               type="button"
               className="close-btn"

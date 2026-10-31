@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import store from '../store';
-import { 
-  noteToSemitone, 
-  sharpScale, 
-  flatScale, 
-  getScaleForTargetKey, 
-  renderTransposedTextAsHTML, 
-  hasLyricsContent, 
-  getUploadsUrl 
+import {
+  noteToSemitone,
+  sharpScale,
+  flatScale,
+  getScaleForTargetKey,
+  renderTransposedTextAsHTML,
+  hasLyricsContent,
+  getUploadsUrl,
+  copyImageToClipboard
 } from '../utils/chordUtils';
 
 export default function Gigs() {
@@ -26,6 +27,15 @@ export default function Gigs() {
   const [previewPhotoIndex, setPreviewPhotoIndex] = useState(null);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [fullscreenGuestProfilePic, setFullscreenGuestProfilePic] = useState(null);
+  const [copiedPhotoKey, setCopiedPhotoKey] = useState(null);
+
+  const handleCopyPhoto = async (photoSrc, key = 'photo') => {
+    const ok = await copyImageToClipboard(photoSrc);
+    if (ok) {
+      setCopiedPhotoKey(key);
+      setTimeout(() => setCopiedPhotoKey(prev => (prev === key ? null : prev)), 2000);
+    }
+  };
 
   const gigCameraInputRef = useRef(null);
   const gigBrowseInputRef = useRef(null);
@@ -66,7 +76,7 @@ export default function Gigs() {
   const [songInsertOrder, setSongInsertOrder] = useState('');
   const [guestSearchText, setGuestSearchText] = useState('');
   const [newVideoUrl, setNewVideoUrl] = useState('');
-  
+
   // Selection states for Grouping / Relationship inside tables
   const [selectedGroupGuests, setSelectedGroupGuests] = useState({}); // { table_name: Set(GuestIDs) }
   const [selectedTargetTable, setSelectedTargetTable] = useState('Masa 1');
@@ -584,8 +594,8 @@ export default function Gigs() {
       const trimmed = newName.trim();
       setFormData(prev => ({
         ...prev,
-        Guests: prev.Guests.map(g => 
-          (g.TableName || 'Masa 1') === oldTableName 
+        Guests: prev.Guests.map(g =>
+          (g.TableName || 'Masa 1') === oldTableName
             ? { ...g, TableName: trimmed }
             : g
         )
@@ -780,7 +790,7 @@ export default function Gigs() {
       for (let idx = 0; idx < sortedSongs.length; idx++) {
         const gSong = sortedSongs[idx];
         const songObj = songs.find(s => s.SongID === gSong.SongID) || gSong;
-        
+
         const rawImages = (Array.isArray(songObj.ChordImages) && songObj.ChordImages.length > 0)
           ? songObj.ChordImages
           : (songObj.ChordImagePath ? [songObj.ChordImagePath] : []);
@@ -800,7 +810,7 @@ export default function Gigs() {
 
         for (let imgIdx = 0; imgIdx < rawImages.length; imgIdx++) {
           const chordImg = rawImages[imgIdx];
-          const prefix = rawImages.length > 1 
+          const prefix = rawImages.length > 1
             ? `${twoDigitOrder}${String.fromCharCode(97 + imgIdx)}` // 01a, 01b...
             : twoDigitOrder; // 01, 02...
 
@@ -1005,7 +1015,7 @@ export default function Gigs() {
 
   const goToNextSong = () => {
     if (!liveGig || !liveGig.Songs || liveGig.Songs.length === 0) return;
-    
+
     // In chord image mode, check if current song has multiple chord pages
     if (liveViewMode === 'image' && liveSongIndex >= 0 && liveGig.Songs[liveSongIndex]) {
       const currentGigSong = liveGig.Songs[liveSongIndex];
@@ -1013,7 +1023,7 @@ export default function Gigs() {
       const images = (Array.isArray(fullSong.ChordImages) && fullSong.ChordImages.length > 0)
         ? fullSong.ChordImages
         : (fullSong.ChordImagePath ? [fullSong.ChordImagePath] : []);
-      
+
       if (images.length > 1 && liveChordPageIndex < images.length - 1) {
         setLiveChordPageIndex(prev => prev + 1);
         return;
@@ -1038,7 +1048,7 @@ export default function Gigs() {
     }
 
     const prevIdx = (liveSongIndex - 1 + liveGig.Songs.length) % liveGig.Songs.length;
-    
+
     let prevSongLastPage = 0;
     if (liveGig.Songs[prevIdx]) {
       const prevGigSong = liveGig.Songs[prevIdx];
@@ -1090,8 +1100,8 @@ export default function Gigs() {
 
   const toggleSongPlayed = async (songIndex) => {
     if (!liveGig || !liveGig.Songs || !liveGig.Songs[songIndex]) return;
-    
-    const updatedSongs = liveGig.Songs.map((s, idx) => 
+
+    const updatedSongs = liveGig.Songs.map((s, idx) =>
       idx === songIndex ? { ...s, IsPlayed: s.IsPlayed ? 0 : 1 } : s
     );
 
@@ -1292,7 +1302,7 @@ export default function Gigs() {
       return;
     }
     const term = text.toLocaleLowerCase('tr-TR');
-    const matched = songs.filter(s => 
+    const matched = songs.filter(s =>
       s.SongTitle.toLocaleLowerCase('tr-TR').includes(term) ||
       (s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(term))
     );
@@ -1301,10 +1311,10 @@ export default function Gigs() {
 
   const playRequestSongDirect = async (song) => {
     if (!liveGig) return;
-    
+
     // Check if song is already in the list
     let existingIdx = liveGig.Songs.findIndex(s => s.SongID === song.SongID);
-    
+
     if (existingIdx !== -1) {
       // Switch to this song index
       setLiveSongIndex(existingIdx);
@@ -1324,7 +1334,7 @@ export default function Gigs() {
         ChordImagePath: song.ChordImagePath || '',
         ChordImages: song.ChordImages || (song.ChordImagePath ? [song.ChordImagePath] : [])
       };
-      
+
       const newSongsList = [...liveGig.Songs, newLiveSong];
       const payload = {
         VenueID: liveGig.VenueID,
@@ -1354,7 +1364,7 @@ export default function Gigs() {
         alert('İstek ekleme hatası: ' + err.message);
       }
     }
-    
+
     // Clear request search box
     setLiveSearchQuery('');
     setLiveSearchResults([]);
@@ -1562,7 +1572,7 @@ export default function Gigs() {
       const query = filterSearch.toLocaleLowerCase('tr-TR');
       const venueMatch = (gig.VenueName || '').toLocaleLowerCase('tr-TR').includes(query);
       const notesMatch = (gig.Notes || '').toLocaleLowerCase('tr-TR').includes(query);
-      
+
       let guestMatch = false;
       if (gig.Guests && gig.Guests.length > 0) {
         guestMatch = gig.Guests.some(g => {
@@ -1792,11 +1802,11 @@ export default function Gigs() {
         <div className="filter-group-row">
           <div className="filter-item search-box">
             <label>Serbest Arama</label>
-            <input 
-              type="text" 
-              placeholder="Mekân veya notlar..." 
-              value={filterSearch} 
-              onChange={e => setFilterSearch(e.target.value)} 
+            <input
+              type="text"
+              placeholder="Mekân veya notlar..."
+              value={filterSearch}
+              onChange={e => setFilterSearch(e.target.value)}
             />
           </div>
           <div className="filter-item">
@@ -1810,23 +1820,23 @@ export default function Gigs() {
           </div>
           <div className="filter-item">
             <label>Başlangıç Tarihi</label>
-            <input 
-              type="date" 
-              value={filterStartDate} 
-              onChange={e => setFilterStartDate(e.target.value)} 
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={e => setFilterStartDate(e.target.value)}
             />
           </div>
           <div className="filter-item">
             <label>Bitiş Tarihi</label>
-            <input 
-              type="date" 
-              value={filterEndDate} 
-              onChange={e => setFilterEndDate(e.target.value)} 
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={e => setFilterEndDate(e.target.value)}
             />
           </div>
           <div className="filter-item filter-actions">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="btn btn-outline btn-sm"
               onClick={() => {
                 const now = new Date();
@@ -1881,18 +1891,18 @@ export default function Gigs() {
               const guestsCount = gig.Guests ? gig.Guests.reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
               const registeredGuestsCount = gig.Guests ? gig.Guests.filter(g => !Number(g.IsAnonymous)).reduce((sum, g) => sum + (Number(g.GuestCount) || 1), 0) : 0;
               const unregisteredGuestsCount = guestsCount - registeredGuestsCount;
-              const photosList = Array.isArray(gig.Photos) 
-                ? gig.Photos 
-                : (typeof gig.Photos === 'string' && gig.Photos.trim().length > 0 && gig.Photos !== '[]' 
-                    ? (() => { try { return JSON.parse(gig.Photos); } catch(e) { return [gig.Photos]; } })() 
-                    : []);
+              const photosList = Array.isArray(gig.Photos)
+                ? gig.Photos
+                : (typeof gig.Photos === 'string' && gig.Photos.trim().length > 0 && gig.Photos !== '[]'
+                  ? (() => { try { return JSON.parse(gig.Photos); } catch (e) { return [gig.Photos]; } })()
+                  : []);
               const photoCount = photosList.length;
 
-              const videosList = Array.isArray(gig.Videos) 
-                ? gig.Videos 
-                : (typeof gig.Videos === 'string' && gig.Videos.trim().length > 0 && gig.Videos !== '[]' 
-                    ? (() => { try { return JSON.parse(gig.Videos); } catch(e) { return [gig.Videos]; } })() 
-                    : []);
+              const videosList = Array.isArray(gig.Videos)
+                ? gig.Videos
+                : (typeof gig.Videos === 'string' && gig.Videos.trim().length > 0 && gig.Videos !== '[]'
+                  ? (() => { try { return JSON.parse(gig.Videos); } catch (e) { return [gig.Videos]; } })()
+                  : []);
               const linkCount = videosList.length;
 
               return (
@@ -1916,20 +1926,20 @@ export default function Gigs() {
                   <td data-label="İşlemler">
                     <div className="action-btns gig-action-btns">
                       {/* Linkler İkonu */}
-                      <button 
+                      <button
                         type="button"
-                        className="btn btn-sm gig-icon-btn" 
-                        style={{ 
-                          background: 'rgba(14, 165, 233, 0.12)', 
-                          color: '#0284c7', 
-                          border: '1px solid rgba(14, 165, 233, 0.4)' 
+                        className="btn btn-sm gig-icon-btn"
+                        style={{
+                          background: 'rgba(14, 165, 233, 0.12)',
+                          color: '#0284c7',
+                          border: '1px solid rgba(14, 165, 233, 0.4)'
                         }}
                         onClick={() => setLinksModalGig(gig)}
                         title={`Sahne Linkleri (${linkCount})`}
                       >
                         <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>🔗</span>
-                        <span 
-                          className="gig-icon-badge" 
+                        <span
+                          className="gig-icon-badge"
                           style={{ background: linkCount > 0 ? '#0284c7' : '#94a3b8' }}
                         >
                           {linkCount}
@@ -1937,13 +1947,13 @@ export default function Gigs() {
                       </button>
 
                       {/* Fotoğraflar İkonu */}
-                      <button 
+                      <button
                         type="button"
-                        className="btn btn-sm gig-icon-btn" 
-                        style={{ 
-                          background: 'rgba(168, 85, 247, 0.12)', 
-                          color: '#9333ea', 
-                          border: '1px solid rgba(168, 85, 247, 0.4)' 
+                        className="btn btn-sm gig-icon-btn"
+                        style={{
+                          background: 'rgba(168, 85, 247, 0.12)',
+                          color: '#9333ea',
+                          border: '1px solid rgba(168, 85, 247, 0.4)'
                         }}
                         onClick={() => {
                           setPhotosModalGig(gig);
@@ -1952,8 +1962,8 @@ export default function Gigs() {
                         title={`Sahne Fotoğrafları (${photoCount})`}
                       >
                         <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>📷</span>
-                        <span 
-                          className="gig-icon-badge" 
+                        <span
+                          className="gig-icon-badge"
                           style={{ background: photoCount > 0 ? '#9333ea' : '#94a3b8' }}
                         >
                           {photoCount}
@@ -1962,13 +1972,13 @@ export default function Gigs() {
 
                       {/* Notlar İkonu */}
                       {String(gig.Notes || '').trim().length > 0 && (
-                        <button 
+                        <button
                           type="button"
-                          className="btn btn-sm gig-icon-btn" 
-                          style={{ 
-                            background: 'rgba(245, 158, 11, 0.15)', 
-                            color: '#d97706', 
-                            border: '1px solid rgba(245, 158, 11, 0.35)' 
+                          className="btn btn-sm gig-icon-btn"
+                          style={{
+                            background: 'rgba(245, 158, 11, 0.15)',
+                            color: '#d97706',
+                            border: '1px solid rgba(245, 158, 11, 0.35)'
                           }}
                           onClick={() => setNoteModalGig(gig)}
                           title={gig.Notes}
@@ -1978,9 +1988,9 @@ export default function Gigs() {
                       )}
 
                       {/* Sahnem Butonu (Yeşil, sadece mikrofon) */}
-                      <button 
+                      <button
                         type="button"
-                        className="btn btn-sm btn-outline btn-added-style gig-icon-btn" 
+                        className="btn btn-sm btn-outline btn-added-style gig-icon-btn"
                         onClick={() => startLiveMode(gig)}
                         title="Sahnem (Canlı Mod)"
                       >
@@ -1988,9 +1998,9 @@ export default function Gigs() {
                       </button>
 
                       {/* Düzenle Butonu (Kalem) */}
-                      <button 
+                      <button
                         type="button"
-                        className="btn btn-sm btn-outline gig-icon-btn" 
+                        className="btn btn-sm btn-outline gig-icon-btn"
                         onClick={() => handleEdit(gig)}
                         title="Düzenle"
                       >
@@ -1998,9 +2008,9 @@ export default function Gigs() {
                       </button>
 
                       {/* Sil Butonu (Çöp Kutusu) */}
-                      <button 
+                      <button
                         type="button"
-                        className="btn btn-sm btn-danger gig-icon-btn" 
+                        className="btn btn-sm btn-danger gig-icon-btn"
                         onClick={() => handleDelete(gig.GigID)}
                         title="Sil"
                       >
@@ -2117,11 +2127,11 @@ export default function Gigs() {
                   <div className="form-group" style={{ margin: 0 }}>
                     <label>Sahne Tarihi</label>
                     <div style={{ position: 'relative', width: '100%' }}>
-                      <input 
-                        type="text" 
-                        readOnly 
-                        value={formatGigDateWithDay(formData.GigDate)} 
-                        onClick={() => gigDateInputRef.current?.showPicker ? gigDateInputRef.current.showPicker() : gigDateInputRef.current?.focus()} 
+                      <input
+                        type="text"
+                        readOnly
+                        value={formatGigDateWithDay(formData.GigDate)}
+                        onClick={() => gigDateInputRef.current?.showPicker ? gigDateInputRef.current.showPicker() : gigDateInputRef.current?.focus()}
                         style={{
                           width: '100%',
                           padding: '0.75rem 2.5rem 0.75rem 1rem',
@@ -2134,22 +2144,22 @@ export default function Gigs() {
                           fontSize: '0.95rem'
                         }}
                       />
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         ref={gigDateInputRef}
-                        value={formData.GigDate} 
-                        onChange={e => setFormData({ ...formData, GigDate: e.target.value })} 
-                        style={{ 
-                          position: 'absolute', 
-                          top: 0, 
-                          left: 0, 
-                          width: '100%', 
-                          height: '100%', 
-                          opacity: 0, 
-                          cursor: 'pointer', 
-                          zIndex: 1 
+                        value={formData.GigDate}
+                        onChange={e => setFormData({ ...formData, GigDate: e.target.value })}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          opacity: 0,
+                          cursor: 'pointer',
+                          zIndex: 1
                         }}
-                        required 
+                        required
                       />
                       <span style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: '1.1rem', color: 'var(--text-muted)' }}>
                         📅
@@ -2161,9 +2171,9 @@ export default function Gigs() {
                 {/* ORTA: Sahneye Dair Notlar (Sola yaklaştırıldı) */}
                 <div className="form-group" style={{ margin: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <label>Sahneye Dair Notlar</label>
-                  <textarea 
-                    value={formData.Notes} 
-                    onChange={e => setFormData({ ...formData, Notes: e.target.value })} 
+                  <textarea
+                    value={formData.Notes}
+                    onChange={e => setFormData({ ...formData, Notes: e.target.value })}
                     placeholder="Sahneye dair notlar, gözlemler, atmosfer..."
                     style={{ fontSize: '0.85rem', flex: 1, minHeight: '125px', resize: 'vertical' }}
                   />
@@ -2171,18 +2181,18 @@ export default function Gigs() {
 
                 {/* SAĞ TARAF: Akor Export ve Next Week Butonları */}
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.65rem', paddingTop: '1.25rem' }}>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline" 
+                  <button
+                    type="button"
+                    className="btn btn-outline"
                     onClick={handleExportChords}
                     disabled={isExportingChords}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      gap: '0.4rem', 
-                      height: '42px', 
-                      fontWeight: 700, 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                      height: '42px',
+                      fontWeight: 700,
                       fontSize: '0.85rem',
                       borderRadius: '8px',
                       whiteSpace: 'nowrap',
@@ -2193,17 +2203,17 @@ export default function Gigs() {
                   >
                     {isExportingChords ? '⏳ Aktarılıyor...' : '📤 Akor Export'}
                   </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-outline" 
+                  <button
+                    type="button"
+                    className="btn btn-outline"
                     onClick={handleNextWeek}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      gap: '0.4rem', 
-                      height: '42px', 
-                      fontWeight: 700, 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                      height: '42px',
+                      fontWeight: 700,
                       fontSize: '0.85rem',
                       borderRadius: '8px',
                       whiteSpace: 'nowrap'
@@ -2217,7 +2227,7 @@ export default function Gigs() {
 
               {/* TABS CONTAINER FOR SONGS AND GUESTS IN MODAL */}
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', marginTop: '1.5rem' }}>
-                
+
                 {/* SONGS SECTION */}
                 {(() => {
                   const allSongs = formData.Songs || [];
@@ -2245,10 +2255,10 @@ export default function Gigs() {
                           <h3 style={{ margin: '0 0 0.4rem 0', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 800 }}>
                             🎵 Şarkı Listesi ({formData.Songs.length})
                           </h3>
-                          
+
                           {/* Add song dropdown search with custom insert order input */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
-                            <input 
+                            <input
                               type="text"
                               inputMode="numeric"
                               pattern="[0-9]*"
@@ -2256,11 +2266,11 @@ export default function Gigs() {
                               title="Şarkı No (Boşsa en sona eklenir)"
                               value={songInsertOrder}
                               onChange={e => setSongInsertOrder(e.target.value.replace(/[^0-9]/g, ''))}
-                              style={{ 
-                                width: '42px', 
+                              style={{
+                                width: '42px',
                                 minWidth: '42px',
-                                margin: 0, 
-                                padding: '0.45rem 0.25rem', 
+                                margin: 0,
+                                padding: '0.45rem 0.25rem',
                                 fontSize: '0.82rem',
                                 textAlign: 'center',
                                 fontWeight: 700,
@@ -2268,59 +2278,59 @@ export default function Gigs() {
                               }}
                             />
                             <div className="form-group" style={{ position: 'relative', margin: 0, flex: 1, minWidth: 0 }}>
-                              <input 
-                                type="text" 
-                                placeholder="Şarkı ara ve listeye ekle..." 
-                                value={songSearchText} 
-                                onChange={e => setSongSearchText(e.target.value)} 
+                              <input
+                                type="text"
+                                placeholder="Şarkı ara ve listeye ekle..."
+                                value={songSearchText}
+                                onChange={e => setSongSearchText(e.target.value)}
                                 style={{ width: '100%', margin: 0, padding: '0.45rem 0.65rem', fontSize: '0.82rem' }}
                               />
-                            {songSearchText.trim() && (
-                              <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '280px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                {songs
-                                  .filter(s => {
-                                    const query = songSearchText.toLocaleLowerCase('tr-TR');
-                                    const titleMatch = s.SongTitle && s.SongTitle.toLocaleLowerCase('tr-TR').includes(query);
-                                    const artistMatch = s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(query);
-                                    return titleMatch || artistMatch;
-                                  })
-                                  .map(s => {
-                                    const hasChord = Boolean(s.ChordImagePath && s.ChordImagePath.trim());
-                                    return (
-                                      <div 
-                                        key={s.SongID} 
-                                        onClick={() => addSongToGig(s)}
-                                        style={{ 
-                                          padding: '0.5rem 0.75rem', 
-                                          cursor: 'pointer', 
-                                          borderBottom: '1px solid var(--border-soft)', 
-                                          fontSize: '0.85rem',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'space-between',
-                                          gap: '0.5rem'
-                                        }}
-                                        className="autocomplete-item-hover"
-                                      >
-                                        <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                          <span style={{ fontWeight: !hasChord ? 700 : 'normal', color: !hasChord ? '#dc2626' : 'inherit' }}>
-                                            {s.SongTitle}
-                                          </span>
-                                          {s.ArtistNames && (
-                                            <span style={{ opacity: 0.75, fontSize: '0.78rem', marginLeft: '6px', color: !hasChord ? '#ef4444' : 'var(--text-muted)' }}>
-                                              ({s.ArtistNames})
+                              {songSearchText.trim() && (
+                                <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '280px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                  {songs
+                                    .filter(s => {
+                                      const query = songSearchText.toLocaleLowerCase('tr-TR');
+                                      const titleMatch = s.SongTitle && s.SongTitle.toLocaleLowerCase('tr-TR').includes(query);
+                                      const artistMatch = s.ArtistNames && s.ArtistNames.toLocaleLowerCase('tr-TR').includes(query);
+                                      return titleMatch || artistMatch;
+                                    })
+                                    .map(s => {
+                                      const hasChord = Boolean(s.ChordImagePath && s.ChordImagePath.trim());
+                                      return (
+                                        <div
+                                          key={s.SongID}
+                                          onClick={() => addSongToGig(s)}
+                                          style={{
+                                            padding: '0.5rem 0.75rem',
+                                            cursor: 'pointer',
+                                            borderBottom: '1px solid var(--border-soft)',
+                                            fontSize: '0.85rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: '0.5rem'
+                                          }}
+                                          className="autocomplete-item-hover"
+                                        >
+                                          <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <span style={{ fontWeight: !hasChord ? 700 : 'normal', color: !hasChord ? '#dc2626' : 'inherit' }}>
+                                              {s.SongTitle}
                                             </span>
+                                            {s.ArtistNames && (
+                                              <span style={{ opacity: 0.75, fontSize: '0.78rem', marginLeft: '6px', color: !hasChord ? '#ef4444' : 'var(--text-muted)' }}>
+                                                ({s.ArtistNames})
+                                              </span>
+                                            )}
+                                          </div>
+                                          {!hasChord && (
+                                            <span className="live-no-chord-badge">Akor Yok</span>
                                           )}
                                         </div>
-                                        {!hasChord && (
-                                          <span className="live-no-chord-badge">Akor Yok</span>
-                                        )}
-                                      </div>
-                                    );
-                                  })
-                                }
-                              </div>
-                            )}
+                                      );
+                                    })
+                                  }
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2353,10 +2363,10 @@ export default function Gigs() {
                                 {Number(gSong.IsRequest) === 1 && (
                                   <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', fontWeight: 700, flexShrink: 0 }}>İstek</span>
                                 )}
-                                <span style={{ 
-                                  textOverflow: 'ellipsis', 
-                                  overflow: 'hidden', 
-                                  whiteSpace: 'nowrap', 
+                                <span style={{
+                                  textOverflow: 'ellipsis',
+                                  overflow: 'hidden',
+                                  whiteSpace: 'nowrap',
                                   textDecoration: isPlayed ? 'line-through' : 'none',
                                   color: isPlayed ? 'var(--text-muted)' : (!hasChord ? '#dc2626' : 'inherit'),
                                   fontWeight: !hasChord && !isPlayed ? 700 : 'normal',
@@ -2374,10 +2384,10 @@ export default function Gigs() {
                                   <span className="live-no-chord-tag" style={{ fontSize: '0.65rem', padding: '1px 5px', flexShrink: 0 }}>Akor Yok</span>
                                 )}
                               </div>
-                              
+
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-                                <button 
-                                  type="button" 
+                                <button
+                                  type="button"
                                   onClick={() => toggleGigModalSongPlayedByIndex(idx)}
                                   style={{
                                     width: '24px',
@@ -2402,8 +2412,8 @@ export default function Gigs() {
                                   {isPlayed ? '✓' : '◯'}
                                 </button>
                                 {/* Sequence shift input */}
-                                <input 
-                                  type="text" 
+                                <input
+                                  type="text"
                                   inputMode="numeric"
                                   pattern="[0-9]*"
                                   value={gSong.SortOrder}
@@ -2411,12 +2421,12 @@ export default function Gigs() {
                                     const val = e.target.value.replace(/[^0-9]/g, '');
                                     if (val) moveSongToOrder(idx, val);
                                   }}
-                                  style={{ 
-                                    width: '28px', 
-                                    padding: '2px 0', 
-                                    textAlign: 'center', 
-                                    fontSize: '0.8rem', 
-                                    height: '24px', 
+                                  style={{
+                                    width: '28px',
+                                    padding: '2px 0',
+                                    textAlign: 'center',
+                                    fontSize: '0.8rem',
+                                    height: '24px',
                                     margin: 0,
                                     borderRadius: '4px',
                                     border: '1px solid var(--border)',
@@ -2459,8 +2469,8 @@ export default function Gigs() {
                   {/* ACTIVE / TARGET TABLE SELECTOR BAR */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', background: '#f1f5f9', padding: '0.35rem 0.55rem', borderRadius: '6px', border: '1px solid var(--border-soft)' }}>
                     <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>📍 Hedef Masa:</span>
-                    <select 
-                      value={selectedTargetTable} 
+                    <select
+                      value={selectedTargetTable}
                       onChange={e => {
                         if (e.target.value === '__NEW__') {
                           handleAddNewTable();
@@ -2475,34 +2485,33 @@ export default function Gigs() {
                       ))}
                       <option value="__NEW__">➕ Yeni Masa Aç...</option>
                     </select>
-                    <button 
-                      type="button" 
-                      className="btn btn-sm btn-outline" 
-                      onClick={handleAddNewTable} 
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={handleAddNewTable}
                       style={{ fontSize: '0.75rem', padding: '2px 6px', height: '24px', whiteSpace: 'nowrap' }}
                       title="Yeni Masa Oluştur"
                     >
                       ➕ Yeni Masa
                     </button>
                   </div>
-                  
+
                   <div className="form-group" style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                    <input 
-                      type="text" 
-                      placeholder={`Misafir ara ve [${selectedTargetTable}] masasına ekle...`} 
-                      value={guestSearchText} 
-                      onChange={e => setGuestSearchText(e.target.value)} 
+                    <input
+                      type="text"
+                      placeholder={`Misafir ara ve [${selectedTargetTable}] masasına ekle...`}
+                      value={guestSearchText}
+                      onChange={e => setGuestSearchText(e.target.value)}
                     />
                     {guestSearchText.trim() && (
-                      <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                      <div className="listbox-container" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: 'white', border: '1px solid var(--border)', borderRadius: '8px', maxHeight: '400px', padding: '0.25rem', gap: 0, overflowY: 'auto', boxShadow: '0 8px 16px -2px rgba(0,0,0,0.15)' }}>
                         {guests
                           .filter(g => g.FullName.toLocaleLowerCase('tr-TR').includes(guestSearchText.toLocaleLowerCase('tr-TR')))
-                          .slice(0, 10)
                           .map(g => (
-                            <div 
-                              key={g.GuestID} 
+                            <div
+                              key={g.GuestID}
                               onClick={() => addGuestToGig(g)}
-                              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-soft)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                              style={{ padding: '0.42rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-soft)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
                               className="autocomplete-item-hover"
                             >
                               {g.ProfilePicture ? (
@@ -2527,8 +2536,8 @@ export default function Gigs() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                               <span style={{ fontWeight: 'bold', color: 'var(--text-muted)', fontSize: '0.78rem', minWidth: '16px' }}>{tableIdx + 1}.</span>
-                              <input 
-                                type="text" 
+                              <input
+                                type="text"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
                                 value={tableIdx + 1}
@@ -2536,43 +2545,43 @@ export default function Gigs() {
                                   const val = e.target.value.replace(/[^0-9]/g, '');
                                   if (val) moveTableOrder(tableIdx, parseInt(val, 10) - 1);
                                 }}
-                                style={{ 
-                                  width: '24px', 
-                                  height: '20px', 
-                                  padding: '0', 
-                                  textAlign: 'center', 
-                                  fontSize: '0.75rem', 
-                                  borderRadius: '4px', 
+                                style={{
+                                  width: '24px',
+                                  height: '20px',
+                                  padding: '0',
+                                  textAlign: 'center',
+                                  fontSize: '0.75rem',
+                                  borderRadius: '4px',
                                   border: '1px solid var(--border)',
                                   background: '#ffffff',
                                   margin: 0
                                 }}
                                 title="Grup Sıra Numarası (Sırayı değiştirmek için numara yazabilirsiniz)"
                               />
-                              <button 
-                                type="button" 
-                                className="btn btn-outline" 
-                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '20px', minWidth: '19px', lineHeight: 1 }} 
-                                onClick={() => moveTableOrder(tableIdx, tableIdx - 1)} 
+                              <button
+                                type="button"
+                                className="btn btn-outline"
+                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '20px', minWidth: '19px', lineHeight: 1 }}
+                                onClick={() => moveTableOrder(tableIdx, tableIdx - 1)}
                                 disabled={tableIdx === 0}
                                 title="Grubu Yukarı Taşı"
                               >
                                 ▲
                               </button>
-                              <button 
-                                type="button" 
-                                className="btn btn-outline" 
-                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '20px', minWidth: '19px', lineHeight: 1 }} 
-                                onClick={() => moveTableOrder(tableIdx, tableIdx + 1)} 
+                              <button
+                                type="button"
+                                className="btn btn-outline"
+                                style={{ padding: '0 4px', fontSize: '0.65rem', height: '20px', minWidth: '19px', lineHeight: 1 }}
+                                onClick={() => moveTableOrder(tableIdx, tableIdx + 1)}
                                 disabled={tableIdx === tableArr.length - 1}
                                 title="Grubu Aşağı Taşı"
                               >
                                 ▼
                               </button>
                               <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--text-main)', marginLeft: '3px' }}>📍 {tName} ({totalInGroup})</span>
-                              <button 
-                                type="button" 
-                                className="btn btn-outline" 
+                              <button
+                                type="button"
+                                className="btn btn-outline"
                                 style={{ padding: '1px 5px', fontSize: '0.7rem', height: '20px' }}
                                 onClick={() => handleRenameTable(tName)}
                                 title="Masa Adını Değiştir"
@@ -2580,9 +2589,9 @@ export default function Gigs() {
                                 ✏️ Adlandır
                               </button>
                             </div>
-                            <button 
-                              type="button" 
-                              className="btn btn-outline" 
+                            <button
+                              type="button"
+                              className="btn btn-outline"
                               style={{ padding: '2px 6px', fontSize: '0.75rem', height: '22px' }}
                               onClick={() => makeSelectedGuestsRelated(tName)}
                               title="Seçilen misafirleri birbiriyle ilişkilendir"
@@ -2603,13 +2612,13 @@ export default function Gigs() {
                                     isGroup ? (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
                                         <span style={{ color: '#0284c7', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>👥 Tanımsız Grup</span>
-                                        <input 
-                                          type="number" 
-                                          min="1" 
-                                          max="99" 
-                                          value={gEntry.GuestCount || 1} 
-                                          onChange={e => updateGuestCount(gEntry._idx, e.target.value)} 
-                                          style={{ width: '45px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, textAlign: 'center' }} 
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          max="99"
+                                          value={gEntry.GuestCount || 1}
+                                          onChange={e => updateGuestCount(gEntry._idx, e.target.value)}
+                                          style={{ width: '45px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, textAlign: 'center' }}
                                           title="Kişi Sayısı"
                                         />
                                         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Kişi</span>
@@ -2617,33 +2626,33 @@ export default function Gigs() {
                                     ) : (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
                                         <span style={{ fontSize: '0.95rem', userSelect: 'none' }} title="Tanımsız Kişi">👤</span>
-                                        <input 
-                                          type="text" 
-                                          value={gEntry.Description || ''} 
-                                          onChange={e => updateGuestDescription(gEntry._idx, e.target.value)} 
-                                          placeholder="Kişi ismi, tarif veya açıklama" 
+                                        <input
+                                          type="text"
+                                          value={gEntry.Description || ''}
+                                          onChange={e => updateGuestDescription(gEntry._idx, e.target.value)}
+                                          placeholder="Kişi ismi, tarif veya açıklama"
                                           style={{ flex: 1, minWidth: 0, padding: '2px 6px', fontSize: '0.78rem', height: '22px', margin: 0, border: '1px solid #cbd5e1', borderRadius: '4px', background: '#ffffff' }}
                                         />
                                       </div>
                                     )
                                   ) : (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1, minWidth: 0 }}>
-                                      <input 
-                                        type="checkbox" 
+                                      <input
+                                        type="checkbox"
                                         checked={!!(selectedGroupGuests[tName] && selectedGroupGuests[tName].has(gEntry.GuestID))}
                                         onChange={() => toggleGroupGuestSelect(tName, gEntry.GuestID)}
                                         style={{ margin: 0 }}
                                       />
                                       {displayProfilePicture && (
-                                        <img 
-                                          src={displayProfilePicture} 
-                                          alt="Profil" 
-                                          style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', flexShrink: 0 }} 
-                                          onClick={() => setFullscreenGuestProfilePic(displayProfilePicture)} 
+                                        <img
+                                          src={displayProfilePicture}
+                                          alt="Profil"
+                                          style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', flexShrink: 0 }}
+                                          onClick={() => setFullscreenGuestProfilePic(displayProfilePicture)}
                                           title="Büyük Görseli Aç"
                                         />
                                       )}
-                                      <span 
+                                      <span
                                         onClick={() => {
                                           setIsModalOpen(false);
                                           const currentGigId = editingGig?.GigID || editingGig?.id || formData?.GigID;
@@ -2654,10 +2663,10 @@ export default function Gigs() {
                                             window.dispatchEvent(new CustomEvent('open-guest-modal-from-external', { detail: { guestId: gEntry.GuestID, returnToGigId: currentGigId } }));
                                           }
                                         }}
-                                        style={{ 
-                                          fontWeight: 600, 
-                                          textOverflow: 'ellipsis', 
-                                          overflow: 'hidden', 
+                                        style={{
+                                          fontWeight: 600,
+                                          textOverflow: 'ellipsis',
+                                          overflow: 'hidden',
                                           whiteSpace: 'nowrap',
                                           cursor: 'pointer',
                                           color: 'var(--primary, #0ea5e9)',
@@ -2673,10 +2682,10 @@ export default function Gigs() {
                                       </span>
                                     </div>
                                   )}
-                                  
+
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <select 
-                                      value={gEntry.TableName || 'Masa 1'} 
+                                    <select
+                                      value={gEntry.TableName || 'Masa 1'}
                                       onChange={e => handleMoveGuestTable(gEntry._idx, e.target.value)}
                                       style={{ width: '95px', padding: '1px 4px', fontSize: '0.78rem', height: '22px', margin: 0, borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff' }}
                                       title="Misafirin Masasını Değiştir"
@@ -2692,11 +2701,11 @@ export default function Gigs() {
 
                                 {/* Ekstra açıklama/tarif alanı SADECE Tanımsız Grup için alt satırda gösterilir */}
                                 {isAnonymous && isGroup && (
-                                  <input 
-                                    type="text" 
-                                    value={gEntry.Description || ''} 
-                                    onChange={e => updateGuestDescription(gEntry._idx, e.target.value)} 
-                                    placeholder="Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..." 
+                                  <input
+                                    type="text"
+                                    value={gEntry.Description || ''}
+                                    onChange={e => updateGuestDescription(gEntry._idx, e.target.value)}
+                                    placeholder="Grup tarifi veya açıklama (örn: Ahmet'in yanındaki masa)..."
                                     style={{ width: '100%', padding: '2px 6px', fontSize: '0.78rem', height: '22px', margin: 0, border: '1px solid #cbd5e1', borderRadius: '4px', background: '#ffffff' }}
                                   />
                                 )}
@@ -2715,16 +2724,16 @@ export default function Gigs() {
               </div>
 
               {/* MEDIA GALLERY SECTION: 2/3 Fotolar & 1/3 Video Linki */}
-              <div style={{ 
-                marginTop: '1.5rem', 
-                borderTop: '1px solid var(--border)', 
+              <div style={{
+                marginTop: '1.5rem',
+                borderTop: '1px solid var(--border)',
                 paddingTop: '1.5rem',
                 display: 'grid',
                 gridTemplateColumns: '2fr 1fr',
                 gap: '1.5rem',
                 alignItems: 'start'
               }}>
-                
+
                 {/* FOTOLAR SECTION (2/3 Sol Taraf) */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.4rem', flexWrap: 'nowrap' }}>
@@ -2742,36 +2751,51 @@ export default function Gigs() {
                     </div>
                   </div>
 
-                  <input 
-                    type="file" 
-                    ref={gigCameraInputRef} 
-                    accept="image/*" 
-                    capture="environment" 
-                    multiple 
-                    style={{ display: 'none' }} 
-                    onChange={handlePhotoUpload} 
+                  <input
+                    type="file"
+                    ref={gigCameraInputRef}
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handlePhotoUpload}
                   />
-                  <input 
-                    type="file" 
-                    ref={gigBrowseInputRef} 
-                    accept="image/*" 
-                    multiple 
-                    style={{ display: 'none' }} 
-                    onChange={handlePhotoUpload} 
+                  <input
+                    type="file"
+                    ref={gigBrowseInputRef}
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handlePhotoUpload}
                   />
 
                   <div className="gallery-previews-grid" style={{ marginBottom: 0 }}>
-                    {formData.Photos && formData.Photos.map((photo, index) => (
-                      <div key={index} className="gallery-preview-item">
-                        <img 
-                          src={photo} 
-                          alt={`Sahne Fotoğrafı ${index + 1}`} 
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => setFullscreenImage(index)}
-                        />
-                        <button type="button" className="gallery-preview-delete-badge" onClick={() => removePhoto(index)} title="Fotoğrafı Sil">&times;</button>
-                      </div>
-                    ))}
+                    {formData.Photos && formData.Photos.map((photo, index) => {
+                      const copyKey = `gig-thumb-${index}`;
+                      const isCopied = copiedPhotoKey === copyKey;
+                      return (
+                        <div key={index} className="gallery-preview-item">
+                          <img
+                            src={photo}
+                            alt={`Sahne Fotoğrafı ${index + 1}`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => setFullscreenImage(index)}
+                          />
+                          <button
+                            type="button"
+                            className={`gallery-preview-copy-badge ${isCopied ? 'copied' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyPhoto(photo, copyKey);
+                            }}
+                            title="Fotoğrafı Panoya Kopyala"
+                          >
+                            {isCopied ? '✓' : '📋'}
+                          </button>
+                          <button type="button" className="gallery-preview-delete-badge" onClick={() => removePhoto(index)} title="Fotoğrafı Sil">&times;</button>
+                        </div>
+                      );
+                    })}
                     {(!formData.Photos || formData.Photos.length === 0) && (
                       <div className="gallery-empty-placeholder">
                         <span>Henüz fotoğraf eklenmemiş. Anlık çekebilir veya cihazınızdan seçebilirsiniz.</span>
@@ -2784,11 +2808,11 @@ export default function Gigs() {
                 <div style={{ minWidth: 0 }}>
                   <label style={{ fontSize: '0.88rem', fontWeight: 600, marginBottom: '0.75rem', display: 'block' }}>Video Linki</label>
                   <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Video URL'si ekle (YouTube, Drive...)..." 
-                      value={newVideoUrl} 
-                      onChange={e => setNewVideoUrl(e.target.value)} 
+                    <input
+                      type="text"
+                      placeholder="Video URL'si ekle (YouTube, Drive...)..."
+                      value={newVideoUrl}
+                      onChange={e => setNewVideoUrl(e.target.value)}
                       style={{ margin: 0, flex: 1, fontSize: '0.85rem' }}
                     />
                     <button type="button" className="btn btn-outline" onClick={addVideoLink}>Ekle</button>
@@ -2897,14 +2921,14 @@ export default function Gigs() {
                           {formatLiveGigDate(liveGig.GigDate)}
                         </div>
                       )}
-                      <div style={{ 
-                        marginTop: '8px', 
-                        display: 'grid', 
-                        gridTemplateColumns: 'auto auto auto', 
-                        columnGap: '10px', 
-                        rowGap: '4px', 
-                        fontSize: '0.82rem', 
-                        alignItems: 'center' 
+                      <div style={{
+                        marginTop: '8px',
+                        display: 'grid',
+                        gridTemplateColumns: 'auto auto auto',
+                        columnGap: '10px',
+                        rowGap: '4px',
+                        fontSize: '0.82rem',
+                        alignItems: 'center'
                       }}>
                         <span style={{ opacity: 0.85, fontWeight: 500 }}>Repertuvar</span>
                         <span style={{ fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>({repPlayed}/{repTotal})</span>
@@ -2920,9 +2944,9 @@ export default function Gigs() {
                       </div>
                     </div>
                   </div>
-                  <button 
-                    type="button" 
-                    className="live-drawer-close-btn" 
+                  <button
+                    type="button"
+                    className="live-drawer-close-btn"
                     onClick={() => setIsLiveDrawerOpen(false)}
                     title="Menüyü Kapat"
                   >
@@ -2935,17 +2959,17 @@ export default function Gigs() {
             {/* INSTANT REQUEST SEARCH (AT THE VERY TOP OF DRAWER) */}
             <div className="live-stage-search-box">
               <div className="live-search-input-wrapper">
-                <input 
-                  type="text" 
-                  placeholder="🔍 İstek bul ve hemen aç..." 
-                  value={liveSearchQuery} 
-                  onChange={e => searchLiveRequests(e.target.value)} 
+                <input
+                  type="text"
+                  placeholder="🔍 İstek bul ve hemen aç..."
+                  value={liveSearchQuery}
+                  onChange={e => searchLiveRequests(e.target.value)}
                   className="live-stage-search-input"
                 />
                 {liveSearchQuery && (
-                  <button 
-                    type="button" 
-                    className="live-search-clear-btn" 
+                  <button
+                    type="button"
+                    className="live-search-clear-btn"
                     onClick={() => { setLiveSearchQuery(''); setLiveSearchResults([]); }}
                     title="Temizle"
                   >
@@ -2960,8 +2984,8 @@ export default function Gigs() {
                   {liveSearchResults.map(s => {
                     const hasChord = Boolean(s.ChordImagePath && s.ChordImagePath.trim());
                     return (
-                      <div 
-                        key={s.SongID} 
+                      <div
+                        key={s.SongID}
                         onClick={() => {
                           playRequestSongDirect(s);
                           setIsLiveDrawerOpen(false);
@@ -2985,17 +3009,17 @@ export default function Gigs() {
             {/* GUEST NAME SEARCH (UNDERNEATH SONG SEARCH) */}
             <div className="live-stage-search-box" style={{ marginTop: '8px' }}>
               <div className="live-search-input-wrapper">
-                <input 
-                  type="text" 
-                  placeholder="Misafir ismi ile istek ara..." 
-                  value={liveGuestSearchQuery} 
-                  onChange={e => searchLiveGuests(e.target.value)} 
+                <input
+                  type="text"
+                  placeholder="Misafir ismi ile istek ara..."
+                  value={liveGuestSearchQuery}
+                  onChange={e => searchLiveGuests(e.target.value)}
                   className="live-stage-search-input"
                 />
                 {liveGuestSearchQuery && (
-                  <button 
-                    type="button" 
-                    className="live-search-clear-btn" 
+                  <button
+                    type="button"
+                    className="live-search-clear-btn"
                     onClick={() => { setLiveGuestSearchQuery(''); setLiveGuestSearchResults([]); }}
                     title="Temizle"
                   >
@@ -3017,17 +3041,17 @@ export default function Gigs() {
                       .slice(0, 2);
 
                     return (
-                      <div 
-                        key={gItem.key} 
+                      <div
+                        key={gItem.key}
                         onClick={() => openGuestRequestsModal(gItem)}
                         className="live-stage-search-item"
                         style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.6rem 0.75rem', cursor: 'pointer' }}
                       >
                         {profilePic ? (
-                          <img 
-                            src={profilePic} 
-                            alt={gItem.name} 
-                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #a855f7', flexShrink: 0 }} 
+                          <img
+                            src={profilePic}
+                            alt={gItem.name}
+                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #a855f7', flexShrink: 0 }}
                           />
                         ) : (
                           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #9333ea, #6b21a8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', flexShrink: 0 }}>
@@ -3052,32 +3076,32 @@ export default function Gigs() {
 
             {/* MINI SORTABLE & FILTER HEADERS (NO, ŞARKI, SANATÇI, ÇALINMAMIŞ/TÜMÜ) */}
             <div className="live-stage-list-sort-header">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={`live-sort-btn ${liveSortField === 'no' ? 'active' : ''}`}
                 onClick={() => handleLiveSort('no')}
                 title="Sıra Numarasına Göre Sırala (NO)"
               >
                 NO {liveSortField === 'no' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={`live-sort-btn ${liveSortField === 'sarki' ? 'active' : ''}`}
                 onClick={() => handleLiveSort('sarki')}
                 title="Şarkı İsmine Göre Sırala"
               >
                 ŞARKI {liveSortField === 'sarki' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={`live-sort-btn ${liveSortField === 'sanatci' ? 'active' : ''}`}
                 onClick={() => handleLiveSort('sanatci')}
                 title="Sanatçı İsmine Göre Sırala"
               >
                 SANATÇI {liveSortField === 'sanatci' ? (liveSortOrder === 'asc' ? '▲' : '▼') : ''}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={`live-sort-btn live-filter-btn ${liveShowUnplayedOnly ? 'active' : ''}`}
                 onClick={() => setLiveShowUnplayedOnly(prev => !prev)}
                 title={liveShowUnplayedOnly ? "Tüm Şarkıları Göster" : "Sadece Çalınmamış Şarkıları Göster"}
@@ -3114,7 +3138,7 @@ export default function Gigs() {
                   const hasChord = Boolean((fullSong.ChordImagePath && fullSong.ChordImagePath.trim()) || (gSong.ChordImagePath && gSong.ChordImagePath.trim()));
 
                   return (
-                    <div 
+                    <div
                       key={gSong.GigSongID || gSong.SongID || originalIdx}
                       onClick={() => {
                         setLiveSongIndex(originalIdx);
@@ -3146,7 +3170,7 @@ export default function Gigs() {
                       </div>
 
                       <div className="live-song-item-actions">
-                        <button 
+                        <button
                           type="button"
                           className={`live-played-indicator-btn ${gSong.IsPlayed ? 'is-played' : ''}`}
                           onClick={(e) => {
@@ -3157,8 +3181,8 @@ export default function Gigs() {
                         >
                           {gSong.IsPlayed ? '✓' : '◯'}
                         </button>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={(e) => { e.stopPropagation(); handleRemoveLiveSong(originalIdx); }}
                           className="live-song-del-btn"
                           title="Şarkıyı Listeden Çıkar"
@@ -3179,7 +3203,7 @@ export default function Gigs() {
           </div>
 
           {/* MAIN 100% FULLSCREEN STAGE BODY */}
-          <div 
+          <div
             className="live-stage-body"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -3222,7 +3246,7 @@ export default function Gigs() {
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
-                  
+
                   {liveViewMode === 'image' ? (
                     /* CHORD IMAGE FULLSCREEN VIEW */
                     (() => {
@@ -3251,8 +3275,8 @@ export default function Gigs() {
                           }}>
                             {/* Left: Hamburger & Counter + Song Info */}
                             <div style={{ minWidth: 0, flex: 1, paddingRight: '1rem', display: 'flex', alignItems: 'center', overflow: 'hidden', whiteSpace: 'nowrap', gap: '0.65rem' }}>
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={() => setIsLiveDrawerOpen(prev => !prev)}
                                 style={{
                                   height: '38px',
@@ -3324,7 +3348,7 @@ export default function Gigs() {
                             {/* Right: Controls Aligned in Top Bar */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
                               {hasMultiplePages && (
-                                <div 
+                                <div
                                   className="live-chord-multipage-badge"
                                   style={{
                                     fontFamily: "'Montserrat', sans-serif",
@@ -3466,8 +3490,8 @@ export default function Gigs() {
                                 {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
                               </button>
 
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={() => {
                                   if (hasLyr) {
                                     setLiveViewMode('chords');
@@ -3497,8 +3521,8 @@ export default function Gigs() {
                               </button>
 
                               {hasAudio && (
-                                <button 
-                                  type="button" 
+                                <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     toggleLiveAudio(currentAudioPath);
@@ -3534,8 +3558,8 @@ export default function Gigs() {
                                 </button>
                               )}
 
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={closeLiveMode}
                                 style={{
                                   height: '38px',
@@ -3562,15 +3586,15 @@ export default function Gigs() {
                           </div>
 
                           {/* Image Container with 3-Zone Click/Tap */}
-                          <div 
+                          <div
                             className="fullscreen-chord-image-wrapper"
                             onClick={handleChordImageZoneClick}
                             style={{ position: 'relative', cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none' }}
                           >
                             {currentChordImg ? (
-                              <img 
-                                src={getUploadsUrl(currentChordImg)} 
-                                alt={`Akor Görseli Sayfa ${liveChordPageIndex + 1}`} 
+                              <img
+                                src={getUploadsUrl(currentChordImg)}
+                                alt={`Akor Görseli Sayfa ${liveChordPageIndex + 1}`}
                                 className="fullscreen-chord-image"
                                 style={{ pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
                                 draggable="false"
@@ -3590,12 +3614,12 @@ export default function Gigs() {
                   ) : (
                     /* TRANSPOSE & LYRICS FULLSCREEN VIEW */
                     <div className="fullscreen-transpose-wrapper">
-                      
+
                       {/* Transpose Toolbar */}
                       <div className="fullscreen-transpose-toolbar" style={{ paddingLeft: '1.25rem' }}>
                         <div className="toolbar-section" style={{ paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             onClick={() => setIsLiveDrawerOpen(prev => !prev)}
                             style={{
                               height: '38px',
@@ -3662,7 +3686,7 @@ export default function Gigs() {
                               {origKey && <span className="orig-key-badge" style={{ flexShrink: 0 }}>({origKey} Tonu)</span>}
                             </div>
                           </div>
-                          
+
                           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                             {/* İstek Yapan Misafir Sayısı Butonu (Mor İkili Gölge Adam) */}
                             {(() => {
@@ -3780,8 +3804,8 @@ export default function Gigs() {
                               {gigSong.IsPlayed ? '✓ Çalındı' : '◯ Çalınmadı'}
                             </button>
 
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => {
                                 if (hasChordImg) {
                                   setLiveViewMode('image');
@@ -3811,8 +3835,8 @@ export default function Gigs() {
                             </button>
 
                             {hasAudio && (
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleLiveAudio(currentAudioPath);
@@ -3848,8 +3872,8 @@ export default function Gigs() {
                               </button>
                             )}
 
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={closeLiveMode}
                               style={{
                                 height: '38px',
@@ -3874,14 +3898,14 @@ export default function Gigs() {
                             </button>
                           </div>
                         </div>
-                        
+
                         <div className="toolbar-controls-row">
                           <div className="control-group">
                             <button type="button" className="btn btn-sm btn-outline" onClick={() => setLiveTransposeShift(prev => prev - 1)}>-1 Semiton</button>
                             <button type="button" className="btn btn-sm btn-outline" onClick={() => setLiveTransposeShift(prev => prev + 1)}>+1 Semiton</button>
-                            <button 
-                              type="button" 
-                              className="btn btn-sm btn-outline btn-danger-soft" 
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline btn-danger-soft"
                               onClick={() => setLiveTransposeShift(0)}
                             >
                               Sıfırla
@@ -3901,17 +3925,17 @@ export default function Gigs() {
 
                           <div className="control-group autofit-group">
                             <label className="checkbox-label">
-                              <input 
-                                type="checkbox" 
-                                checked={liveIsSingleScreen} 
-                                onChange={(e) => setLiveIsSingleScreen(e.target.checked)} 
+                              <input
+                                type="checkbox"
+                                checked={liveIsSingleScreen}
+                                onChange={(e) => setLiveIsSingleScreen(e.target.checked)}
                               />
                               Tek Ekran
                             </label>
                             {liveIsSingleScreen && (
-                              <button 
-                                type="button" 
-                                className="btn btn-sm btn-outline" 
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline"
                                 onClick={triggerLiveAutoFit}
                               >
                                 Sığdır
@@ -3929,7 +3953,7 @@ export default function Gigs() {
                                 const targetSemitone = noteToSemitone[targetRoot];
                                 let diff = targetSemitone - origSemitone;
                                 if (diff < 0) diff += 12;
-                                
+
                                 const displayName = targetRoot + suffix;
                                 const isActive = (liveTransposeShift % 12 + 12) % 12 === diff;
 
@@ -3951,7 +3975,7 @@ export default function Gigs() {
 
                       {/* Chord Sheet Pre Area */}
                       <div className={`fullscreen-chord-sheet-box ${liveIsSingleScreen ? 'single-screen' : ''}`}>
-                        <pre 
+                        <pre
                           ref={liveChordContentRef}
                           className={liveIsSingleScreen ? 'chord-sheet-pre-single' : 'chord-sheet-pre'}
                           style={liveIsSingleScreen ? {} : { fontSize: `${liveFontSize}px` }}
@@ -3966,8 +3990,8 @@ export default function Gigs() {
               );
             })() : (
               <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem', padding: '2rem', position: 'relative' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={closeLiveMode}
                   style={{
                     position: 'absolute',
@@ -4039,11 +4063,11 @@ export default function Gigs() {
 
             <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.25rem 0' }}>
               {(() => {
-                const links = Array.isArray(linksModalGig.Videos) 
-                  ? linksModalGig.Videos 
+                const links = Array.isArray(linksModalGig.Videos)
+                  ? linksModalGig.Videos
                   : (typeof linksModalGig.Videos === 'string' && linksModalGig.Videos.trim().length > 0 && linksModalGig.Videos !== '[]'
-                      ? (() => { try { return JSON.parse(linksModalGig.Videos); } catch(e) { return [linksModalGig.Videos]; } })()
-                      : []);
+                    ? (() => { try { return JSON.parse(linksModalGig.Videos); } catch (e) { return [linksModalGig.Videos]; } })()
+                    : []);
                 if (links.length === 0) {
                   return (
                     <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
@@ -4062,9 +4086,9 @@ export default function Gigs() {
                       </a>
                     </div>
                     <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
-                      <button 
-                        type="button" 
-                        className="btn btn-sm btn-outline" 
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
                         style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}
                         onClick={() => {
                           navigator.clipboard.writeText(url);
@@ -4074,10 +4098,10 @@ export default function Gigs() {
                       >
                         📋 Kopyala
                       </button>
-                      <a 
-                        href={url} 
-                        target="_blank" 
-                        rel="noreferrer" 
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
                         className="btn btn-sm btn-primary"
                         style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                       >
@@ -4090,9 +4114,9 @@ export default function Gigs() {
             </div>
 
             <div className="modal-actions" style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button 
-                type="button" 
-                className="btn btn-outline btn-sm" 
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
                 onClick={() => {
                   const g = linksModalGig;
                   setLinksModalGig(null);
@@ -4123,11 +4147,11 @@ export default function Gigs() {
             </div>
 
             {(() => {
-              const photos = Array.isArray(photosModalGig.Photos) 
-                ? photosModalGig.Photos 
+              const photos = Array.isArray(photosModalGig.Photos)
+                ? photosModalGig.Photos
                 : (typeof photosModalGig.Photos === 'string' && photosModalGig.Photos.trim().length > 0 && photosModalGig.Photos !== '[]'
-                    ? (() => { try { return JSON.parse(photosModalGig.Photos); } catch(e) { return [photosModalGig.Photos]; } })()
-                    : []);
+                  ? (() => { try { return JSON.parse(photosModalGig.Photos); } catch (e) { return [photosModalGig.Photos]; } })()
+                  : []);
               if (photos.length === 0) {
                 return (
                   <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
@@ -4140,25 +4164,52 @@ export default function Gigs() {
 
               const activeIdx = previewPhotoIndex !== null && photos[previewPhotoIndex] ? previewPhotoIndex : 0;
               const activePhoto = photos[activeIdx];
+              const modalCopyKey = `gig-modal-photo-${activeIdx}`;
+              const isModalPhotoCopied = copiedPhotoKey === modalCopyKey;
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ position: 'relative', background: '#0f172a', borderRadius: '12px', padding: '0.5rem', textAlign: 'center', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '240px' }}>
-                    <img 
-                      src={getUploadsUrl(activePhoto)} 
-                      alt={`Sahne Fotoğrafı ${activeIdx + 1}`} 
-                      style={{ maxHeight: '50vh', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} 
+                    <img
+                      src={getUploadsUrl(activePhoto)}
+                      alt={`Sahne Fotoğrafı ${activeIdx + 1}`}
+                      style={{ maxHeight: '50vh', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPhoto(activePhoto, modalCopyKey)}
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        background: isModalPhotoCopied ? '#10b981' : 'rgba(15, 23, 42, 0.78)',
+                        color: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.25)',
+                        borderRadius: '8px',
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        zIndex: 3,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.35)'
+                      }}
+                      title="Fotoğrafı Panoya Kopyala"
+                    >
+                      {isModalPhotoCopied ? '✅ Kopyalandı!' : '📋 Kopyala'}
+                    </button>
                     {photos.length > 1 && (
                       <>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => setPreviewPhotoIndex(activeIdx > 0 ? activeIdx - 1 : photos.length - 1)}
                           style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
                         >
                           ❮
                         </button>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => setPreviewPhotoIndex(activeIdx < photos.length - 1 ? activeIdx + 1 : 0)}
                           style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
@@ -4174,23 +4225,23 @@ export default function Gigs() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(85px, 1fr))', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', padding: '2px' }}>
                     {photos.map((photo, idx) => (
-                      <div 
-                        key={idx} 
+                      <div
+                        key={idx}
                         onClick={() => setPreviewPhotoIndex(idx)}
-                        style={{ 
-                          aspectRatio: '1', 
-                          borderRadius: '8px', 
-                          overflow: 'hidden', 
-                          cursor: 'pointer', 
+                        style={{
+                          aspectRatio: '1',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
                           border: activeIdx === idx ? '3px solid var(--primary)' : '1px solid var(--border)',
                           boxShadow: activeIdx === idx ? '0 0 0 2px rgba(14, 165, 233, 0.4)' : 'none',
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        <img 
-                          src={getUploadsUrl(photo)} 
-                          alt={`Küçük Resim ${idx + 1}`} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        <img
+                          src={getUploadsUrl(photo)}
+                          alt={`Küçük Resim ${idx + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       </div>
                     ))}
@@ -4200,9 +4251,9 @@ export default function Gigs() {
             })()}
 
             <div className="modal-actions" style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button 
-                type="button" 
-                className="btn btn-outline btn-sm" 
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
                 onClick={() => {
                   const g = photosModalGig;
                   setPhotosModalGig(null);
@@ -4223,22 +4274,22 @@ export default function Gigs() {
 
       {/* FULLSCREEN IMAGE MODAL */}
       {fullscreenImage !== null && formData.Photos && formData.Photos[fullscreenImage] && createPortal(
-        <div 
-          className="modal-overlay" 
-          style={{ 
-            backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-            zIndex: 2500, 
-            display: 'flex', 
-            alignItems: 'center', 
+        <div
+          className="modal-overlay"
+          style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            zIndex: 2500,
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
             backdropFilter: 'blur(8px)'
           }}
           onClick={() => setFullscreenImage(null)}
         >
-          <div 
-            style={{ 
-              position: 'relative', 
-              maxWidth: '90vw', 
+          <div
+            style={{
+              position: 'relative',
+              maxWidth: '90vw',
               maxHeight: '90vh',
               display: 'flex',
               alignItems: 'center',
@@ -4258,13 +4309,38 @@ export default function Gigs() {
               window._galTouchX = null;
             }}
           >
-            <button 
+            <button
+              type="button"
+              onClick={() => handleCopyPhoto(formData.Photos[fullscreenImage], `gig-fs-${fullscreenImage}`)}
+              style={{
+                position: 'absolute',
+                top: '-42px',
+                right: '48px',
+                background: copiedPhotoKey === `gig-fs-${fullscreenImage}` ? '#10b981' : 'rgba(255, 255, 255, 0.18)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#fff',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                height: '38px',
+                padding: '0 0.85rem',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                lineHeight: 1
+              }}
+              title="Fotoğrafı Panoya Kopyala"
+            >
+              {copiedPhotoKey === `gig-fs-${fullscreenImage}` ? '✅ Kopyalandı!' : '📋 Kopyala'}
+            </button>
+            <button
               type="button"
               className="close-btn"
               onClick={() => setFullscreenImage(null)}
               style={{
                 position: 'absolute',
-                top: '-40px',
+                top: '-42px',
                 right: '0px',
                 background: 'rgba(255, 255, 255, 0.15)',
                 border: 'none',
@@ -4282,8 +4358,8 @@ export default function Gigs() {
             >
               &times;
             </button>
-            
-            <div 
+
+            <div
               style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: formData.Photos.length > 1 ? 'pointer' : 'default' }}
               onClick={(e) => {
                 if (!formData.Photos || formData.Photos.length <= 1) return;
@@ -4293,22 +4369,21 @@ export default function Gigs() {
                 else if (ratio > 0.66) setFullscreenImage(prev => (prev < formData.Photos.length - 1 ? prev + 1 : 0));
               }}
             >
-              <img 
-                src={formData.Photos[fullscreenImage]} 
-                alt={`Tam Ekran Görünüm ${fullscreenImage + 1}`} 
-                style={{ 
-                  maxWidth: '100%', 
-                  maxHeight: '85vh', 
+              <img
+                src={formData.Photos[fullscreenImage]}
+                alt={`Tam Ekran Görünüm ${fullscreenImage + 1}`}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '85vh',
                   objectFit: 'contain',
                   borderRadius: '12px',
                   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                  pointerEvents: 'none',
                   userSelect: 'none',
                   WebkitUserSelect: 'none'
-                }} 
+                }}
                 draggable="false"
               />
-              
+
               {formData.Photos.length > 1 && (
                 <>
                   <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', color: 'white', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontSize: '1.2rem' }}>❮</div>
@@ -4324,7 +4399,7 @@ export default function Gigs() {
 
       {/* Guest Profile Picture Fullscreen Modal */}
       {fullscreenGuestProfilePic && createPortal(
-        <div 
+        <div
           className="fullscreen-modal"
           onClick={() => setFullscreenGuestProfilePic(null)}
           style={{
@@ -4335,11 +4410,25 @@ export default function Gigs() {
             padding: '1rem', cursor: 'pointer'
           }}
         >
-          <div 
+          <div
             style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button 
+            <button
+              type="button"
+              onClick={() => handleCopyPhoto(fullscreenGuestProfilePic, 'gig-guest-prof')}
+              style={{
+                position: 'absolute', top: '-42px', right: '46px',
+                background: copiedPhotoKey === 'gig-guest-prof' ? '#10b981' : 'rgba(255, 255, 255, 0.18)',
+                border: '1px solid rgba(255, 255, 255, 0.25)', color: '#fff',
+                fontSize: '0.85rem', fontWeight: 700, height: '38px', padding: '0 0.85rem', borderRadius: '20px',
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', lineHeight: 1
+              }}
+              title="Fotoğrafı Panoya Kopyala"
+            >
+              {copiedPhotoKey === 'gig-guest-prof' ? '✅ Kopyalandı!' : '📋 Kopyala'}
+            </button>
+            <button
               type="button"
               onClick={() => setFullscreenGuestProfilePic(null)}
               title="Kapat (ESC)"
@@ -4355,10 +4444,10 @@ export default function Gigs() {
             >
               &times;
             </button>
-            <img 
-              src={fullscreenGuestProfilePic} 
-              alt="Profil Büyük Görünüm" 
-              style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', cursor: 'default' }} 
+            <img
+              src={fullscreenGuestProfilePic}
+              alt="Profil Büyük Görünüm"
+              style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', cursor: 'default' }}
             />
           </div>
         </div>,
@@ -4367,7 +4456,7 @@ export default function Gigs() {
 
       {/* Sahnem Canlı İstek Yapan Misafirler Modal */}
       {liveRequestersModal && createPortal(
-        <div 
+        <div
           className="modal-overlay"
           onClick={() => setLiveRequestersModal(null)}
           style={{
@@ -4379,7 +4468,7 @@ export default function Gigs() {
             padding: '1rem'
           }}
         >
-          <div 
+          <div
             style={{
               position: 'relative',
               width: '100%',
@@ -4431,7 +4520,7 @@ export default function Gigs() {
               </div>
 
               {/* ÇARPI (Close) Butonu */}
-              <button 
+              <button
                 type="button"
                 onClick={() => setLiveRequestersModal(null)}
                 title="Kapat (ESC)"
@@ -4485,7 +4574,7 @@ export default function Gigs() {
                 const statusStyle = getStatusBadgeStyle(statusName);
 
                 return (
-                  <div 
+                  <div
                     key={idx}
                     style={{
                       background: 'rgba(255, 255, 255, 0.05)',
@@ -4500,9 +4589,9 @@ export default function Gigs() {
                   >
                     {/* Misafir Fotoğrafı (Tıklandığında popup açılır) */}
                     {profilePic ? (
-                      <img 
-                        src={profilePic} 
-                        alt={item.name} 
+                      <img
+                        src={profilePic}
+                        alt={item.name}
                         onClick={(e) => {
                           e.stopPropagation();
                           setFullscreenGuestProfilePic(profilePic);
@@ -4528,7 +4617,7 @@ export default function Gigs() {
                         }}
                       />
                     ) : (
-                      <div 
+                      <div
                         style={{
                           width: '44px',
                           height: '44px',
@@ -4552,10 +4641,10 @@ export default function Gigs() {
 
                     {/* Fotoğrafın yanında iki satır: Üstte misafir adı, altta Tarih (geçen süre) */}
                     <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <span 
-                        style={{ 
-                          fontWeight: 700, 
-                          fontSize: '0.98rem', 
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '0.98rem',
                           color: '#ffffff',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -4566,9 +4655,9 @@ export default function Gigs() {
                       >
                         {item.name}
                       </span>
-                      <span 
-                        style={{ 
-                          fontSize: '0.78rem', 
+                      <span
+                        style={{
+                          fontSize: '0.78rem',
                           color: '#94a3b8',
                           marginTop: '2px',
                           overflow: 'hidden',
@@ -4583,7 +4672,7 @@ export default function Gigs() {
 
                     {/* En sağ kısım: Durum rozeti (EKLENDİ vb. kendi rengi ile) */}
                     <div style={{ flexShrink: 0, marginLeft: '0.5rem' }}>
-                      <span 
+                      <span
                         style={{
                           padding: '3px 8px',
                           borderRadius: '6px',
@@ -4612,8 +4701,8 @@ export default function Gigs() {
               justifyContent: 'flex-end',
               background: 'rgba(15, 23, 42, 0.4)'
             }}>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setLiveRequestersModal(null)}
                 style={{
@@ -4633,7 +4722,7 @@ export default function Gigs() {
 
       {/* Misafirin İstek Şarkıları Modal */}
       {liveGuestRequestsModal && createPortal(
-        <div 
+        <div
           className="modal-overlay"
           onClick={() => setLiveGuestRequestsModal(null)}
           style={{
@@ -4645,7 +4734,7 @@ export default function Gigs() {
             padding: '1rem'
           }}
         >
-          <div 
+          <div
             style={{
               position: 'relative',
               width: '100%',
@@ -4678,10 +4767,10 @@ export default function Gigs() {
                   const profilePic = g && g.ProfilePicture ? getUploadsUrl(g.ProfilePicture) : null;
                   const initials = (liveGuestRequestsModal.guestName || 'M').split(' ').map(p => p.charAt(0)).join('').toUpperCase().slice(0, 2);
                   return profilePic ? (
-                    <img 
-                      src={profilePic} 
-                      alt={liveGuestRequestsModal.guestName} 
-                      style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #a855f7', flexShrink: 0 }} 
+                    <img
+                      src={profilePic}
+                      alt={liveGuestRequestsModal.guestName}
+                      style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #a855f7', flexShrink: 0 }}
                     />
                   ) : (
                     <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #9333ea, #6b21a8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', border: '1.5px solid rgba(168, 85, 247, 0.4)', flexShrink: 0 }}>
@@ -4711,7 +4800,7 @@ export default function Gigs() {
               </div>
 
               {/* Çarpı Kapat Butonu */}
-              <button 
+              <button
                 type="button"
                 onClick={() => setLiveGuestRequestsModal(null)}
                 title="Kapat (ESC)"
@@ -4763,7 +4852,7 @@ export default function Gigs() {
                   const statusStyle = getStatusBadgeStyle(statusName);
 
                   return (
-                    <div 
+                    <div
                       key={idx}
                       onClick={() => {
                         if (!hasChord) return;
@@ -4852,7 +4941,7 @@ export default function Gigs() {
                         )}
 
                         {/* Durum Rozeti (EKLENDİ vb.) */}
-                        <span 
+                        <span
                           style={{
                             padding: '3px 8px',
                             borderRadius: '6px',
@@ -4882,8 +4971,8 @@ export default function Gigs() {
               justifyContent: 'flex-end',
               background: 'rgba(15, 23, 42, 0.4)'
             }}>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setLiveGuestRequestsModal(null)}
                 style={{
@@ -4903,7 +4992,7 @@ export default function Gigs() {
 
       {/* Akor Önizleme Modal (Popup) */}
       {livePreviewChordSong && createPortal(
-        <div 
+        <div
           className="fullscreen-modal"
           onClick={() => setLivePreviewChordSong(null)}
           style={{
@@ -4914,14 +5003,14 @@ export default function Gigs() {
             padding: '1rem', cursor: 'pointer'
           }}
         >
-          <div 
+          <div
             style={{ position: 'relative', maxWidth: '92vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ position: 'absolute', top: '-42px', left: '0px', color: '#fff', fontWeight: 800, fontSize: '1rem', textShadow: '0 2px 4px rgba(0,0,0,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80vw' }}>
               🎵 {livePreviewChordSong.SongTitle} {livePreviewChordSong.ArtistNames && livePreviewChordSong.ArtistNames !== '-' ? ` - ${livePreviewChordSong.ArtistNames}` : ''}
             </div>
-            <button 
+            <button
               type="button"
               onClick={() => setLivePreviewChordSong(null)}
               title="Kapat (ESC)"
@@ -4945,10 +5034,10 @@ export default function Gigs() {
               const totalPages = chordImages.length;
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img 
-                    src={getUploadsUrl(currentImg)} 
-                    alt={livePreviewChordSong.SongTitle} 
-                    style={{ maxWidth: '100%', maxHeight: '82vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', cursor: 'default', background: '#fff' }} 
+                  <img
+                    src={getUploadsUrl(currentImg)}
+                    alt={livePreviewChordSong.SongTitle}
+                    style={{ maxWidth: '100%', maxHeight: '82vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', cursor: 'default', background: '#fff' }}
                   />
                   {totalPages > 1 && (
                     <div style={{

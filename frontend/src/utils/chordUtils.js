@@ -170,3 +170,48 @@ export const getUploadsUrl = (path) => {
   const base = apiBase.replace('/api', '');
   return `${base}${cleanPath}`;
 };
+
+export const copyImageToClipboard = async (photoSrc) => {
+  if (!photoSrc) return false;
+  const resolvedUrl = getUploadsUrl(photoSrc);
+
+  const createPngBlob = async () => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('Görsel yüklenemedi.'));
+      img.src = resolvedUrl;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('PNG verisi oluşturulamadı.'))),
+        'image/png'
+      );
+    });
+  };
+
+  try {
+    if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
+      throw new Error('Tarayıcınız panoya görsel kopyalamayı desteklemiyor.');
+    }
+    try {
+      const item = new ClipboardItem({ 'image/png': createPngBlob() });
+      await navigator.clipboard.write([item]);
+    } catch {
+      const pngBlob = await createPngBlob();
+      const item = new ClipboardItem({ 'image/png': pngBlob });
+      await navigator.clipboard.write([item]);
+    }
+    return true;
+  } catch (err) {
+    console.error('Fotoğraf kopyalama hatası:', err);
+    alert('Fotoğraf panoya kopyalanamadı: ' + (err.message || err));
+    return false;
+  }
+};
