@@ -321,8 +321,8 @@ export default function Gigs() {
       Notes: '',
       Photos: [],
       Videos: [],
-      ExcludeSongsFromAvg: false,
-      ExcludeGuestsFromAvg: false,
+      ExcludeSongsFromAvg: true,
+      ExcludeGuestsFromAvg: true,
       Songs: cleanNewSongs,
       Guests: []
     });
